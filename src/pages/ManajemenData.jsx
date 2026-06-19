@@ -3,9 +3,31 @@ import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
 import Modal from "../components/Modal";
+import PageHeader from "../components/PageHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
+import useRipple from "../hooks/useRipple";
 import store from "../store";
+
+function SectionHeader({ children }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        marginBottom: "var(--space-3)",
+        paddingBottom: "var(--space-3)",
+        borderBottom: "1px solid var(--color-border)",
+        fontSize: "var(--text-sm)",
+        fontWeight: "var(--font-weight-semibold)",
+        color: "var(--color-text-secondary)",
+        textTransform: "uppercase",
+        letterSpacing: "var(--tracking-wider)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
 
 const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -29,6 +51,92 @@ const initialEditForm = {
   jumlahPermintaan: "",
   keterangan: "",
 };
+
+const actionButtonStyle = (color) => ({
+  position: "relative",
+  overflow: "hidden",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "0.4rem",
+  border: `1px solid ${color}`,
+  borderRadius: "var(--radius-sm)",
+  backgroundColor: "transparent",
+  color,
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+  fontSize: "var(--text-sm)",
+  fontWeight: 500,
+  padding: "6px 10px",
+  transition:
+    "background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast)",
+});
+
+function RippleSpans({ ripples, removeRipple }) {
+  return ripples.map((ripple) => (
+    <span
+      key={ripple.id}
+      className="ripple-span"
+      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
+      onAnimationEnd={() => removeRipple(ripple.id)}
+    />
+  ));
+}
+
+function AksiTabelButtons({ onEdit, onDelete }) {
+  const editRipple = useRipple();
+  const deleteRipple = useRipple();
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        flexWrap: "wrap",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onEdit}
+        onMouseDown={editRipple.onMouseDown}
+        style={actionButtonStyle("var(--color-info)")}
+        onMouseEnter={(event) => {
+          event.currentTarget.style.backgroundColor = "var(--color-info-subtle)";
+          event.currentTarget.style.transform = "translateY(-1px)";
+          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
+        }}
+        onMouseLeave={(event) => {
+          event.currentTarget.style.backgroundColor = "transparent";
+          event.currentTarget.style.transform = "translateY(0)";
+          event.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        <span aria-hidden="true">✎</span>
+        Edit
+        <RippleSpans ripples={editRipple.ripples} removeRipple={editRipple.removeRipple} />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        onMouseDown={deleteRipple.onMouseDown}
+        style={actionButtonStyle("var(--color-danger)")}
+        onMouseEnter={(event) => {
+          event.currentTarget.style.backgroundColor = "var(--color-danger-subtle)";
+          event.currentTarget.style.transform = "translateY(-1px)";
+          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
+        }}
+        onMouseLeave={(event) => {
+          event.currentTarget.style.backgroundColor = "transparent";
+          event.currentTarget.style.transform = "translateY(0)";
+          event.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        <span aria-hidden="true">🗑</span>
+        Hapus
+        <RippleSpans ripples={deleteRipple.ripples} removeRipple={deleteRipple.removeRipple} />
+      </button>
+    </div>
+  );
+}
 
 function ManajemenData({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
@@ -191,33 +299,33 @@ function ManajemenData({ onNavigate }) {
 
   const fieldStyle = {
     width: "100%",
-    border: "1.5px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-sm)",
+    backgroundColor: "var(--color-surface-2)",
     color: "var(--color-text-primary)",
     fontFamily: "var(--font-body)",
     fontSize: "var(--text-sm)",
-    padding: "12px 16px",
+    padding: "9px 12px",
     outline: "none",
     boxSizing: "border-box",
     transition:
-      "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+      "border-color var(--transition-input), box-shadow var(--transition-input)",
   };
   const getFieldStyle = (field) => ({
     ...fieldStyle,
     borderColor:
       focusedField === field ? "var(--color-primary)" : "var(--color-border)",
     boxShadow:
-      focusedField === field ? "0 0 0 3px rgba(37, 99, 235, 0.12)" : "none",
+      focusedField === field ? "0 0 0 3px var(--color-primary-subtle)" : "none",
   });
 
   const labelStyle = {
     display: "flex",
     flexDirection: "column",
     gap: "0.45rem",
-    color: "var(--color-text-primary)",
-    fontWeight: 600,
-    fontSize: "0.95rem",
+    color: "var(--color-text-secondary)",
+    fontWeight: 500,
+    fontSize: "var(--text-sm)",
   };
 
   const errorStyle = {
@@ -227,23 +335,6 @@ function ManajemenData({ onNavigate }) {
     lineHeight: 1.5,
   };
 
-  const actionButtonStyle = (color) => ({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "0.4rem",
-    border: `1.5px solid ${color}`,
-    borderRadius: "var(--radius-full)",
-    backgroundColor: "transparent",
-    color,
-    cursor: "pointer",
-    fontFamily: "var(--font-body)",
-    fontSize: "var(--text-sm)",
-    fontWeight: 600,
-    padding: "8px 12px",
-    transition:
-      "background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast)",
-  });
-
   return (
     <Layout
       title="Switera"
@@ -251,6 +342,44 @@ function ManajemenData({ onNavigate }) {
       menuAwal="manajemen-data"
       onMenuChange={onNavigate}
     >
+      <PageHeader
+        judul="Manajemen Data Permintaan"
+        deskripsi="Tinjau, ubah, atau hapus data permintaan kota yang sudah tersimpan."
+        aksi={
+          <div
+            style={{
+              width: "min(360px, 100%)",
+              position: "relative",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: "14px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--color-text-muted)",
+                pointerEvents: "none",
+              }}
+            >
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={keyword}
+              onFocus={() => setFocusedField("keyword")}
+              onBlur={() => setFocusedField("")}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="Cari berdasarkan nama kota"
+              style={{
+                ...getFieldStyle("keyword"),
+                paddingLeft: "40px",
+              }}
+            />
+          </div>
+        }
+      />
       <div
         style={{
           display: "flex",
@@ -259,81 +388,9 @@ function ManajemenData({ onNavigate }) {
         }}
       >
         <Card>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-              flexWrap: "wrap",
-              marginBottom: "1rem",
-            }}
-          >
-            <div>
-              <h2
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-display)",
-                  fontSize: "1.4rem",
-                }}
-              >
-                Manajemen Data Permintaan
-              </h2>
-              <p
-                style={{
-                  margin: "0.35rem 0 0",
-                  color: "var(--color-text-secondary)",
-                  lineHeight: 1.6,
-                }}
-              >
-                Tinjau, ubah, atau hapus data permintaan kota yang sudah tersimpan.
-              </p>
-            </div>
-
-            <div
-              style={{
-                width: "min(360px, 100%)",
-                position: "relative",
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  left: "14px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--color-text-muted)",
-                  pointerEvents: "none",
-                }}
-              >
-                ⌕
-              </span>
-              <input
-                type="search"
-                value={keyword}
-                onFocus={() => setFocusedField("keyword")}
-                onBlur={() => setFocusedField("")}
-                onChange={(event) => setKeyword(event.target.value)}
-                placeholder="Cari berdasarkan nama kota"
-                style={{
-                  ...getFieldStyle("keyword"),
-                  paddingLeft: "40px",
-                }}
-              />
-            </div>
-          </div>
-
-          <p
-            style={{
-              margin: "0 0 0.85rem",
-              color: "var(--color-text-muted)",
-              fontSize: "var(--text-sm)",
-              fontWeight: 600,
-            }}
-          >
-            Menampilkan {tableRows.length} dari {sortedPermintaan.length} data
-          </p>
+          <SectionHeader>
+            Daftar Permintaan — Menampilkan {tableRows.length} dari {sortedPermintaan.length} data
+          </SectionHeader>
 
           {tableRows.length > 0 ? (
             <>
@@ -343,7 +400,7 @@ function ManajemenData({ onNavigate }) {
                   { key: "namaKota", label: "Nama Kota" },
                   { key: "tanggalPermintaan", label: "Tanggal Permintaan" },
                   { key: "tanggalInput", label: "Tanggal Input" },
-                  { key: "jumlah", label: "Jumlah (ton)" },
+                  { key: "jumlah", label: "Jumlah (ton)", numeric: true },
                   { key: "keterangan", label: "Keterangan" },
                 ]}
                 data={tableRows}
@@ -351,52 +408,10 @@ function ManajemenData({ onNavigate }) {
                   const currentItem = filteredPermintaan.find((item) => item.id === baris.id);
 
                   return (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(currentItem)}
-                        style={actionButtonStyle("var(--color-info)")}
-                        onMouseEnter={(event) => {
-                          event.currentTarget.style.backgroundColor =
-                            "var(--color-info-light)";
-                          event.currentTarget.style.transform = "translateY(-1px)";
-                          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
-                        }}
-                        onMouseLeave={(event) => {
-                          event.currentTarget.style.backgroundColor = "transparent";
-                          event.currentTarget.style.transform = "translateY(0)";
-                          event.currentTarget.style.boxShadow = "none";
-                        }}
-                      >
-                        <span aria-hidden="true">✎</span>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(currentItem)}
-                        style={actionButtonStyle("var(--color-danger)")}
-                        onMouseEnter={(event) => {
-                          event.currentTarget.style.backgroundColor =
-                            "var(--color-danger-light)";
-                          event.currentTarget.style.transform = "translateY(-1px)";
-                          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
-                        }}
-                        onMouseLeave={(event) => {
-                          event.currentTarget.style.backgroundColor = "transparent";
-                          event.currentTarget.style.transform = "translateY(0)";
-                          event.currentTarget.style.boxShadow = "none";
-                        }}
-                      >
-                        <span aria-hidden="true">🗑</span>
-                        Hapus
-                      </button>
-                    </div>
+                    <AksiTabelButtons
+                      onEdit={() => openEditModal(currentItem)}
+                      onDelete={() => setDeleteTarget(currentItem)}
+                    />
                   );
                 }}
               />

@@ -9,6 +9,7 @@ export const menuByRole = {
     { key: "dashboard", label: "Dashboard", icon: "dashboard" },
     { key: "input-data", label: "Input Data", icon: "input" },
     { key: "manajemen-data", label: "Manajemen Data", icon: "database" },
+    { key: "riwayat-aktivitas", label: "Riwayat Aktivitas", icon: "report" },
   ],
   "Manajer Distribusi": [
     { key: "dashboard", label: "Dashboard", icon: "dashboard" },

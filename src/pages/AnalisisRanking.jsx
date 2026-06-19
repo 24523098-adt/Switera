@@ -2,8 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import Tabel from "../components/Tabel";
+import { SkeletonChart } from "../components/Skeleton";
 import store from "../store";
+import {
+  CHART_PALETTE,
+  chartGridDefaults,
+  chartTickDefaults,
+  chartTooltipDefaults,
+  withOpacity,
+} from "../utils/chartDefaults";
 import { aggregatePermintaanRanking } from "../utils/distribusi";
 
 const formatterAngka = new Intl.NumberFormat("id-ID");
@@ -19,29 +28,51 @@ const formatDate = (value) =>
 
 const getRankColor = (rank) => {
   if (rank === 1) {
-    return { backgroundColor: "#FEF3C7", color: "#B45309" };
+    return { backgroundColor: "var(--color-accent-subtle)", color: "var(--color-accent)" };
   }
 
   if (rank === 2) {
-    return { backgroundColor: "#E5E7EB", color: "#4B5563" };
+    return { backgroundColor: "rgba(156,163,175,0.12)", color: "#9ca3af" };
   }
 
   if (rank === 3) {
-    return { backgroundColor: "#FDE68A", color: "#92400E" };
+    return { backgroundColor: "rgba(184,115,51,0.12)", color: "#b87333" };
   }
 
   return { backgroundColor: "var(--color-surface-2)", color: "var(--color-text-secondary)" };
 };
 
+function SectionHeader({ children }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        marginBottom: "var(--space-3)",
+        paddingBottom: "var(--space-3)",
+        borderBottom: "1px solid var(--color-border)",
+        fontSize: "var(--text-sm)",
+        fontWeight: "var(--font-weight-semibold)",
+        color: "var(--color-text-secondary)",
+        textTransform: "uppercase",
+        letterSpacing: "var(--tracking-wider)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
 function GrafikRankingHorizontal({ ranking }) {
   const canvasRef = useRef(null);
   const [chartError, setChartError] = useState("");
+  const [isChartReady, setIsChartReady] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current || ranking.length === 0 || typeof window === "undefined") {
       return undefined;
     }
 
+    setIsChartReady(false);
     let chartInstance;
     let isActive = true;
 
@@ -52,15 +83,8 @@ function GrafikRankingHorizontal({ ranking }) {
         }
 
         const Chart = module.default;
-        const rootStyles = getComputedStyle(document.documentElement);
         const ctx = canvasRef.current.getContext("2d");
-        const palette = [
-          rootStyles.getPropertyValue("--color-primary").trim(),
-          rootStyles.getPropertyValue("--color-primary-mid").trim(),
-          rootStyles.getPropertyValue("--color-primary-light").trim(),
-          "#74C69D",
-          rootStyles.getPropertyValue("--color-primary-subtle").trim(),
-        ];
+        const colors = ranking.map((_item, index) => CHART_PALETTE[index % CHART_PALETTE.length]);
 
         chartInstance = new Chart(ctx, {
           type: "bar",
@@ -69,11 +93,9 @@ function GrafikRankingHorizontal({ ranking }) {
             datasets: [
               {
                 data: ranking.map((item) => item.totalPermintaan),
-                backgroundColor: ranking.map(
-                  (_item, index) => palette[index % palette.length]
-                ),
-                borderColor: rootStyles.getPropertyValue("--color-primary").trim(),
-                borderWidth: 1,
+                backgroundColor: colors.map((color) => withOpacity(color, 0.7)),
+                borderColor: colors,
+                borderWidth: 2,
                 borderRadius: 10,
               },
             ],
@@ -95,10 +117,9 @@ function GrafikRankingHorizontal({ ranking }) {
               },
             },
             plugins: {
-              legend: {
-                display: false,
-              },
+              legend: { display: false },
               tooltip: {
+                ...chartTooltipDefaults,
                 callbacks: {
                   label(context) {
                     return formatTonase(context.parsed.x);
@@ -109,33 +130,24 @@ function GrafikRankingHorizontal({ ranking }) {
             scales: {
               x: {
                 beginAtZero: true,
-                grid: {
-                  color: rootStyles.getPropertyValue("--color-bg").trim(),
-                },
+                grid: { ...chartGridDefaults },
                 ticks: {
-                  color: rootStyles
-                    .getPropertyValue("--color-text-secondary")
-                    .trim(),
+                  ...chartTickDefaults,
                   callback(value) {
                     return formatTonase(value);
                   },
                 },
               },
               y: {
-                grid: {
-                  display: false,
-                },
-                ticks: {
-                  color: rootStyles
-                    .getPropertyValue("--color-text-secondary")
-                    .trim(),
-                },
+                grid: { display: false },
+                ticks: { ...chartTickDefaults },
               },
             },
           },
         });
 
         setChartError("");
+        setIsChartReady(true);
       })
       .catch(() => {
         if (isActive) {
@@ -153,39 +165,21 @@ function GrafikRankingHorizontal({ ranking }) {
 
   return (
     <Card style={{ minHeight: "420px" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.35rem",
-          marginBottom: "1rem",
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: "var(--font-display)",
-            fontSize: "1.2rem",
-          }}
-        >
-          Grafik Ranking Permintaan
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            color: "var(--color-text-secondary)",
-            lineHeight: 1.6,
-          }}
-        >
-          Permintaan tertinggi ditampilkan di bagian atas untuk memudahkan prioritas distribusi.
-        </p>
-      </div>
+      <SectionHeader>Grafik Ranking Permintaan</SectionHeader>
 
       {chartError ? (
         <EmptyState pesan={chartError} />
       ) : (
         <div style={{ height: "320px" }}>
-          <canvas ref={canvasRef} aria-label="Grafik ranking permintaan kota" />
+          {isChartReady ? null : <SkeletonChart height="320px" />}
+          <canvas
+            ref={canvasRef}
+            aria-label="Grafik ranking permintaan kota"
+            style={{
+              display: isChartReady ? "block" : "none",
+              animation: "fadeInUp 300ms var(--ease-smooth) both",
+            }}
+          />
         </div>
       )}
     </Card>
@@ -229,13 +223,16 @@ function AnalisisRanking({ onNavigate }) {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
+          gap: "4px",
           minWidth: "34px",
           height: "28px",
+          padding: "0 8px",
           borderRadius: "var(--radius-full)",
           fontWeight: 700,
           ...getRankColor(index + 1),
         }}
       >
+        {index === 0 ? "🏆 " : ""}
         {index + 1}
       </span>
     ),
@@ -251,6 +248,7 @@ function AnalisisRanking({ onNavigate }) {
           style={{
             color: index === 0 ? "var(--color-text-secondary)" : color,
             fontWeight: 700,
+            fontFamily: "var(--font-mono)",
           }}
         >
           {index === 0 ? "0 ton" : formatTonase(difference)}
@@ -266,6 +264,10 @@ function AnalisisRanking({ onNavigate }) {
       menuAwal="analisis-ranking"
       onMenuChange={onNavigate}
     >
+      <PageHeader
+        judul="Analisis Ranking Permintaan"
+        deskripsi={`Periode data: ${periodeData}`}
+      />
       {ranking.length === 0 ? (
         <EmptyState pesan="Belum ada data permintaan. Silakan hubungi Admin." />
       ) : (
@@ -277,73 +279,29 @@ function AnalisisRanking({ onNavigate }) {
           }}
         >
           <Card>
-            <div
+            <SectionHeader>Ranking Permintaan Kota</SectionHeader>
+            <p
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.4rem",
+                margin: "0 0 1rem",
+                color: "var(--color-text-secondary)",
+                lineHeight: 1.6,
+                fontSize: "var(--text-sm)",
               }}
             >
-              <h1
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-display)",
-                  fontSize: "var(--text-3xl)",
-                  color: "var(--color-text-primary)",
-                }}
-              >
-                Analisis Ranking Permintaan
-              </h1>
-              <p
-                style={{
-                  margin: 0,
-                  color: "var(--color-text-muted)",
-                  fontSize: "var(--text-sm)",
-                  lineHeight: 1.6,
-                }}
-              >
-                Periode data: {periodeData}
-              </p>
-            </div>
-          </Card>
-
-          <Card>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.35rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-display)",
-                  fontSize: "1.2rem",
-                }}
-              >
-                Ranking Permintaan Kota
-              </h2>
-              <p
-                style={{
-                  margin: 0,
-                  color: "var(--color-text-secondary)",
-                  lineHeight: 1.6,
-                }}
-              >
-                Jika total permintaan sama, kota dengan tanggal input paling awal diprioritaskan lebih tinggi.
-              </p>
-            </div>
+              Jika total permintaan sama, kota dengan tanggal input paling awal diprioritaskan lebih tinggi.
+            </p>
 
             <Tabel
               kolom={[
                 { key: "peringkat", label: "Peringkat" },
                 { key: "namaKota", label: "Nama Kota" },
-                { key: "totalPermintaan", label: "Total Permintaan (ton)" },
-                { key: "selisih", label: "Selisih dari Peringkat 1" },
+                { key: "totalPermintaan", label: "Total Permintaan (ton)", numeric: true },
+                { key: "selisih", label: "Selisih dari Peringkat 1", numeric: true },
               ]}
               data={rows}
+              getRowStyle={(_baris, index) =>
+                index === 0 ? { backgroundColor: "rgba(242,167,27,0.06)" } : undefined
+              }
             />
           </Card>
 

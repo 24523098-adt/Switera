@@ -1,18 +1,28 @@
 import { useState } from "react";
 
-function Card({ children, style, ...props }) {
+const accentColors = {
+  primary: "var(--color-primary)",
+  accent: "var(--color-accent)",
+  success: "var(--color-success)",
+  danger: "var(--color-danger)",
+};
+
+function Card({ children, style, hoverable = false, accent, ...props }) {
   const [isHovered, setIsHovered] = useState(false);
+  const isHighlighted = hoverable && isHovered;
 
   return (
     <div
       {...props}
       style={{
         backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
+        border: `1px solid ${isHighlighted ? "var(--color-border-strong)" : "var(--color-border)"}`,
+        borderTop: accent ? `2px solid ${accentColors[accent] ?? accentColors.primary}` : undefined,
         borderRadius: "var(--radius-lg)",
-        boxShadow: isHovered ? "var(--shadow-md)" : "var(--shadow-sm)",
-        padding: "24px",
-        transition: "box-shadow var(--transition-base)",
+        padding: "var(--space-6)",
+        boxShadow: isHighlighted ? "var(--shadow-md)" : "none",
+        transition: "border-color var(--transition-base), box-shadow var(--transition-base)",
+        animation: "fadeInUp 300ms var(--ease-smooth) both",
         ...style,
       }}
       onMouseEnter={(event) => {

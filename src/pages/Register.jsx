@@ -1,24 +1,44 @@
 import { useEffect, useState } from "react";
 import store from "../store";
+import useRipple from "../hooks/useRipple";
 
 const roleOptions = ["Admin", "Manajer Distribusi", "Tim Logistik"];
+
+const fieldLabelStyle = {
+  fontSize: "var(--text-xs)",
+  fontWeight: "var(--font-weight-semibold)",
+  color: "var(--color-text-secondary)",
+  letterSpacing: "var(--tracking-wide)",
+  textTransform: "uppercase",
+  marginBottom: "6px",
+};
 
 const inputBaseStyle = {
   width: "100%",
   boxSizing: "border-box",
-  border: "1.5px solid var(--color-border)",
-  borderRadius: "var(--radius-md)",
-  backgroundColor: "var(--color-surface)",
+  border: "1px solid var(--color-border-mid)",
+  borderRadius: "var(--radius-sm)",
+  backgroundColor: "var(--color-surface-2)",
   color: "var(--color-text-primary)",
   fontFamily: "var(--font-body)",
-  fontSize: "var(--text-base)",
-  padding: "12px 44px",
+  fontSize: "var(--text-sm)",
+  padding: "10px 40px 10px 14px",
   outline: "none",
-  transition:
-    "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+  transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
 };
 
-function IkonDaun({ size = 64, color = "var(--color-surface)" }) {
+function RippleSpans({ ripples, removeRipple }) {
+  return ripples.map((ripple) => (
+    <span
+      key={ripple.id}
+      className="ripple-span"
+      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
+      onAnimationEnd={() => removeRipple(ripple.id)}
+    />
+  ));
+}
+
+function IkonDaun({ size = 24, color = "var(--color-primary)" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
       <path
@@ -27,100 +47,90 @@ function IkonDaun({ size = 64, color = "var(--color-surface)" }) {
         strokeWidth="4"
         strokeLinejoin="round"
       />
-      <path
-        d="M11 40C16.8 27.3 25.3 19.5 36 14"
-        stroke={color}
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
+      <path d="M11 40C16.8 27.3 25.3 19.5 36 14" stroke={color} strokeWidth="4" strokeLinecap="round" />
     </svg>
   );
 }
 
 function IkonOrang() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
       <path d="M4 20C5.8 16.8 8.5 15 12 15C15.5 15 18.2 16.8 20 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
 
-function IkonAt() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
-      <path d="M16 8V13C16 14.7 17.3 16 19 16C20.7 16 22 14.7 22 13V12C22 6.5 17.5 2 12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IkonGembok() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 10V7C8 4.8 9.8 3 12 3C14.2 3 16 4.8 16 7V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function IkonMata() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M2 12C4.5 7.8 7.8 5.7 12 5.7C16.2 5.7 19.5 7.8 22 12C19.5 16.2 16.2 18.3 12 18.3C7.8 18.3 4.5 16.2 2 12Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M2 12C4.5 7.8 7.8 5.7 12 5.7C16.2 5.7 19.5 7.8 22 12C19.5 16.2 16.2 18.3 12 18.3C7.8 18.3 4.5 16.2 2 12Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
 
-function PanelBrand() {
+function IkonAlertCircle() {
   return (
-    <aside className="auth-brand-panel">
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          gap: "1.25rem",
-          maxWidth: "420px",
-        }}
-      >
-        <IkonDaun />
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              color: "var(--color-surface)",
-              fontFamily: "var(--font-display)",
-              fontSize: "3rem",
-              lineHeight: 1,
-            }}
-          >
-            Switera
-          </h1>
-          <p
-            style={{
-              margin: "1rem 0 0",
-              color: "rgba(255,255,255,0.84)",
-              fontSize: "var(--text-lg)",
-              lineHeight: 1.6,
-            }}
-          >
-            Platform Manajemen Distribusi TBS Kelapa Sawit
-          </p>
-        </div>
-      </div>
-    </aside>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 8V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="16.2" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TombolClose({ onClick }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      aria-label="Tutup"
+      style={{
+        position: "absolute",
+        top: "var(--space-4)",
+        right: "var(--space-4)",
+        width: "32px",
+        height: "32px",
+        display: "grid",
+        placeItems: "center",
+        backgroundColor: hovered ? "var(--color-surface-hover)" : "var(--color-surface-3)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-sm)",
+        color: hovered ? "var(--color-text-primary)" : "var(--color-text-muted)",
+        cursor: "pointer",
+        fontSize: "1.1rem",
+        lineHeight: 1,
+        transition: "var(--transition-fast)",
+      }}
+    >
+      ×
+    </button>
   );
 }
 
 function RolePills({ selectedRole, onSelectRole }) {
+  const { ripples, onMouseDown, removeRipple } = useRipple();
+
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-        gap: "0.5rem",
+        display: "flex",
+        gap: "4px",
+        backgroundColor: "var(--color-surface-2)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-md)",
+        padding: "4px",
+        marginBottom: "var(--space-6)",
       }}
     >
       {roleOptions.map((role) => {
@@ -131,23 +141,31 @@ function RolePills({ selectedRole, onSelectRole }) {
             key={role}
             type="button"
             onClick={() => onSelectRole(role)}
+            onMouseDown={(event) => onMouseDown(event, role)}
             style={{
-              border: active
-                ? "1.5px solid var(--color-primary)"
-                : "1.5px solid var(--color-border)",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: active
-                ? "var(--color-primary)"
-                : "var(--color-surface)",
-              color: active ? "var(--color-surface)" : "var(--color-text-secondary)",
-              cursor: "pointer",
-              fontFamily: "var(--font-body)",
+              position: "relative",
+              overflow: "hidden",
+              flex: 1,
+              textAlign: "center",
+              padding: "6px 8px",
+              borderRadius: "var(--radius-sm)",
+              border: "none",
               fontSize: "var(--text-xs)",
-              fontWeight: active ? 700 : 600,
-              padding: "10px 12px",
+              fontWeight: active ? "var(--font-weight-semibold)" : "var(--font-weight-medium)",
+              color: active ? "#fff" : "var(--color-text-muted)",
+              backgroundColor: active ? "var(--color-primary)" : "transparent",
+              boxShadow: active ? "var(--shadow-sm)" : "none",
+              cursor: "pointer",
+              userSelect: "none",
+              fontFamily: "var(--font-body)",
+              transition: "all var(--transition-fast)",
             }}
           >
             {role}
+            <RippleSpans
+              ripples={ripples.filter((ripple) => ripple.groupId === role)}
+              removeRipple={removeRipple}
+            />
           </button>
         );
       })}
@@ -155,16 +173,20 @@ function RolePills({ selectedRole, onSelectRole }) {
   );
 }
 
-function FieldIcon({ children }) {
+function FieldIcon({ children, onClick, clickable }) {
   return (
     <span
+      onClick={onClick}
       style={{
         position: "absolute",
-        left: "16px",
+        right: "12px",
         top: "50%",
         transform: "translateY(-50%)",
         color: "var(--color-text-muted)",
+        width: "16px",
+        height: "16px",
         display: "inline-flex",
+        cursor: clickable ? "pointer" : "default",
       }}
     >
       {children}
@@ -172,16 +194,50 @@ function FieldIcon({ children }) {
   );
 }
 
-function Register({ onNavigate }) {
+function ErrorText({ children }) {
+  if (!children) {
+    return null;
+  }
+
+  return (
+    <p
+      role="alert"
+      style={{
+        margin: "4px 0 0",
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        color: "var(--color-danger)",
+        fontSize: "var(--text-xs)",
+      }}
+    >
+      <IkonAlertCircle />
+      {children}
+    </p>
+  );
+}
+
+function Register({ onNavigate, onClose, onSwitchToLogin }) {
   const [role, setRole] = useState("Admin");
   const [nama, setNama] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [konfirmasiPassword, setKonfirmasiPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showKonfirmasiPassword, setShowKonfirmasiPassword] = useState(false);
   const [focusedField, setFocusedField] = useState("");
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
+  const linkRipple = useRipple();
+  const submitRipple = useRipple();
+
+  const goToLogin = () => {
+    if (onSwitchToLogin) {
+      onSwitchToLogin();
+    } else {
+      onNavigate?.("/login");
+    }
+  };
 
   useEffect(() => {
     if (!successMessage) {
@@ -189,18 +245,17 @@ function Register({ onNavigate }) {
     }
 
     const timeoutId = window.setTimeout(() => {
-      onNavigate?.("/login");
+      goToLogin();
     }, 2000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [onNavigate, successMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [successMessage]);
 
   const getInputStyle = (field) => ({
     ...inputBaseStyle,
-    borderColor:
-      focusedField === field ? "var(--color-primary)" : "var(--color-border)",
-    boxShadow:
-      focusedField === field ? "0 0 0 3px rgba(37, 99, 235, 0.14)" : "none",
+    borderColor: focusedField === field ? "var(--color-primary)" : "var(--color-border-mid)",
+    boxShadow: focusedField === field ? "0 0 0 3px var(--color-primary-glow)" : "none",
   });
 
   const validate = () => {
@@ -255,119 +310,120 @@ function Register({ onNavigate }) {
     setSuccessMessage("Akun berhasil dibuat. Silakan masuk.");
   };
 
-  const renderError = (key) =>
-    errors[key] ? (
-      <p style={{ margin: "0.35rem 0 0", color: "var(--color-danger)", fontSize: "var(--text-xs)", fontWeight: 600 }}>
-        {errors[key]}
-      </p>
-    ) : null;
-
   return (
     <>
       <style>
         {`
-          .auth-shell {
-            min-height: 100vh;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            background: var(--color-surface);
-            font-family: var(--font-body);
+          @keyframes authCardIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
           }
 
-          .auth-brand-panel {
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 48px;
-          }
-
-          .auth-form-panel {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 32px;
-          }
-
-          @media (max-width: 860px) {
-            .auth-shell {
-              grid-template-columns: 1fr;
-            }
-
-            .auth-brand-panel {
-              display: none;
-            }
+          .auth-input::placeholder {
+            color: var(--color-text-disabled);
           }
         `}
       </style>
-      <div className="auth-shell">
-        <PanelBrand />
-        <main className="auth-form-panel">
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              width: "100%",
-              maxWidth: "440px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-            }}
-          >
-            <div>
-              <h1
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: "var(--z-modal)",
+          backgroundImage:
+            "linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(8,30,18,0.85) 100%), url('/images/sawit-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundColor: "var(--color-bg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          boxSizing: "border-box",
+          overflowY: "auto",
+        }}
+      >
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            position: "relative",
+            width: "min(420px, 90vw)",
+            boxSizing: "border-box",
+            backgroundColor: "rgba(15,15,15,0.85)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "var(--radius-xl)",
+            boxShadow: "var(--shadow-xl), inset 0 1px 0 rgba(255,255,255,0.05)",
+            padding: "var(--space-10)",
+            animation: "authCardIn 300ms var(--ease-bounce) both",
+          }}
+        >
+          {onClose ? <TombolClose onClick={onClose} /> : null}
+
+          <div style={{ marginBottom: "var(--space-8)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "var(--space-5)",
+              }}
+            >
+              <IkonDaun />
+              <span
                 style={{
-                  margin: 0,
                   fontFamily: "var(--font-display)",
-                  fontSize: "var(--text-3xl)",
+                  fontWeight: "var(--font-weight-bold)",
+                  fontSize: "var(--text-lg)",
                   color: "var(--color-text-primary)",
                 }}
               >
-                Buat Akun Baru
-              </h1>
-              <p
-                style={{
-                  margin: "0.9rem 0 0",
-                  color: "var(--color-text-secondary)",
-                  fontSize: "var(--text-sm)",
-                }}
-              >
-                Sudah punya akun?{" "}
-                <button
-                  type="button"
-                  onClick={() => onNavigate?.("/login")}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--color-primary)",
-                    cursor: "pointer",
-                    fontFamily: "var(--font-body)",
-                    fontSize: "var(--text-sm)",
-                    fontWeight: 700,
-                    padding: 0,
-                  }}
-                >
-                  Masuk
-                </button>
-              </p>
+                Switera
+              </span>
             </div>
+            <h1
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-display)",
+                fontSize: "var(--text-2xl)",
+                fontWeight: "var(--font-weight-bold)",
+                letterSpacing: "var(--tracking-tight)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              Buat Akun
+            </h1>
+            <p
+              style={{
+                margin: "4px 0 0",
+                fontSize: "var(--text-sm)",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              Daftar untuk mulai menggunakan Switera
+            </p>
+          </div>
 
-            <RolePills selectedRole={role} onSelectRole={setRole} />
+          <RolePills selectedRole={role} onSelectRole={setRole} />
 
-            {errors.umum ? (
-              <p style={{ margin: 0, color: "var(--color-danger)", fontSize: "var(--text-sm)", fontWeight: 600 }}>
-                {errors.umum}
-              </p>
-            ) : null}
+          <ErrorText>{errors.umum}</ErrorText>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-              <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Nama Lengkap</span>
-              <span style={{ position: "relative" }}>
-                <FieldIcon>
-                  <IkonOrang />
-                </FieldIcon>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-4)",
+              marginTop: errors.umum ? "var(--space-4)" : 0,
+            }}
+          >
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", ...fieldLabelStyle }}>Nama Lengkap</span>
+              <span style={{ position: "relative", display: "block" }}>
                 <input
+                  className="auth-input"
                   type="text"
                   value={nama}
+                  placeholder="Nama lengkap"
                   onFocus={() => setFocusedField("nama")}
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
@@ -377,18 +433,20 @@ function Register({ onNavigate }) {
                   style={getInputStyle("nama")}
                   autoComplete="name"
                 />
+                <FieldIcon>
+                  <IkonOrang />
+                </FieldIcon>
               </span>
             </label>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-              <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Username</span>
-              <span style={{ position: "relative" }}>
-                <FieldIcon>
-                  <IkonAt />
-                </FieldIcon>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", ...fieldLabelStyle }}>Username</span>
+              <span style={{ position: "relative", display: "block" }}>
                 <input
+                  className="auth-input"
                   type="text"
                   value={username}
+                  placeholder="Username"
                   onFocus={() => setFocusedField("username")}
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
@@ -398,19 +456,21 @@ function Register({ onNavigate }) {
                   style={getInputStyle("username")}
                   autoComplete="username"
                 />
+                <FieldIcon>
+                  <IkonOrang />
+                </FieldIcon>
               </span>
-              {renderError("username")}
+              <ErrorText>{errors.username}</ErrorText>
             </label>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-              <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Password</span>
-              <span style={{ position: "relative" }}>
-                <FieldIcon>
-                  <IkonGembok />
-                </FieldIcon>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", ...fieldLabelStyle }}>Password</span>
+              <span style={{ position: "relative", display: "block" }}>
                 <input
+                  className="auth-input"
                   type={showPassword ? "text" : "password"}
                   value={password}
+                  placeholder="Password"
                   onFocus={() => setFocusedField("password")}
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
@@ -420,38 +480,21 @@ function Register({ onNavigate }) {
                   style={getInputStyle("password")}
                   autoComplete="new-password"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                  style={{
-                    position: "absolute",
-                    right: "14px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--color-text-muted)",
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    padding: "4px",
-                  }}
-                >
+                <FieldIcon clickable onClick={() => setShowPassword((value) => !value)}>
                   <IkonMata />
-                </button>
+                </FieldIcon>
               </span>
-              {renderError("password")}
+              <ErrorText>{errors.password}</ErrorText>
             </label>
 
-            <label style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-              <span style={{ fontSize: "var(--text-sm)", fontWeight: 600 }}>Konfirmasi Password</span>
-              <span style={{ position: "relative" }}>
-                <FieldIcon>
-                  <IkonGembok />
-                </FieldIcon>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", ...fieldLabelStyle }}>Konfirmasi Password</span>
+              <span style={{ position: "relative", display: "block" }}>
                 <input
-                  type="password"
+                  className="auth-input"
+                  type={showKonfirmasiPassword ? "text" : "password"}
                   value={konfirmasiPassword}
+                  placeholder="Ulangi password"
                   onFocus={() => setFocusedField("konfirmasiPassword")}
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
@@ -461,45 +504,104 @@ function Register({ onNavigate }) {
                   style={getInputStyle("konfirmasiPassword")}
                   autoComplete="new-password"
                 />
+                <FieldIcon
+                  clickable
+                  onClick={() => setShowKonfirmasiPassword((value) => !value)}
+                >
+                  <IkonMata />
+                </FieldIcon>
               </span>
-              {renderError("konfirmasiPassword")}
+              <ErrorText>{errors.konfirmasiPassword}</ErrorText>
             </label>
+          </div>
 
-            <button
-              type="submit"
-              disabled={Boolean(successMessage)}
+          <button
+            type="submit"
+            disabled={Boolean(successMessage)}
+            onMouseDown={submitRipple.onMouseDown}
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              width: "100%",
+              marginTop: "var(--space-6)",
+              padding: "11px",
+              backgroundColor: "var(--color-primary)",
+              border: "1px solid var(--color-primary-hover)",
+              borderRadius: "var(--radius-sm)",
+              color: "#fff",
+              fontFamily: "var(--font-body)",
+              fontSize: "var(--text-sm)",
+              fontWeight: "var(--font-weight-semibold)",
+              cursor: successMessage ? "default" : "pointer",
+              transition: "all var(--transition-base)",
+            }}
+            onMouseEnter={(event) => {
+              if (successMessage) return;
+              event.currentTarget.style.backgroundColor = "var(--color-primary-hover)";
+              event.currentTarget.style.boxShadow = "var(--shadow-glow-primary)";
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.backgroundColor = "var(--color-primary)";
+              event.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            Daftar Sekarang
+            <RippleSpans ripples={submitRipple.ripples} removeRipple={submitRipple.removeRipple} />
+          </button>
+
+          {successMessage ? (
+            <p
+              role="status"
               style={{
-                width: "100%",
-                border: "none",
-                borderRadius: "var(--radius-full)",
-                backgroundColor: "var(--color-primary)",
-                color: "var(--color-surface)",
-                cursor: successMessage ? "default" : "pointer",
-                fontFamily: "var(--font-body)",
-                fontSize: "var(--text-base)",
-                fontWeight: 700,
-                padding: "14px",
-                boxShadow: "var(--shadow-sm)",
+                margin: "var(--space-4) 0 0",
+                textAlign: "center",
+                color: "var(--color-success)",
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--font-weight-semibold)",
               }}
             >
-              Daftar
-            </button>
+              {successMessage}
+            </p>
+          ) : null}
 
-            {successMessage ? (
-              <p
-                role="status"
-                style={{
-                  margin: 0,
-                  color: "var(--color-success)",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: 700,
-                }}
-              >
-                {successMessage}
-              </p>
-            ) : null}
-          </form>
-        </main>
+          <p
+            style={{
+              margin: "var(--space-5) 0 0",
+              textAlign: "center",
+              fontSize: "var(--text-xs)",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            Sudah punya akun?{" "}
+            <button
+              type="button"
+              onClick={goToLogin}
+              onMouseDown={linkRipple.onMouseDown}
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                border: "none",
+                background: "transparent",
+                color: "var(--color-primary)",
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--font-weight-semibold)",
+                padding: 0,
+                textDecoration: "none",
+              }}
+              onMouseEnter={(event) => {
+                event.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.textDecoration = "none";
+              }}
+            >
+              Masuk
+              <RippleSpans ripples={linkRipple.ripples} removeRipple={linkRipple.removeRipple} />
+            </button>
+          </p>
+        </form>
       </div>
     </>
   );

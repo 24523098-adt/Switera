@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../components/Card";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import Tombol from "../components/Tombol";
 import store from "../store";
+
+function IkonCheck() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 12.5L11 15.5L16 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const getTodayKey = (date = new Date()) => {
   const year = date.getFullYear();
@@ -40,7 +50,7 @@ function InputData({ onNavigate }) {
 
     const timeoutId = window.setTimeout(() => {
       setToastMessage("");
-    }, 3200);
+    }, 3000);
 
     return () => window.clearTimeout(timeoutId);
   }, [toastMessage]);
@@ -114,33 +124,33 @@ function InputData({ onNavigate }) {
 
   const fieldStyle = {
     width: "100%",
-    border: "1.5px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-sm)",
+    backgroundColor: "var(--color-surface-2)",
     color: "var(--color-text-primary)",
     fontFamily: "var(--font-body)",
     fontSize: "var(--text-sm)",
-    padding: "12px 16px",
+    padding: "9px 12px",
     outline: "none",
     boxSizing: "border-box",
     transition:
-      "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+      "border-color var(--transition-input), box-shadow var(--transition-input)",
   };
   const getFieldStyle = (field) => ({
     ...fieldStyle,
     borderColor:
       focusedField === field ? "var(--color-primary)" : "var(--color-border)",
     boxShadow:
-      focusedField === field ? "0 0 0 3px rgba(37, 99, 235, 0.12)" : "none",
+      focusedField === field ? "0 0 0 3px var(--color-primary-subtle)" : "none",
   });
 
   const labelStyle = {
     display: "flex",
     flexDirection: "column",
     gap: "0.45rem",
-    color: "var(--color-text-primary)",
-    fontWeight: 600,
-    fontSize: "0.95rem",
+    color: "var(--color-text-secondary)",
+    fontWeight: 500,
+    fontSize: "var(--text-sm)",
   };
 
   const errorStyle = {
@@ -160,42 +170,17 @@ function InputData({ onNavigate }) {
           }
         `}
       </style>
+      <PageHeader
+        judul="Input Data Permintaan Kota"
+        deskripsi="Isi permintaan TBS per kota sebagai dasar ranking dan keputusan distribusi."
+      />
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
+          maxWidth: "600px",
+          margin: "0 auto",
         }}
       >
-        <Card>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.45rem",
-              marginBottom: "1.5rem",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: "var(--font-display)",
-                fontSize: "1.4rem",
-              }}
-            >
-              Input Data Permintaan Kota
-            </h2>
-              <p
-              style={{
-                margin: 0,
-                color: "var(--color-text-secondary)",
-                lineHeight: 1.6,
-              }}
-              >
-              Isi permintaan TBS per kota sebagai dasar ranking dan keputusan distribusi.
-              </p>
-            </div>
-
+        <Card style={{ padding: "var(--space-8)" }}>
           <form onSubmit={handleSubmit}>
             <div
               style={{
@@ -301,22 +286,25 @@ function InputData({ onNavigate }) {
         <div
           style={{
             position: "fixed",
-            right: "1.5rem",
-            bottom: "1.5rem",
-            width: "min(360px, calc(100vw - 3rem))",
-            zIndex: 1100,
-            backgroundColor: "var(--color-success)",
-            color: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
+            bottom: "var(--space-6)",
+            right: "var(--space-6)",
+            zIndex: "var(--z-toast)",
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-2)",
+            backgroundColor: "var(--color-success-subtle)",
+            border: "1px solid rgba(48,164,108,0.3)",
+            color: "var(--color-success)",
+            borderRadius: "var(--radius-md)",
             boxShadow: "var(--shadow-lg)",
-            padding: "16px 18px",
+            padding: "var(--space-3) var(--space-5)",
+            fontSize: "var(--text-sm)",
+            maxWidth: "min(360px, calc(100vw - 3rem))",
             animation: "toastSlideIn 300ms ease",
           }}
         >
-          <p style={{ margin: 0, fontWeight: 700 }}>Berhasil</p>
-          <p style={{ margin: "0.25rem 0 0", lineHeight: 1.5 }}>
-            {toastMessage}
-          </p>
+          <IkonCheck />
+          {toastMessage}
         </div>
       ) : null}
     </Layout>

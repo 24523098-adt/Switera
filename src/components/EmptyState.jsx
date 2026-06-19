@@ -2,50 +2,60 @@ function EmptyState({ pesan }) {
   return (
     <div
       style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-lg)",
-        boxShadow: "var(--shadow-sm)",
-        padding: "2rem 1.5rem",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         textAlign: "center",
-        color: "var(--color-text-secondary)",
-        fontFamily: "var(--font-body)",
-        transition: "box-shadow var(--transition-base)",
+        padding: "var(--space-16) var(--space-8)",
+        gap: "var(--space-4)",
       }}
     >
-      <svg
-        width="132"
-        height="132"
-        viewBox="0 0 132 132"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+      <div
         aria-hidden="true"
-        style={{ maxWidth: "100%", height: "auto", marginBottom: "1rem" }}
+        style={{
+          width: "80px",
+          height: "80px",
+          flexShrink: 0,
+          boxSizing: "border-box",
+          display: "grid",
+          placeItems: "center",
+          backgroundColor: "var(--color-surface-2)",
+          borderRadius: "var(--radius-full)",
+          padding: "20px",
+          outline: "1px solid var(--color-border-strong)",
+        }}
       >
-        <circle cx="66" cy="66" r="54" fill="var(--color-primary-subtle)" />
-        <circle cx="66" cy="66" r="34" fill="var(--color-surface)" />
-        <path
-          d="M49 58H83M49 70H75M56 46H76C79.866 46 83 49.134 83 53V79C83 82.866 79.866 86 76 86H56C52.134 86 49 82.866 49 79V53C49 49.134 52.134 46 56 46Z"
-          stroke="var(--color-primary-light)"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M3 8.5C3 7.67157 3.67157 7 4.5 7H9.17157C9.5631 7 9.93701 7.15804 10.2071 7.42L11.5 8.5H18.5C19.3284 8.5 20 9.17157 20 10V10.5"
+            stroke="var(--color-text-muted)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M3.5 10.5H19C19.8757 10.5 20.5828 11.2483 20.4848 12.1187L19.6071 19.7187C19.5217 20.4805 18.8788 21.0625 18.1121 21.0625H4.85537C4.05653 21.0625 3.40076 20.4339 3.36906 19.6357L3.5 10.5Z"
+            stroke="var(--color-text-muted)"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
       <p
         style={{
           margin: 0,
-          color: "var(--color-text-primary)",
-          fontFamily: "var(--font-display)",
-          fontSize: "var(--text-lg)",
-          fontWeight: 700,
+          fontSize: "var(--text-md)",
+          fontWeight: "var(--font-weight-semibold)",
+          color: "var(--color-text-secondary)",
         }}
       >
         Belum ada data
       </p>
       <p
         style={{
-          margin: "0.5rem 0 0",
+          margin: 0,
+          fontSize: "var(--text-sm)",
           color: "var(--color-text-muted)",
         }}
       >

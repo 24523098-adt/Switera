@@ -3,8 +3,18 @@ import Badge from "../components/Badge";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
+import PageHeader from "../components/PageHeader";
 import Tabel from "../components/Tabel";
+import { SkeletonChart } from "../components/Skeleton";
 import store from "../store";
+import {
+  CHART_PALETTE,
+  chartGridDefaults,
+  chartLegendDefaults,
+  chartTickDefaults,
+  chartTooltipDefaults,
+  withOpacity,
+} from "../utils/chartDefaults";
 import {
   getPeriodRange,
   isDateInRange,
@@ -24,9 +34,78 @@ const formatTonase = (value) => `${formatterAngka.format(value)} ton`;
 
 const roleOptions = ["Manajer Distribusi", "Tim Logistik"];
 
+const periodeOptions = [
+  ["minggu-ini", "Minggu ini"],
+  ["bulan-ini", "Bulan ini"],
+];
+
+function SectionHeader({ children }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        marginBottom: "var(--space-3)",
+        paddingBottom: "var(--space-3)",
+        borderBottom: "1px solid var(--color-border)",
+        fontSize: "var(--text-sm)",
+        fontWeight: "var(--font-weight-semibold)",
+        color: "var(--color-text-secondary)",
+        textTransform: "uppercase",
+        letterSpacing: "var(--tracking-wider)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function PeriodePills({ value, onChange }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "4px",
+        backgroundColor: "var(--color-surface-2)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-md)",
+        padding: "3px",
+      }}
+    >
+      {periodeOptions.map(([key, label]) => {
+        const active = key === value;
+
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              fontSize: "var(--text-2xs)",
+              fontWeight: active ? "var(--font-weight-semibold)" : "var(--font-weight-medium)",
+              color: active ? "#fff" : "var(--color-text-muted)",
+              backgroundColor: active ? "var(--color-primary)" : "transparent",
+              boxShadow: active ? "var(--shadow-sm)" : "none",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              fontFamily: "var(--font-body)",
+              transition: "all var(--transition-fast)",
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function GrafikTrenPermintaan({ datasets, labels }) {
   const canvasRef = useRef(null);
   const [chartError, setChartError] = useState("");
+  const [isChartReady, setIsChartReady] = useState(false);
 
   useEffect(() => {
     if (
@@ -38,6 +117,7 @@ function GrafikTrenPermintaan({ datasets, labels }) {
       return undefined;
     }
 
+    setIsChartReady(false);
     let chartInstance;
     let isActive = true;
 
@@ -48,33 +128,25 @@ function GrafikTrenPermintaan({ datasets, labels }) {
         }
 
         const Chart = module.default;
-        const rootStyles = getComputedStyle(document.documentElement);
         const ctx = canvasRef.current.getContext("2d");
-        const palette = [
-          rootStyles.getPropertyValue("--color-primary").trim(),
-          rootStyles.getPropertyValue("--color-primary-light").trim(),
-          rootStyles.getPropertyValue("--color-accent").trim(),
-          rootStyles.getPropertyValue("--color-warning").trim(),
-          rootStyles.getPropertyValue("--color-danger").trim(),
-          rootStyles.getPropertyValue("--color-success").trim(),
-          rootStyles.getPropertyValue("--color-info").trim(),
-          rootStyles.getPropertyValue("--color-text-secondary").trim(),
-        ];
 
         chartInstance = new Chart(ctx, {
           type: "line",
           data: {
             labels,
-            datasets: datasets.map((dataset, index) => ({
-              label: dataset.label,
-              data: dataset.data,
-              borderColor: palette[index % palette.length],
-              backgroundColor: palette[index % palette.length],
-              tension: 0.35,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-            })),
+            datasets: datasets.map((dataset, index) => {
+              const color = CHART_PALETTE[index % CHART_PALETTE.length];
+              return {
+                label: dataset.label,
+                data: dataset.data,
+                borderColor: color,
+                backgroundColor: withOpacity(color, 0.7),
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+              };
+            }),
           },
           options: {
             responsive: true,
@@ -82,13 +154,10 @@ function GrafikTrenPermintaan({ datasets, labels }) {
             plugins: {
               legend: {
                 position: "bottom",
-                labels: {
-                  color: rootStyles
-                    .getPropertyValue("--color-text-secondary")
-                    .trim(),
-                },
+                ...chartLegendDefaults,
               },
               tooltip: {
+                ...chartTooltipDefaults,
                 callbacks: {
                   label(context) {
                     return `${context.dataset.label}: ${formatTonase(context.parsed.y)}`;
@@ -98,24 +167,14 @@ function GrafikTrenPermintaan({ datasets, labels }) {
             },
             scales: {
               x: {
-                grid: {
-                  display: false,
-                },
-                ticks: {
-                  color: rootStyles
-                    .getPropertyValue("--color-text-secondary")
-                    .trim(),
-                },
+                grid: { display: false },
+                ticks: { ...chartTickDefaults },
               },
               y: {
                 beginAtZero: true,
-                grid: {
-                  color: rootStyles.getPropertyValue("--color-bg").trim(),
-                },
+                grid: { ...chartGridDefaults },
                 ticks: {
-                  color: rootStyles
-                    .getPropertyValue("--color-text-secondary")
-                    .trim(),
+                  ...chartTickDefaults,
                   callback(value) {
                     return formatTonase(value);
                   },
@@ -126,6 +185,7 @@ function GrafikTrenPermintaan({ datasets, labels }) {
         });
 
         setChartError("");
+        setIsChartReady(true);
       })
       .catch(() => {
         if (isActive) {
@@ -143,39 +203,21 @@ function GrafikTrenPermintaan({ datasets, labels }) {
 
   return (
     <Card style={{ minHeight: "420px" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.35rem",
-          marginBottom: "1rem",
-        }}
-      >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: "var(--font-display)",
-            fontSize: "1.2rem",
-          }}
-        >
-          Tren Permintaan per Kota
-        </h2>
-        <p
-          style={{
-            margin: 0,
-            color: "var(--color-text-secondary)",
-            lineHeight: 1.6,
-          }}
-        >
-          Grafik ini membantu melihat perubahan permintaan selama periode yang dipilih.
-        </p>
-      </div>
+      <SectionHeader>Tren Permintaan per Kota</SectionHeader>
 
       {chartError ? (
         <EmptyState pesan={chartError} />
       ) : (
         <div style={{ height: "320px" }}>
-          <canvas ref={canvasRef} aria-label="Grafik tren permintaan per kota" />
+          {isChartReady ? null : <SkeletonChart height="320px" />}
+          <canvas
+            ref={canvasRef}
+            aria-label="Grafik tren permintaan per kota"
+            style={{
+              display: isChartReady ? "block" : "none",
+              animation: "fadeInUp 300ms var(--ease-smooth) both",
+            }}
+          />
         </div>
       )}
     </Card>
@@ -252,17 +294,6 @@ function Laporan({ onNavigate }) {
     };
   }, [filteredPermintaan]);
 
-  const fieldStyle = {
-    border: "1px solid var(--color-primary-light)",
-    borderRadius: "var(--radius-card)",
-    backgroundColor: "var(--color-surface)",
-    color: "var(--color-text-primary)",
-    fontFamily: "var(--font-body)",
-    fontSize: "0.95rem",
-    padding: "0.85rem 0.95rem",
-    outline: "none",
-  };
-
   const noData =
     filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
 
@@ -273,6 +304,11 @@ function Laporan({ onNavigate }) {
       menuAwal="laporan"
       onMenuChange={onNavigate}
     >
+      <PageHeader
+        judul="Laporan Distribusi"
+        deskripsi="Riwayat keputusan bersifat permanen dan tetap tersedia untuk audit periode sebelumnya."
+        aksi={<PeriodePills value={periode} onChange={setPeriode} />}
+      />
       <div
         style={{
           display: "flex",
@@ -280,87 +316,29 @@ function Laporan({ onNavigate }) {
           gap: "1.5rem",
         }}
       >
-        <Card>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2
-                style={{
-                  margin: 0,
-                  fontFamily: "var(--font-display)",
-                  fontSize: "1.4rem",
-                }}
-              >
-                Laporan Distribusi
-              </h2>
-              <p
-                style={{
-                  margin: "0.35rem 0 0",
-                  color: "var(--color-text-secondary)",
-                  lineHeight: 1.6,
-                }}
-              >
-                Riwayat keputusan bersifat permanen dan tetap tersedia untuk audit periode sebelumnya.
-              </p>
-            </div>
-
-            <select
-              value={periode}
-              onChange={(event) => setPeriode(event.target.value)}
-              style={fieldStyle}
-            >
-              <option value="minggu-ini">Minggu ini</option>
-              <option value="bulan-ini">Bulan ini</option>
-            </select>
-          </div>
-        </Card>
-
         {noData ? (
           <EmptyState pesan="Tidak ada data pada periode yang dipilih." />
         ) : (
           <>
             {filteredRiwayat.length > 0 ? (
               <Card>
-                <div
+                <SectionHeader>Riwayat Keputusan</SectionHeader>
+                <p
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.35rem",
-                    marginBottom: "1rem",
+                    margin: "0 0 1rem",
+                    color: "var(--color-text-secondary)",
+                    lineHeight: 1.6,
+                    fontSize: "var(--text-sm)",
                   }}
                 >
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontFamily: "var(--font-display)",
-                      fontSize: "1.2rem",
-                    }}
-                  >
-                    Riwayat Keputusan
-                  </h2>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "var(--color-text-secondary)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Seluruh keputusan yang pernah dibuat, termasuk yang dibatalkan, tetap ditampilkan pada laporan.
-                  </p>
-                </div>
+                  Seluruh keputusan yang pernah dibuat, termasuk yang dibatalkan, tetap ditampilkan pada laporan.
+                </p>
 
                 <Tabel
                   kolom={[
                     { key: "tanggal", label: "Tanggal" },
                     { key: "kotaTujuan", label: "Kota Tujuan" },
-                    { key: "volume", label: "Volume TBS" },
+                    { key: "volume", label: "Volume TBS", numeric: true },
                     { key: "diputuskanOleh", label: "Diputuskan Oleh" },
                     { key: "status", label: "Status" },
                   ]}

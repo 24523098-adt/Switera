@@ -3,7 +3,9 @@ import Badge from "../components/Badge";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
+import MetricCard from "../components/MetricCard";
 import Modal from "../components/Modal";
+import PageHeader from "../components/PageHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
 import store from "../store";
@@ -25,10 +27,31 @@ const statusLabels = {
 const formatDate = (value) => formatterTanggal.format(parseDate(value));
 const formatTonase = (value) => `${new Intl.NumberFormat("id-ID").format(value)} ton`;
 
+function SectionHeader({ children }) {
+  return (
+    <p
+      style={{
+        margin: 0,
+        marginBottom: "var(--space-3)",
+        paddingBottom: "var(--space-3)",
+        borderBottom: "1px solid var(--color-border)",
+        fontSize: "var(--text-sm)",
+        fontWeight: "var(--font-weight-semibold)",
+        color: "var(--color-text-secondary)",
+        textTransform: "uppercase",
+        letterSpacing: "var(--tracking-wider)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
 function StatusDistribusi({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [selectedKeputusan, setSelectedKeputusan] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("menunggu");
+  const [isSelectFocused, setIsSelectFocused] = useState(false);
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -46,6 +69,16 @@ function StatusDistribusi({ onNavigate }) {
       ),
     [snapshot.keputusan]
   );
+
+  const ringkasanStatus = useMemo(() => {
+    const counts = { menunggu: 0, "dalam-pengiriman": 0, selesai: 0 };
+    keputusanAktif.forEach((item) => {
+      if (counts[item.status] !== undefined) {
+        counts[item.status] += 1;
+      }
+    });
+    return counts;
+  }, [keputusanAktif]);
 
   const rows = keputusanAktif.map((item) => ({
     id: item.id,
@@ -71,19 +104,6 @@ function StatusDistribusi({ onNavigate }) {
     setSelectedKeputusan(null);
   };
 
-  const fieldStyle = {
-    width: "100%",
-    border: "1px solid var(--color-primary-light)",
-    borderRadius: "var(--radius-card)",
-    backgroundColor: "var(--color-surface)",
-    color: "var(--color-text-primary)",
-    fontFamily: "var(--font-body)",
-    fontSize: "0.95rem",
-    padding: "0.85rem 0.95rem",
-    outline: "none",
-    boxSizing: "border-box",
-  };
-
   return (
     <Layout
       title="Switera"
@@ -91,6 +111,10 @@ function StatusDistribusi({ onNavigate }) {
       menuAwal="status-distribusi"
       onMenuChange={onNavigate}
     >
+      <PageHeader
+        judul="Status Distribusi Aktif"
+        deskripsi="Pantau dan perbarui progres distribusi tanpa perlu memuat ulang halaman."
+      />
       <div
         style={{
           display: "flex",
@@ -98,40 +122,38 @@ function StatusDistribusi({ onNavigate }) {
           gap: "1.5rem",
         }}
       >
-        <Card>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.35rem",
-              marginBottom: "1rem",
-            }}
-          >
-            <h2
-              style={{
-                margin: 0,
-                fontFamily: "var(--font-display)",
-                fontSize: "1.4rem",
-              }}
-            >
-              Status Distribusi Aktif
-            </h2>
-            <p
-              style={{
-                margin: 0,
-                color: "var(--color-text-secondary)",
-                lineHeight: 1.6,
-              }}
-            >
-              Pantau dan perbarui progres distribusi tanpa perlu memuat ulang halaman.
-            </p>
-          </div>
+        <div
+          className="stagger-children"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(160px, 1fr))",
+            gap: "var(--space-4)",
+          }}
+        >
+          <MetricCard
+            label="Menunggu"
+            nilai={String(ringkasanStatus.menunggu)}
+            accent="warning"
+          />
+          <MetricCard
+            label="Dalam Pengiriman"
+            nilai={String(ringkasanStatus["dalam-pengiriman"])}
+            accent="info"
+          />
+          <MetricCard
+            label="Selesai"
+            nilai={String(ringkasanStatus.selesai)}
+            accent="success"
+          />
+        </div>
 
+        <Card>
+          <SectionHeader>Daftar Distribusi Aktif</SectionHeader>
           {rows.length > 0 ? (
             <Tabel
               kolom={[
                 { key: "kotaTujuan", label: "Kota Tujuan" },
-                { key: "volume", label: "Volume" },
+                { key: "volume", label: "Volume", numeric: true },
                 { key: "tanggalKeputusan", label: "Tanggal Keputusan" },
                 { key: "status", label: "Status" },
               ]}
@@ -184,7 +206,21 @@ function StatusDistribusi({ onNavigate }) {
               <select
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
-                style={fieldStyle}
+                onFocus={() => setIsSelectFocused(true)}
+                onBlur={() => setIsSelectFocused(false)}
+                style={{
+                  width: "100%",
+                  border: `1px solid ${isSelectFocused ? "var(--color-primary)" : "var(--color-border)"}`,
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "var(--color-surface-2)",
+                  color: "var(--color-text-primary)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: "var(--text-sm)",
+                  padding: "9px 12px",
+                  outline: "none",
+                  boxShadow: isSelectFocused ? "0 0 0 3px var(--color-primary-subtle)" : "none",
+                  transition: "border-color var(--transition-fast), box-shadow var(--transition-fast)",
+                }}
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>

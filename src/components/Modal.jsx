@@ -1,4 +1,8 @@
+import useRipple from "../hooks/useRipple";
+
 function Modal({ judul, konten, onTutup }) {
+  const { ripples, onMouseDown, removeRipple } = useRipple();
+
   return (
     <>
       <style>
@@ -9,7 +13,7 @@ function Modal({ judul, konten, onTutup }) {
           }
 
           @keyframes modalSlideUp {
-            from { opacity: 0; transform: translateY(16px); }
+            from { opacity: 0; transform: translateY(-8px); }
             to { opacity: 1; transform: translateY(0); }
           }
         `}
@@ -21,27 +25,28 @@ function Modal({ judul, konten, onTutup }) {
         style={{
           position: "fixed",
           inset: 0,
-          backgroundColor: "rgba(0,0,0,0.4)",
-          backdropFilter: "blur(4px)",
+          backgroundColor: "rgba(0,0,0,.7)",
+          backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: "1.5rem",
-          zIndex: 1000,
-          animation: "modalFadeIn 300ms ease",
+          zIndex: "var(--z-modal)",
+          animation: "modalFadeIn 200ms var(--ease-smooth)",
         }}
       >
         <div
           style={{
-            width: "100%",
-            maxWidth: "32rem",
+            width: "90vw",
+            maxWidth: "480px",
             position: "relative",
-            backgroundColor: "var(--color-surface)",
+            backgroundColor: "var(--color-surface-2)",
             color: "var(--color-text-primary)",
+            border: "1px solid var(--color-border-mid)",
             borderRadius: "var(--radius-xl)",
-            boxShadow: "var(--shadow-lg)",
-            padding: "32px",
-            animation: "modalSlideUp 300ms ease",
+            boxShadow: "var(--shadow-xl)",
+            padding: "var(--space-8)",
+            animation: "modalSlideUp 250ms var(--ease-bounce)",
           }}
         >
           <button
@@ -50,37 +55,42 @@ function Modal({ judul, konten, onTutup }) {
             aria-label="Tutup modal"
             style={{
               position: "absolute",
+              overflow: "hidden",
               top: "16px",
               right: "16px",
               width: "32px",
               height: "32px",
               border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--color-surface-2)",
-              color: "var(--color-text-secondary)",
+              borderRadius: "var(--radius-sm)",
+              backgroundColor: "var(--color-surface-3)",
+              color: "var(--color-text-muted)",
               cursor: "pointer",
               display: "grid",
               placeItems: "center",
               fontFamily: "var(--font-display)",
               fontSize: "1.25rem",
               lineHeight: 1,
-              transition:
-                "background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast)",
+              transition: "background-color var(--transition-fast), color var(--transition-fast)",
             }}
             onMouseEnter={(event) => {
-              event.currentTarget.style.backgroundColor =
-                "var(--color-primary-subtle)";
-              event.currentTarget.style.transform = "translateY(-1px)";
-              event.currentTarget.style.boxShadow = "var(--shadow-xs)";
+              event.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
+              event.currentTarget.style.color = "var(--color-text-primary)";
             }}
             onMouseLeave={(event) => {
-              event.currentTarget.style.backgroundColor =
-                "var(--color-surface-2)";
-              event.currentTarget.style.transform = "translateY(0)";
-              event.currentTarget.style.boxShadow = "none";
+              event.currentTarget.style.backgroundColor = "var(--color-surface-3)";
+              event.currentTarget.style.color = "var(--color-text-muted)";
             }}
+            onMouseDown={onMouseDown}
           >
             ×
+            {ripples.map((ripple) => (
+              <span
+                key={ripple.id}
+                className="ripple-span"
+                style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
+                onAnimationEnd={() => removeRipple(ripple.id)}
+              />
+            ))}
           </button>
           <div
             style={{
@@ -88,7 +98,7 @@ function Modal({ judul, konten, onTutup }) {
               alignItems: "center",
               justifyContent: "space-between",
               gap: "1rem",
-              marginBottom: "1rem",
+              marginBottom: "var(--space-6)",
               paddingRight: "2.5rem",
             }}
           >
@@ -96,7 +106,8 @@ function Modal({ judul, konten, onTutup }) {
               style={{
                 margin: 0,
                 fontFamily: "var(--font-display)",
-                fontSize: "var(--text-xl)",
+                fontSize: "var(--text-lg)",
+                fontWeight: "var(--font-weight-semibold)",
               }}
             >
               {judul}

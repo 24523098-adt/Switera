@@ -6,6 +6,8 @@ import AnalisisRanking from "./pages/AnalisisRanking";
 import KeputusanDistribusi from "./pages/KeputusanDistribusi";
 import StatusDistribusi from "./pages/StatusDistribusi";
 import Laporan from "./pages/Laporan";
+import RiwayatAktivitas from "./pages/RiwayatAktivitas";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import store from "./store";
@@ -19,6 +21,7 @@ const pageRegistry = {
   "keputusan-distribusi": KeputusanDistribusi,
   "status-distribusi": StatusDistribusi,
   laporan: Laporan,
+  "riwayat-aktivitas": RiwayatAktivitas,
 };
 
 const pathByPage = {
@@ -29,6 +32,7 @@ const pathByPage = {
   "keputusan-distribusi": "/keputusan-distribusi",
   "status-distribusi": "/status-distribusi",
   laporan: "/laporan",
+  "riwayat-aktivitas": "/riwayat-aktivitas",
 };
 
 const pageByPath = Object.fromEntries(
@@ -65,6 +69,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = snapshot.tema;
+  }, [snapshot.tema]);
+
+  useEffect(() => {
     const handlePopState = () => {
       setRoute(getRoute());
     };
@@ -80,7 +88,7 @@ function App() {
 
   useEffect(() => {
     if (!snapshot.userAktif) {
-      if (route !== "/login" && route !== "/register") {
+      if (route !== "/login" && route !== "/register" && route !== "/") {
         navigateTo("/login");
       }
       return;
@@ -110,7 +118,11 @@ function App() {
       return <Register onNavigate={navigateTo} />;
     }
 
-    return <Login onNavigate={navigateTo} />;
+    if (route === "/login") {
+      return <Login onNavigate={navigateTo} />;
+    }
+
+    return <Landing onNavigate={navigateTo} />;
   }
 
   const ActivePage = pageRegistry[activePage] ?? Dashboard;

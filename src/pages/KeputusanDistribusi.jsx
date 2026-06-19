@@ -3,6 +3,7 @@ import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
 import Modal from "../components/Modal";
+import PageHeader from "../components/PageHeader";
 import Tombol from "../components/Tombol";
 import store from "../store";
 import { aggregatePermintaanRanking, getLocalDateKey, parseDate } from "../utils/distribusi";
@@ -17,6 +18,7 @@ function KeputusanDistribusi({ onNavigate }) {
   const [selectedKota, setSelectedKota] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [focusedField, setFocusedField] = useState("");
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -91,16 +93,26 @@ function KeputusanDistribusi({ onNavigate }) {
 
   const fieldStyle = {
     width: "100%",
-    border: "1px solid var(--color-primary-light)",
-    borderRadius: "var(--radius-card)",
-    backgroundColor: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-sm)",
+    backgroundColor: "var(--color-surface-2)",
     color: "var(--color-text-primary)",
     fontFamily: "var(--font-body)",
-    fontSize: "0.95rem",
-    padding: "0.85rem 0.95rem",
+    fontSize: "var(--text-sm)",
+    padding: "9px 12px",
     outline: "none",
     boxSizing: "border-box",
+    transition:
+      "border-color var(--transition-input), box-shadow var(--transition-input)",
   };
+
+  const getFieldStyle = (field) => ({
+    ...fieldStyle,
+    borderColor:
+      focusedField === field ? "var(--color-primary)" : "var(--color-border)",
+    boxShadow:
+      focusedField === field ? "0 0 0 3px var(--color-primary-subtle)" : "none",
+  });
 
   return (
     <Layout
@@ -109,6 +121,10 @@ function KeputusanDistribusi({ onNavigate }) {
       menuAwal="keputusan-distribusi"
       onMenuChange={onNavigate}
     >
+      <PageHeader
+        judul="Keputusan Distribusi"
+        deskripsi="Tetapkan kota tujuan distribusi berdasarkan data permintaan."
+      />
       {ranking.length === 0 ? (
         <EmptyState pesan="Belum ada data permintaan. Silakan hubungi Admin." />
       ) : (
@@ -121,26 +137,40 @@ function KeputusanDistribusi({ onNavigate }) {
         >
           <Card
             style={{
+              background: "linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)",
+              border: "1px solid var(--color-border-mid)",
+              borderTop: "2px solid var(--color-primary)",
+              borderRadius: "var(--radius-xl)",
+              padding: "var(--space-8)",
               display: "flex",
               flexDirection: "column",
               gap: "1rem",
             }}
           >
             <div>
-              <p
+              <span
                 style={{
-                  margin: 0,
-                  color: "var(--color-text-secondary)",
-                  fontSize: "0.9rem",
+                  display: "inline-block",
+                  backgroundColor: "var(--color-primary-subtle)",
+                  border: "1px solid rgba(45,106,79,0.25)",
+                  color: "var(--color-primary)",
+                  borderRadius: "var(--radius-full)",
+                  padding: "3px 10px",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--font-weight-semibold)",
+                  marginBottom: "var(--space-3)",
                 }}
               >
-                Rekomendasi otomatis
-              </p>
+                Rekomendasi Sistem
+              </span>
               <h2
                 style={{
-                  margin: "0.3rem 0 0",
+                  margin: 0,
                   fontFamily: "var(--font-display)",
-                  fontSize: "1.6rem",
+                  fontSize: "var(--text-3xl)",
+                  fontWeight: "var(--font-weight-bold)",
+                  letterSpacing: "var(--tracking-tight)",
+                  color: "var(--color-text-primary)",
                 }}
               >
                 {rekomendasi.kota}
