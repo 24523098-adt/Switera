@@ -43,6 +43,17 @@ const pageByPath = Object.fromEntries(
 
 const getRoute = () => window.location.pathname || "/login";
 
+const withViewTransition = (callback) => {
+  if (typeof document !== "undefined" && typeof document.startViewTransition === "function") {
+    const transition = document.startViewTransition(callback);
+    transition.ready.catch(() => {});
+    transition.finished.catch(() => {});
+    transition.updateCallbackDone.catch(() => {});
+  } else {
+    callback();
+  }
+};
+
 function App() {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [route, setRoute] = useState(getRoute());
@@ -50,16 +61,22 @@ function App() {
     pageByPath[getRoute()] ?? getDefaultMenuByRole(store.getRoleAktif())
   );
 
-  const navigateTo = (nextRoute) => {
+  const pushRoute = (nextRoute) => {
     if (window.location.pathname !== nextRoute) {
       window.history.pushState({}, "", nextRoute);
     }
     setRoute(nextRoute);
   };
 
+  const navigateTo = (nextRoute) => {
+    withViewTransition(() => pushRoute(nextRoute));
+  };
+
   const navigatePage = (page) => {
-    setActivePage(page);
-    navigateTo(pathByPage[page] ?? "/dashboard");
+    withViewTransition(() => {
+      setActivePage(page);
+      pushRoute(pathByPage[page] ?? "/dashboard");
+    });
   };
 
   useEffect(() => {
@@ -71,8 +88,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = snapshot.tema;
-  }, [snapshot.tema]);
+    const isMarketingOrAuth = route === "/" || !snapshot.userAktif;
+    document.documentElement.dataset.theme = isMarketingOrAuth ? "dark" : snapshot.tema;
+  }, [snapshot.tema, snapshot.userAktif, route]);
 
   useEffect(() => {
     const handlePopState = () => {

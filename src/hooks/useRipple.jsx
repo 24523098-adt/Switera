@@ -2,6 +2,20 @@ import { useCallback, useState } from "react";
 
 let rippleSeq = 0;
 
+export function RippleSpans({ ripples, removeRipple, groupId }) {
+  const visible =
+    groupId === undefined ? ripples : ripples.filter((ripple) => ripple.groupId === groupId);
+
+  return visible.map((ripple) => (
+    <span
+      key={ripple.id}
+      className="ripple-span"
+      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
+      onAnimationEnd={() => removeRipple(ripple.id)}
+    />
+  ));
+}
+
 function useRipple() {
   const [ripples, setRipples] = useState([]);
 

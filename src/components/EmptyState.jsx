@@ -1,4 +1,4 @@
-function EmptyState({ pesan }) {
+function EmptyState({ pesan, aksi }) {
   return (
     <div
       style={{
@@ -61,6 +61,7 @@ function EmptyState({ pesan }) {
       >
         {pesan}
       </p>
+      {aksi ? <div style={{ marginTop: "var(--space-2)" }}>{aksi}</div> : null}
     </div>
   );
 }

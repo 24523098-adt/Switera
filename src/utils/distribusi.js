@@ -101,3 +101,92 @@ export const isDateInRange = (value, range) => {
   const current = parseDate(value);
   return current >= range.start && current <= range.end;
 };
+
+export const computeRekomendasiDistribusi = (permintaan, daftarKota, stokTbs) => {
+  const ranking = aggregatePermintaanRanking(permintaan);
+  const kapasitasMap = new Map(daftarKota.map((kota) => [kota.nama, kota.kapasitas]));
+
+  const maxPermintaan = Math.max(1, ...ranking.map((item) => item.totalPermintaan));
+  const maxKapasitas = Math.max(1, ...daftarKota.map((kota) => kota.kapasitas));
+
+  const scored = ranking.map((item) => {
+    const kapasitas = kapasitasMap.get(item.kota) ?? 0;
+    const normalizedDemand = item.totalPermintaan / maxPermintaan;
+    const normalizedCapacity = kapasitas / maxKapasitas;
+    const skor = Math.round((normalizedDemand * 0.65 + normalizedCapacity * 0.35) * 100);
+
+    return {
+      kota: item.kota,
+      totalPermintaan: item.totalPermintaan,
+      kapasitas,
+      skor,
+    };
+  });
+
+  scored.sort((a, b) => b.skor - a.skor);
+
+  let stokTersisa = stokTbs;
+
+  return scored.map((item) => {
+    const batasKapasitas = Math.min(item.totalPermintaan, item.kapasitas);
+    const alokasi = Math.max(0, Math.min(batasKapasitas, stokTersisa));
+    stokTersisa -= alokasi;
+
+    return {
+      ...item,
+      alokasi,
+      terpenuhiPenuh: alokasi >= item.totalPermintaan,
+      dibatasiKapasitas: alokasi < item.totalPermintaan && item.kapasitas < item.totalPermintaan,
+    };
+  });
+};
+
+export const computeKpiMetrics = (keputusan, permintaan, daftarKota) => {
+  const totalPermintaanTon = permintaan.reduce(
+    (total, item) => total + (Number(item.jumlah_permintaan) || 0),
+    0
+  );
+  const totalAlokasiTon = keputusan.reduce(
+    (total, item) => total + (Number(item.volume_tbs) || 0),
+    0
+  );
+  const fulfillmentRate =
+    totalPermintaanTon > 0 ? Math.round((totalAlokasiTon / totalPermintaanTon) * 100) : 0;
+
+  const selesai = keputusan.filter(
+    (item) => item.status === "selesai" && item.waktu_menunggu && item.waktu_selesai
+  );
+
+  let onTimeRate = null;
+  let avgSiklusJam = null;
+
+  if (selesai.length > 0) {
+    const siklusJamList = selesai.map((item) => {
+      const mulai = new Date(item.waktu_menunggu).getTime();
+      const akhir = new Date(item.waktu_selesai).getTime();
+      return (akhir - mulai) / (1000 * 60 * 60);
+    });
+
+    avgSiklusJam =
+      siklusJamList.reduce((total, jam) => total + jam, 0) / siklusJamList.length;
+
+    const tepatWaktu = selesai.filter((item) => {
+      if (!item.eta) {
+        return true;
+      }
+      return new Date(item.waktu_selesai) <= new Date(`${item.eta}T23:59:59`);
+    });
+
+    onTimeRate = Math.round((tepatWaktu.length / selesai.length) * 100);
+  }
+
+  const kotaTercoverSet = new Set(keputusan.map((item) => item.kota_tujuan));
+
+  return {
+    fulfillmentRate,
+    onTimeRate,
+    avgSiklusJam,
+    kotaTercover: kotaTercoverSet.size,
+    totalKota: daftarKota.length,
+  };
+};

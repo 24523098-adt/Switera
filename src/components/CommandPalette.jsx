@@ -16,7 +16,9 @@ function IkonSearch({ size = 16 }) {
 
 function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
+  const listRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -24,24 +26,10 @@ function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
     }
 
     setQuery("");
+    setActiveIndex(0);
     const timeoutId = window.setTimeout(() => inputRef.current?.focus(), 10);
     return () => window.clearTimeout(timeoutId);
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -52,14 +40,64 @@ function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
     return menuItems.filter((item) => item.label.toLowerCase().includes(normalized));
   }, [menuItems, query]);
 
-  if (!isOpen) {
-    return null;
-  }
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    const activeNode = listRef.current?.querySelector('[data-active="true"]');
+    activeNode?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   const handleSelect = (key) => {
     onNavigate(key);
     onClose();
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((current) =>
+          filtered.length === 0 ? 0 : (current + 1) % filtered.length
+        );
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((current) =>
+          filtered.length === 0 ? 0 : (current - 1 + filtered.length) % filtered.length
+        );
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const item = filtered[activeIndex];
+        if (item) {
+          handleSelect(item.key);
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose, filtered, activeIndex]);
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div
@@ -107,6 +145,10 @@ function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Cari halaman..."
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-palette-list"
+            aria-activedescendant={filtered[activeIndex] ? `command-item-${filtered[activeIndex].key}` : undefined}
             style={{
               flex: 1,
               border: "none",
@@ -130,7 +172,12 @@ function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
           </span>
         </div>
 
-        <div style={{ maxHeight: "320px", overflowY: "auto", padding: "6px" }}>
+        <div
+          id="command-palette-list"
+          ref={listRef}
+          role="listbox"
+          style={{ maxHeight: "320px", overflowY: "auto", padding: "6px" }}
+        >
           {filtered.length === 0 ? (
             <p
               style={{
@@ -144,37 +191,40 @@ function CommandPalette({ isOpen, onClose, menuItems, onNavigate }) {
               Tidak ditemukan.
             </p>
           ) : (
-            filtered.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => handleSelect(item.key)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.6rem",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 10px",
-                  border: "none",
-                  background: "transparent",
-                  borderRadius: "var(--radius-sm)",
-                  color: "var(--color-text-primary)",
-                  fontFamily: "var(--font-body)",
-                  fontSize: "var(--text-sm)",
-                  cursor: "pointer",
-                  transition: "background-color var(--transition-fast)",
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.backgroundColor = "transparent";
-                }}
-              >
-                {item.label}
-              </button>
-            ))
+            filtered.map((item, index) => {
+              const isActive = index === activeIndex;
+
+              return (
+                <button
+                  key={item.key}
+                  id={`command-item-${item.key}`}
+                  data-active={isActive ? "true" : undefined}
+                  role="option"
+                  aria-selected={isActive}
+                  type="button"
+                  onClick={() => handleSelect(item.key)}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.6rem",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 10px",
+                    border: "none",
+                    background: isActive ? "var(--color-surface-hover)" : "transparent",
+                    borderRadius: "var(--radius-sm)",
+                    color: "var(--color-text-primary)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: "var(--text-sm)",
+                    cursor: "pointer",
+                    transition: "background-color var(--transition-fast)",
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })
           )}
         </div>
       </div>

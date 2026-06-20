@@ -5,12 +5,14 @@ import EmptyState from "../components/EmptyState";
 import MetricCard from "../components/MetricCard";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
 import { SkeletonChart } from "../components/Skeleton";
-import useRipple from "../hooks/useRipple";
+import useRipple, { RippleSpans } from "../hooks/useRipple";
 import store from "../store";
 import { formatWaktuRelatif } from "../utils/waktu";
+import { formatterAngka, formatDate, formatDateSingkat, formatTonase } from "../utils/format";
 import {
   CHART_PALETTE,
   chartGridDefaults,
@@ -20,18 +22,15 @@ import {
 } from "../utils/chartDefaults";
 import {
   aggregatePermintaanRanking,
+  computeKpiMetrics,
+  computeRekomendasiDistribusi,
   getDuplicateGroups,
   getLatestKeputusanByKota,
   getLocalDateKey,
   parseDate,
 } from "../utils/distribusi";
+import { computeForecastPerKota } from "../utils/forecast";
 
-const formatterAngka = new Intl.NumberFormat("id-ID");
-const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 const formatterTanggalHero = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
   month: "long",
@@ -42,10 +41,6 @@ const formatterJam = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-});
-const formatterTanggalSingkat = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "short",
 });
 
 const getGreeting = (hour) => {
@@ -62,44 +57,6 @@ const statusLabels = {
   selesai: "Selesai",
 };
 const statusUrutan = ["menunggu", "dalam-pengiriman", "selesai"];
-
-const formatDate = (value) => {
-  if (!value) {
-    return "-";
-  }
-
-  return formatterTanggal.format(parseDate(value));
-};
-
-const formatTonase = (value) => `${formatterAngka.format(value)} ton`;
-
-const formatDateSingkat = (value) => {
-  if (!value) {
-    return "-";
-  }
-
-  return formatterTanggalSingkat.format(parseDate(value));
-};
-
-function SectionHeader({ children }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        marginBottom: "var(--space-3)",
-        paddingBottom: "var(--space-3)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "var(--text-sm)",
-        fontWeight: "var(--font-weight-semibold)",
-        color: "var(--color-text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
 
 function IkonDatabase() {
   return (
@@ -201,17 +158,6 @@ function IkonEditKecil() {
       <path d="M4 20L4.6 16.4L15.5 5.5C16 5 16.7 5 17.2 5.5L18.5 6.8C19 7.3 19 8 18.5 8.5L7.6 19.4L4 20Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function RippleSpans({ ripples, removeRipple }) {
-  return ripples.map((ripple) => (
-    <span
-      key={ripple.id}
-      className="ripple-span"
-      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
-      onAnimationEnd={() => removeRipple(ripple.id)}
-    />
-  ));
 }
 
 function HeroStrip({ nama, role }) {
@@ -325,31 +271,16 @@ function HeroStrip({ nama, role }) {
 }
 
 function ActionCard({ ikon, iconColor, judul, sub, onClick }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <div
       role="button"
       tabIndex={0}
+      className="dashboard-action-card"
       onClick={onClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           onClick?.();
         }
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        backgroundColor: hovered ? "var(--color-surface-3)" : "var(--color-surface-2)",
-        border: `1px solid ${hovered ? "var(--color-primary)" : "var(--color-border)"}`,
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-5)",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-4)",
-        transform: hovered ? "translateX(2px)" : "translateX(0)",
-        transition: "all var(--transition-base)",
       }}
     >
       <span style={{ display: "flex", color: iconColor, flexShrink: 0 }}>{ikon}</span>
@@ -577,15 +508,23 @@ function GrafikMiniPerKota({ rankingKota }) {
 }
 
 function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
-  const totalData = permintaan.length + keputusan.length;
-  const allDates = [
-    ...permintaan.map((item) => item.tanggal_input),
-    ...keputusan.map((item) => item.tanggal_keputusan),
-  ].filter(Boolean);
+  const totalPermintaan = permintaan.length;
+  const allDates = permintaan.map((item) => item.tanggal_input).filter(Boolean);
   const latestDate = allDates.sort((first, second) => parseDate(second) - parseDate(first))[0];
   const duplicateGroups = getDuplicateGroups(permintaan);
+
+  const permintaanPerKota = useMemo(() => {
+    const counts = new Map();
+    permintaan.forEach((item) => {
+      counts.set(item.kota, (counts.get(item.kota) ?? 0) + 1);
+    });
+    const max = Math.max(1, ...counts.values());
+    return [...counts.entries()]
+      .map(([kota, jumlah]) => ({ kota, jumlah, persen: (jumlah / max) * 100 }))
+      .sort((first, second) => second.jumlah - first.jumlah)
+      .slice(0, 4);
+  }, [permintaan]);
   const { ripples, onMouseDown, removeRipple } = useRipple();
-  const [hoveredLink, setHoveredLink] = useState(false);
 
   const aktivitasTerbaru = useMemo(() => {
     const dariPermintaan = permintaan
@@ -616,22 +555,15 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
         judul="Dashboard"
         deskripsi="Ringkasan data permintaan dan keputusan distribusi."
       />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--space-5)",
-          alignItems: "start",
-        }}
-      >
-        <div style={{ gridColumn: "1 / -1" }}>
+      <div className="bento-grid">
+        <div className="bento-span-full">
           <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
         </div>
 
         {duplicateGroups.length > 0 ? (
           <div
+            className="bento-span-full"
             style={{
-              gridColumn: "1 / -1",
               backgroundColor: "transparent",
               border: "1px solid rgba(245,158,11,0.3)",
               borderLeft: "3px solid var(--color-warning)",
@@ -653,21 +585,13 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
             </span>
             <button
               type="button"
+              className="link-underline-hover"
               onClick={() => onNavigate?.("manajemen-data")}
               onMouseDown={onMouseDown}
-              onMouseEnter={() => setHoveredLink(true)}
-              onMouseLeave={() => setHoveredLink(false)}
               style={{
-                position: "relative",
-                overflow: "hidden",
-                border: "none",
-                background: "transparent",
                 color: "var(--color-warning)",
                 fontWeight: "var(--font-weight-semibold)",
-                cursor: "pointer",
-                fontFamily: "var(--font-body)",
                 fontSize: "var(--text-sm)",
-                textDecoration: hoveredLink ? "underline" : "none",
                 whiteSpace: "nowrap",
               }}
             >
@@ -677,23 +601,64 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
           </div>
         ) : null}
 
-        <div
-          className="stagger-children"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-4)",
-          }}
-        >
+        <div className="bento-span-2 bento-row-2">
           <MetricCard
-            label="Total Data Tersimpan"
-            nilai={formatterAngka.format(totalData)}
+            label="Total Data Permintaan"
+            nilai={formatterAngka.format(totalPermintaan)}
             ikon={<IkonDatabase />}
             accent="primary"
             size="lg"
             trend="Data terkini"
             shimmer
-          />
+            style={{ height: "100%", justifyContent: "space-between" }}
+          >
+            {permintaanPerKota.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "var(--space-2)" }}>
+                {permintaanPerKota.map((item) => (
+                  <div key={item.kota} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                    <span
+                      style={{
+                        width: "84px",
+                        flexShrink: 0,
+                        fontSize: "var(--text-xs)",
+                        color: "var(--color-text-secondary)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.kota}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        height: "6px",
+                        borderRadius: "var(--radius-full)",
+                        backgroundColor: "var(--color-surface-2)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "block",
+                          height: "100%",
+                          width: `${item.persen}%`,
+                          borderRadius: "var(--radius-full)",
+                          backgroundColor: "var(--color-primary)",
+                        }}
+                      />
+                    </span>
+                    <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", flexShrink: 0, fontFamily: "var(--font-mono)" }}>
+                      {item.jumlah}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </MetricCard>
+        </div>
+
+        <div className="bento-span-2">
           <MetricCard
             label="Data Terbaru Diinput"
             nilai={formatDateSingkat(latestDate)}
@@ -703,30 +668,30 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
             valueFontSize="var(--text-xl)"
             trend="Data terkini"
             shimmer
+            style={{ height: "100%" }}
           />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-          <div>
-            <SectionHeader>Aksi Cepat</SectionHeader>
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
-              <ActionCard
-                ikon={<IkonPlusCircle />}
-                iconColor="var(--color-primary)"
-                judul="Input Data Baru"
-                sub="Tambah permintaan kota baru"
-                onClick={() => onNavigate?.("input-data")}
-              />
-              <ActionCard
-                ikon={<IkonTableList />}
-                iconColor="var(--color-accent)"
-                judul="Kelola Data"
-                sub="Edit atau hapus data permintaan"
-                onClick={() => onNavigate?.("manajemen-data")}
-              />
-            </div>
-          </div>
+        <div className="bento-span-2" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <ActionCard
+            ikon={<IkonPlusCircle />}
+            iconColor="var(--color-primary)"
+            judul="Input Data Baru"
+            sub="Tambah permintaan kota baru"
+            onClick={() => onNavigate?.("input-data")}
+          />
+        </div>
+        <div className="bento-span-2" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+          <ActionCard
+            ikon={<IkonTableList />}
+            iconColor="var(--color-accent)"
+            judul="Kelola Data"
+            sub="Edit atau hapus data permintaan"
+            onClick={() => onNavigate?.("manajemen-data")}
+          />
+        </div>
 
+        <div className="bento-span-full">
           <Card>
             <SectionHeader>Aktivitas Terbaru</SectionHeader>
             {aktivitasTerbaru.length > 0 ? (
@@ -777,27 +742,29 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
   );
 }
 
-function DashboardManajer({ permintaan, keputusan, userAktif }) {
+function DashboardManajer({ permintaan, keputusan, userAktif, daftarKota, stokTbs }) {
   const [feedback, setFeedback] = useState("");
   const todayKey = getLocalDateKey();
   const rankingKota = useMemo(
     () => aggregatePermintaanRanking(permintaan),
     [permintaan]
   );
+  const rekomendasiList = useMemo(
+    () => computeRekomendasiDistribusi(permintaan, daftarKota, stokTbs),
+    [permintaan, daftarKota, stokTbs]
+  );
   const latestDecisionByKota = useMemo(
     () => getLatestKeputusanByKota(keputusan),
     [keputusan]
   );
-  const permintaanHariIni = useMemo(
-    () => permintaan.filter((item) => item.tanggal_permintaan === todayKey),
-    [permintaan, todayKey]
+  const forecastByKota = useMemo(() => {
+    const forecasts = computeForecastPerKota(permintaan);
+    return new Map(forecasts.map((item) => [item.kota, item]));
+  }, [permintaan]);
+  const kpi = useMemo(
+    () => computeKpiMetrics(keputusan, permintaan, daftarKota),
+    [keputusan, permintaan, daftarKota]
   );
-
-  const kotaHariIni = useMemo(
-    () => aggregatePermintaanRanking(permintaanHariIni)[0],
-    [permintaanHariIni]
-  );
-
   const totalTbsTerdistribusi = keputusan
     .filter((item) => item.status !== "menunggu")
     .reduce((total, item) => total + (Number(item.volume_tbs) || 0), 0);
@@ -866,7 +833,7 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
     ),
   }));
 
-  const rekomendasiKota = rankingKota[0];
+  const rekomendasiKota = rekomendasiList[0];
 
   const handleTetapkanDistribusi = () => {
     if (!rekomendasiKota) {
@@ -889,14 +856,14 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
 
     store.addKeputusan({
       kota_tujuan: rekomendasiKota.kota,
-      volume_tbs: rekomendasiKota.totalPermintaan,
+      volume_tbs: rekomendasiKota.alokasi,
       tanggal_keputusan: todayKey,
       diputuskan_oleh: "Manajer Distribusi",
       status: "menunggu",
     });
 
     setFeedback(
-      `Keputusan distribusi untuk ${rekomendasiKota.kota} berhasil ditambahkan.`
+      `Keputusan distribusi untuk ${rekomendasiKota.kota} berhasil ditambahkan (alokasi ${formatTonase(rekomendasiKota.alokasi)}).`
     );
   };
 
@@ -916,7 +883,7 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
         <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
 
         <div
-          className="stagger-children"
+          className="stagger-children app-grid-3"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, minmax(220px, 1fr))",
@@ -934,11 +901,12 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
           />
           <MetricCard
             label="Permintaan Tertinggi"
-            nilai={kotaHariIni ? formatTonase(kotaHariIni.totalPermintaan) : "Belum ada"}
+            nilai={rankingKota[0] ? formatTonase(rankingKota[0].totalPermintaan) : "Belum ada"}
             ikon={<IkonTrendUp />}
             accent="accent"
             size="lg"
             trend="Data terkini"
+            sparkline={rankingKota[0] ? forecastByKota.get(rankingKota[0].kota)?.riwayat : undefined}
             shimmer
           />
           <MetricCard
@@ -953,6 +921,33 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
         </div>
 
         <div
+          className="stagger-children app-grid-4"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
+            gap: "var(--space-4)",
+          }}
+        >
+          <MetricCard label="Tingkat Pemenuhan" nilai={`${kpi.fulfillmentRate}%`} accent="primary" />
+          <MetricCard
+            label="Ketepatan Waktu"
+            nilai={kpi.onTimeRate === null ? "Belum ada data" : `${kpi.onTimeRate}%`}
+            accent="info"
+          />
+          <MetricCard
+            label="Rata-rata Siklus"
+            nilai={kpi.avgSiklusJam === null ? "Belum ada data" : `${Math.round(kpi.avgSiklusJam)} jam`}
+            accent="accent"
+          />
+          <MetricCard
+            label="Cakupan Kota"
+            nilai={`${kpi.kotaTercover}/${kpi.totalKota} kota`}
+            accent="success"
+          />
+        </div>
+
+        <div
+          className="app-grid-2-1"
           style={{
             display: "grid",
             gridTemplateColumns: "2fr 1fr",
@@ -1053,7 +1048,7 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
                         marginBottom: "var(--space-3)",
                       }}
                     >
-                      Rekomendasi Sistem
+                      Rekomendasi Sistem · Skor {rekomendasiKota.skor}
                     </span>
                     <p
                       style={{
@@ -1077,11 +1072,28 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
                       {rekomendasiKota.kota}
                     </p>
                     <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "rgba(255,255,255,0.6)" }}>
-                      Total permintaan{" "}
+                      Permintaan{" "}
                       <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-primary)", fontWeight: "var(--font-weight-semibold)" }}>
                         {formatTonase(rekomendasiKota.totalPermintaan)}
                       </span>
+                      {" · "}Kapasitas{" "}
+                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
+                        {formatTonase(rekomendasiKota.kapasitas)}
+                      </span>
                     </p>
+                    <p style={{ margin: "4px 0 0", fontSize: "var(--text-sm)", color: "rgba(255,255,255,0.6)" }}>
+                      Alokasi disarankan{" "}
+                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-accent)", fontWeight: "var(--font-weight-semibold)" }}>
+                        {formatTonase(rekomendasiKota.alokasi)}
+                      </span>
+                    </p>
+                    {!rekomendasiKota.terpenuhiPenuh ? (
+                      <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--color-warning)" }}>
+                        ⚠ {rekomendasiKota.dibatasiKapasitas
+                          ? "Dibatasi oleh kapasitas kota."
+                          : "Dibatasi oleh ketersediaan stok TBS."}
+                      </p>
+                    ) : null}
                     <div style={{ height: "1px", backgroundColor: "rgba(255,255,255,0.08)", margin: "var(--space-4) 0" }} />
                     <Tombol
                       label="Tetapkan Tujuan"
@@ -1117,6 +1129,8 @@ function DashboardManajer({ permintaan, keputusan, userAktif }) {
 function DashboardLogistik({ keputusan, userAktif }) {
   const [selectedKeputusan, setSelectedKeputusan] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("menunggu");
+  const [armada, setArmada] = useState("");
+  const [eta, setEta] = useState("");
   const [isSelectFocused, setIsSelectFocused] = useState(false);
 
   const sortedKeputusan = useMemo(
@@ -1147,6 +1161,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
       id: item.id,
       kotaTujuan: item.kota_tujuan,
       volume: formatTonase(item.volume_tbs),
+      armada: item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "-",
       status: <Badge status={item.status} />,
       tanggal: formatDate(item.tanggal_keputusan),
       progres: (
@@ -1182,6 +1197,8 @@ function DashboardLogistik({ keputusan, userAktif }) {
   const openStatusModal = (item) => {
     setSelectedKeputusan(item);
     setSelectedStatus(item.status);
+    setArmada(item.armada ?? "");
+    setEta(item.eta ?? "");
   };
 
   const saveStatus = () => {
@@ -1189,9 +1206,13 @@ function DashboardLogistik({ keputusan, userAktif }) {
       return;
     }
 
-    store.updateKeputusan(selectedKeputusan.id, {
-      status: selectedStatus,
-    });
+    const updates = { status: selectedStatus };
+    if (selectedStatus === "dalam-pengiriman") {
+      updates.armada = armada.trim();
+      updates.eta = eta;
+    }
+
+    store.updateKeputusan(selectedKeputusan.id, updates);
     setSelectedKeputusan(null);
   };
 
@@ -1211,7 +1232,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
         <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
 
         <div
-          className="stagger-children"
+          className="stagger-children app-grid-3"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
@@ -1314,6 +1335,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
               kolom={[
                 { key: "kotaTujuan", label: "Kota Tujuan" },
                 { key: "volume", label: "Volume", numeric: true },
+                { key: "armada", label: "Armada / ETA" },
                 { key: "status", label: "Status" },
                 { key: "progres", label: "Progres" },
                 { key: "tanggal", label: "Tanggal" },
@@ -1369,6 +1391,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
                 </p>
               </div>
               <select
+                aria-label="Pilih status terbaru"
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
                 onFocus={() => setIsSelectFocused(true)}
@@ -1393,6 +1416,57 @@ function DashboardLogistik({ keputusan, userAktif }) {
                   </option>
                 ))}
               </select>
+
+              {selectedStatus === "dalam-pengiriman" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                      Armada / Sopir
+                    </span>
+                    <input
+                      type="text"
+                      value={armada}
+                      onChange={(event) => setArmada(event.target.value)}
+                      placeholder="Contoh: Truk B-1234-XY / Andi"
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        backgroundColor: "var(--color-surface-2)",
+                        color: "var(--color-text-primary)",
+                        fontFamily: "var(--font-body)",
+                        fontSize: "var(--text-sm)",
+                        padding: "9px 12px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                      Estimasi Tiba (ETA)
+                    </span>
+                    <input
+                      type="date"
+                      value={eta}
+                      onChange={(event) => setEta(event.target.value)}
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        backgroundColor: "var(--color-surface-2)",
+                        color: "var(--color-text-primary)",
+                        fontFamily: "var(--font-body)",
+                        fontSize: "var(--text-sm)",
+                        padding: "9px 12px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
               <div
                 style={{
                   display: "flex",
@@ -1427,7 +1501,7 @@ function Dashboard({ onNavigate }) {
     return unsubscribe;
   }, []);
 
-  const { roleAktif, permintaan, keputusan, userAktif } = snapshot;
+  const { roleAktif, permintaan, keputusan, userAktif, daftarKota, stokTbs } = snapshot;
 
   const contentByRole = {
     Admin: (
@@ -1439,7 +1513,13 @@ function Dashboard({ onNavigate }) {
       />
     ),
     "Manajer Distribusi": (
-      <DashboardManajer permintaan={permintaan} keputusan={keputusan} userAktif={userAktif} />
+      <DashboardManajer
+        permintaan={permintaan}
+        keputusan={keputusan}
+        userAktif={userAktif}
+        daftarKota={daftarKota}
+        stokTbs={stokTbs}
+      />
     ),
     "Tim Logistik": <DashboardLogistik keputusan={keputusan} userAktif={userAktif} />,
   };

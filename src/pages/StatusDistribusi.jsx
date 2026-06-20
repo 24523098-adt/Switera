@@ -2,20 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import Badge from "../components/Badge";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
-import Layout from "../components/Layout";
 import MetricCard from "../components/MetricCard";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
 import store from "../store";
 import { parseDate } from "../utils/distribusi";
-
-const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+import { formatDate, formatTonase } from "../utils/format";
 
 const statusOptions = ["menunggu", "dalam-pengiriman", "selesai"];
 const statusLabels = {
@@ -24,33 +19,12 @@ const statusLabels = {
   selesai: "Selesai",
 };
 
-const formatDate = (value) => formatterTanggal.format(parseDate(value));
-const formatTonase = (value) => `${new Intl.NumberFormat("id-ID").format(value)} ton`;
-
-function SectionHeader({ children }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        marginBottom: "var(--space-3)",
-        paddingBottom: "var(--space-3)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "var(--text-sm)",
-        fontWeight: "var(--font-weight-semibold)",
-        color: "var(--color-text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
 function StatusDistribusi({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [selectedKeputusan, setSelectedKeputusan] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("menunggu");
+  const [armada, setArmada] = useState("");
+  const [eta, setEta] = useState("");
   const [isSelectFocused, setIsSelectFocused] = useState(false);
 
   useEffect(() => {
@@ -84,6 +58,7 @@ function StatusDistribusi({ onNavigate }) {
     id: item.id,
     kotaTujuan: item.kota_tujuan,
     volume: formatTonase(item.volume_tbs),
+    armada: item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "-",
     tanggalKeputusan: formatDate(item.tanggal_keputusan),
     status: <Badge status={item.status} />,
   }));
@@ -91,6 +66,8 @@ function StatusDistribusi({ onNavigate }) {
   const openStatusModal = (item) => {
     setSelectedKeputusan(item);
     setSelectedStatus(item.status);
+    setArmada(item.armada ?? "");
+    setEta(item.eta ?? "");
   };
 
   const saveStatus = () => {
@@ -98,19 +75,18 @@ function StatusDistribusi({ onNavigate }) {
       return;
     }
 
-    store.updateKeputusan(selectedKeputusan.id, {
-      status: selectedStatus,
-    });
+    const updates = { status: selectedStatus };
+    if (selectedStatus === "dalam-pengiriman") {
+      updates.armada = armada.trim();
+      updates.eta = eta;
+    }
+
+    store.updateKeputusan(selectedKeputusan.id, updates);
     setSelectedKeputusan(null);
   };
 
   return (
-    <Layout
-      title="Switera"
-      roleAwal="Tim Logistik"
-      menuAwal="status-distribusi"
-      onMenuChange={onNavigate}
-    >
+    <>
       <PageHeader
         judul="Status Distribusi Aktif"
         deskripsi="Pantau dan perbarui progres distribusi tanpa perlu memuat ulang halaman."
@@ -123,7 +99,7 @@ function StatusDistribusi({ onNavigate }) {
         }}
       >
         <div
-          className="stagger-children"
+          className="stagger-children app-grid-3"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, minmax(160px, 1fr))",
@@ -154,6 +130,7 @@ function StatusDistribusi({ onNavigate }) {
               kolom={[
                 { key: "kotaTujuan", label: "Kota Tujuan" },
                 { key: "volume", label: "Volume", numeric: true },
+                { key: "armada", label: "Armada / ETA" },
                 { key: "tanggalKeputusan", label: "Tanggal Keputusan" },
                 { key: "status", label: "Status" },
               ]}
@@ -204,6 +181,7 @@ function StatusDistribusi({ onNavigate }) {
                 .
               </p>
               <select
+                aria-label="Pilih status terbaru"
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
                 onFocus={() => setIsSelectFocused(true)}
@@ -228,6 +206,57 @@ function StatusDistribusi({ onNavigate }) {
                   </option>
                 ))}
               </select>
+
+              {selectedStatus === "dalam-pengiriman" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                      Armada / Sopir
+                    </span>
+                    <input
+                      type="text"
+                      value={armada}
+                      onChange={(event) => setArmada(event.target.value)}
+                      placeholder="Contoh: Truk B-1234-XY / Andi"
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        backgroundColor: "var(--color-surface-2)",
+                        color: "var(--color-text-primary)",
+                        fontFamily: "var(--font-body)",
+                        fontSize: "var(--text-sm)",
+                        padding: "9px 12px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                      Estimasi Tiba (ETA)
+                    </span>
+                    <input
+                      type="date"
+                      value={eta}
+                      onChange={(event) => setEta(event.target.value)}
+                      style={{
+                        width: "100%",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        backgroundColor: "var(--color-surface-2)",
+                        color: "var(--color-text-primary)",
+                        fontFamily: "var(--font-body)",
+                        fontSize: "var(--text-sm)",
+                        padding: "9px 12px",
+                        outline: "none",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
               <div
                 style={{
                   display: "flex",
@@ -247,7 +276,7 @@ function StatusDistribusi({ onNavigate }) {
           }
         />
       ) : null}
-    </Layout>
+    </>
   );
 }
 

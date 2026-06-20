@@ -1,7 +1,46 @@
+import { useEffect, useRef } from "react";
 import useRipple from "../hooks/useRipple";
 
 function Modal({ judul, konten, onTutup }) {
   const { ripples, onMouseDown, removeRipple } = useRipple();
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    const node = dialogRef.current;
+    const focusable = node?.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    (focusable && focusable.length > 0 ? focusable[0] : node)?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onTutup?.();
+        return;
+      }
+
+      if (event.key === "Tab" && focusable && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
+  }, [onTutup]);
 
   return (
     <>
@@ -22,6 +61,7 @@ function Modal({ judul, konten, onTutup }) {
         role="dialog"
         aria-modal="true"
         aria-label={judul}
+        onClick={onTutup}
         style={{
           position: "fixed",
           inset: 0,
@@ -36,10 +76,14 @@ function Modal({ judul, konten, onTutup }) {
         }}
       >
         <div
+          ref={dialogRef}
+          tabIndex={-1}
+          onClick={(event) => event.stopPropagation()}
           style={{
             width: "90vw",
             maxWidth: "480px",
             position: "relative",
+            outline: "none",
             backgroundColor: "var(--color-surface-2)",
             color: "var(--color-text-primary)",
             border: "1px solid var(--color-border-mid)",
@@ -51,43 +95,10 @@ function Modal({ judul, konten, onTutup }) {
         >
           <button
             type="button"
+            className="modal-close-btn"
             onClick={onTutup}
             aria-label="Tutup modal"
-            style={{
-              position: "absolute",
-              overflow: "hidden",
-              top: "16px",
-              right: "16px",
-              width: "32px",
-              height: "32px",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor: "var(--color-surface-3)",
-              color: "var(--color-text-muted)",
-              cursor: "pointer",
-              display: "grid",
-              placeItems: "center",
-              fontFamily: "var(--font-display)",
-              fontSize: "1.25rem",
-              lineHeight: 1,
-              transition: "background-color var(--transition-fast), color var(--transition-fast)",
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
-              event.currentTarget.style.color = "var(--color-text-primary)";
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.backgroundColor = "var(--color-surface-3)";
-              event.currentTarget.style.color = "var(--color-text-muted)";
-              event.currentTarget.style.transform = "scale(1)";
-            }}
-            onMouseDown={(event) => {
-              event.currentTarget.style.transform = "scale(0.97)";
-              onMouseDown(event);
-            }}
-            onMouseUp={(event) => {
-              event.currentTarget.style.transform = "scale(1)";
-            }}
+            onMouseDown={onMouseDown}
           >
             ×
             {ripples.map((ripple) => (

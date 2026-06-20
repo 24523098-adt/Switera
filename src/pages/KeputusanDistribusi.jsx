@@ -4,18 +4,15 @@ import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
 import Tombol from "../components/Tombol";
+import { showToast } from "../components/Toast";
 import store from "../store";
-import { aggregatePermintaanRanking, getLocalDateKey, parseDate } from "../utils/distribusi";
-
-const formatterAngka = new Intl.NumberFormat("id-ID");
-
-const formatTonase = (value) => `${formatterAngka.format(value)} ton`;
+import { computeRekomendasiDistribusi, getLocalDateKey, parseDate } from "../utils/distribusi";
+import { formatTonase } from "../utils/format";
 
 function KeputusanDistribusi({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [isCustomSelection, setIsCustomSelection] = useState(false);
   const [selectedKota, setSelectedKota] = useState("");
-  const [toastMessage, setToastMessage] = useState("");
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [focusedField, setFocusedField] = useState("");
 
@@ -27,25 +24,13 @@ function KeputusanDistribusi({ onNavigate }) {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (!toastMessage) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToastMessage("");
-    }, 3200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [toastMessage]);
-
-  const ranking = useMemo(
-    () => aggregatePermintaanRanking(snapshot.permintaan ?? []),
-    [snapshot.permintaan]
+  const rekomendasiList = useMemo(
+    () => computeRekomendasiDistribusi(snapshot.permintaan ?? [], snapshot.daftarKota ?? [], snapshot.stokTbs ?? 0),
+    [snapshot.permintaan, snapshot.daftarKota, snapshot.stokTbs]
   );
 
-  const rekomendasi = ranking[0];
-  const pilihanManual = ranking.find((item) => item.kota === selectedKota);
+  const rekomendasi = rekomendasiList[0];
+  const pilihanManual = rekomendasiList.find((item) => item.kota === selectedKota);
   const keputusanAktifTerakhir = useMemo(() => {
     const sorted = [...(snapshot.keputusan ?? [])].sort((first, second) => {
       const byDate =
@@ -68,14 +53,14 @@ function KeputusanDistribusi({ onNavigate }) {
 
     store.addKeputusan({
       kota_tujuan: targetKota.kota,
-      volume_tbs: targetKota.totalPermintaan,
+      volume_tbs: targetKota.alokasi,
       tanggal_keputusan: getLocalDateKey(),
       diputuskan_oleh: "Manajer Distribusi",
       status: "menunggu",
       alasan,
     });
 
-    setToastMessage(`Keputusan distribusi untuk ${targetKota.kota} berhasil disimpan.`);
+    showToast({ type: "success", message: `Keputusan distribusi untuk ${targetKota.kota} berhasil disimpan.` });
     setIsCustomSelection(false);
     setSelectedKota("");
   };
@@ -85,9 +70,20 @@ function KeputusanDistribusi({ onNavigate }) {
       return;
     }
 
-    store.removeKeputusan(keputusanAktifTerakhir.id);
+    const keputusanDibatalkan = keputusanAktifTerakhir;
+    store.removeKeputusan(keputusanDibatalkan.id);
     setIsCancelOpen(false);
-    setToastMessage("Keputusan aktif terakhir berhasil dibatalkan.");
+    showToast({
+      type: "success",
+      message: "Keputusan aktif terakhir berhasil dibatalkan.",
+      action: {
+        label: "Urungkan",
+        onClick: () => {
+          store.restoreKeputusan(keputusanDibatalkan);
+          showToast({ type: "info", message: "Keputusan distribusi dikembalikan." });
+        },
+      },
+    });
   };
 
   const fieldStyle = {
@@ -119,7 +115,7 @@ function KeputusanDistribusi({ onNavigate }) {
         judul="Keputusan Distribusi"
         deskripsi="Tetapkan kota tujuan distribusi berdasarkan data permintaan."
       />
-      {ranking.length === 0 ? (
+      {rekomendasiList.length === 0 ? (
         <EmptyState pesan="Belum ada data permintaan. Silakan hubungi Admin." />
       ) : (
         <div
@@ -155,7 +151,7 @@ function KeputusanDistribusi({ onNavigate }) {
                   marginBottom: "var(--space-3)",
                 }}
               >
-                Rekomendasi Sistem
+                Rekomendasi Sistem · Skor {rekomendasi.skor}
               </span>
               <h2
                 style={{
@@ -176,8 +172,16 @@ function KeputusanDistribusi({ onNavigate }) {
                   lineHeight: 1.6,
                 }}
               >
-                Permintaan tertinggi pada periode ini dengan total{" "}
-                {formatTonase(rekomendasi.totalPermintaan)}.
+                Permintaan {formatTonase(rekomendasi.totalPermintaan)} dari kapasitas{" "}
+                {formatTonase(rekomendasi.kapasitas)}. Alokasi disarankan{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>
+                  {formatTonase(rekomendasi.alokasi)}
+                </strong>
+                {!rekomendasi.terpenuhiPenuh
+                  ? rekomendasi.dibatasiKapasitas
+                    ? " (dibatasi oleh kapasitas kota)."
+                    : " (dibatasi oleh ketersediaan stok TBS)."
+                  : "."}
               </p>
             </div>
 
@@ -193,7 +197,7 @@ function KeputusanDistribusi({ onNavigate }) {
                 onClick={() =>
                   saveKeputusan(
                     rekomendasi,
-                    "Permintaan tertinggi pada periode ini"
+                    "Rekomendasi sistem berdasarkan skor permintaan dan kapasitas"
                   )
                 }
               />
@@ -237,12 +241,14 @@ function KeputusanDistribusi({ onNavigate }) {
               <select
                 value={selectedKota}
                 onChange={(event) => setSelectedKota(event.target.value)}
-                style={fieldStyle}
+                onFocus={() => setFocusedField("kota")}
+                onBlur={() => setFocusedField("")}
+                style={getFieldStyle("kota")}
               >
                 <option value="">Pilih kota dari ranking</option>
-                {ranking.map((item) => (
+                {rekomendasiList.map((item) => (
                   <option key={item.kota} value={item.kota}>
-                    {item.kota} - {formatTonase(item.totalPermintaan)}
+                    {item.kota} - {formatTonase(item.totalPermintaan)} (skor {item.skor})
                   </option>
                 ))}
               </select>
@@ -281,8 +287,8 @@ function KeputusanDistribusi({ onNavigate }) {
                       lineHeight: 1.6,
                     }}
                   >
-                    Total permintaan {formatTonase(pilihanManual.totalPermintaan)}. Kota
-                    ini dipilih manual oleh Manajer Distribusi.
+                    Total permintaan {formatTonase(pilihanManual.totalPermintaan)}, alokasi disarankan{" "}
+                    {formatTonase(pilihanManual.alokasi)}. Kota ini dipilih manual oleh Manajer Distribusi.
                   </p>
                   <div
                     style={{
@@ -396,43 +402,6 @@ function KeputusanDistribusi({ onNavigate }) {
             )
           }
         />
-      ) : null}
-
-      {toastMessage ? (
-        <div
-          style={{
-            position: "fixed",
-            top: "1.5rem",
-            right: "1.5rem",
-            width: "min(360px, calc(100vw - 3rem))",
-            zIndex: 1100,
-          }}
-        >
-          <Card
-            style={{
-              borderLeft: "6px solid var(--color-success)",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                color: "var(--color-text-primary)",
-                fontWeight: 700,
-              }}
-            >
-              Berhasil
-            </p>
-            <p
-              style={{
-                margin: "0.35rem 0 0",
-                color: "var(--color-text-secondary)",
-                lineHeight: 1.6,
-              }}
-            >
-              {toastMessage}
-            </p>
-          </Card>
-        </div>
       ) : null}
     </>
   );

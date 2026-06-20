@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
-import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
 import Tabel from "../components/Tabel";
+import Tombol from "../components/Tombol";
 import store from "../store";
 import { roleOptions } from "../utils/navigation";
+import { downloadCsv } from "../utils/csv";
 
 const formatterWaktu = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -74,6 +75,17 @@ function RiwayatAktivitas({ onNavigate }) {
     aksi: item.aksi,
   }));
 
+  const handleExportCsv = () => {
+    const rows = filteredLog.map((item) => ({
+      waktu: item.waktu,
+      aktor: item.aktor,
+      role: item.role,
+      aksi: item.aksi,
+    }));
+
+    downloadCsv("riwayat-aktivitas.csv", rows);
+  };
+
   const fieldStyle = {
     width: "100%",
     border: "1px solid var(--color-border)",
@@ -107,15 +119,18 @@ function RiwayatAktivitas({ onNavigate }) {
   };
 
   return (
-    <Layout
-      title="Switera"
-      roleAwal="Admin"
-      menuAwal="riwayat-aktivitas"
-      onMenuChange={onNavigate}
-    >
+    <>
       <PageHeader
         judul="Riwayat Aktivitas"
         deskripsi="Jejak audit seluruh aksi penting pengguna pada sistem, dari yang terbaru."
+        aksi={
+          <Tombol
+            label="Ekspor CSV"
+            variant="sekunder"
+            onClick={handleExportCsv}
+            disabled={filteredLog.length === 0}
+          />
+        }
       />
       <div
         style={{
@@ -190,7 +205,7 @@ function RiwayatAktivitas({ onNavigate }) {
           <EmptyState pesan="Tidak ada aktivitas yang cocok dengan filter saat ini." />
         )}
       </div>
-    </Layout>
+    </>
   );
 }
 

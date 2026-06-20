@@ -1,47 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
-import Layout from "../components/Layout";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
-import useRipple from "../hooks/useRipple";
+import { showToast } from "../components/Toast";
+import useRipple, { RippleSpans } from "../hooks/useRipple";
 import store from "../store";
-
-function SectionHeader({ children }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        marginBottom: "var(--space-3)",
-        paddingBottom: "var(--space-3)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "var(--text-sm)",
-        fontWeight: "var(--font-weight-semibold)",
-        color: "var(--color-text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
-const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-const formatDate = (value) => {
-  if (!value) {
-    return "-";
-  }
-
-  return formatterTanggal.format(new Date(`${value}T00:00:00`));
-};
+import { formatDate } from "../utils/format";
 
 const initialEditForm = {
   id: "",
@@ -51,36 +19,6 @@ const initialEditForm = {
   jumlahPermintaan: "",
   keterangan: "",
 };
-
-const actionButtonStyle = (color) => ({
-  position: "relative",
-  overflow: "hidden",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "0.4rem",
-  border: `1px solid ${color}`,
-  borderRadius: "var(--radius-sm)",
-  backgroundColor: "transparent",
-  color,
-  cursor: "pointer",
-  fontFamily: "var(--font-body)",
-  fontSize: "var(--text-sm)",
-  fontWeight: 500,
-  padding: "6px 10px",
-  transition:
-    "background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast)",
-});
-
-function RippleSpans({ ripples, removeRipple }) {
-  return ripples.map((ripple) => (
-    <span
-      key={ripple.id}
-      className="ripple-span"
-      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
-      onAnimationEnd={() => removeRipple(ripple.id)}
-    />
-  ));
-}
 
 function AksiTabelButtons({ onEdit, onDelete }) {
   const editRipple = useRipple();
@@ -96,25 +34,9 @@ function AksiTabelButtons({ onEdit, onDelete }) {
     >
       <button
         type="button"
+        className="aksi-btn aksi-btn-edit"
         onClick={onEdit}
-        onMouseDown={(event) => {
-          event.currentTarget.style.transform = "scale(0.97)";
-          editRipple.onMouseDown(event);
-        }}
-        onMouseUp={(event) => {
-          event.currentTarget.style.transform = "translateY(-1px)";
-        }}
-        style={actionButtonStyle("var(--color-info)")}
-        onMouseEnter={(event) => {
-          event.currentTarget.style.backgroundColor = "var(--color-info-subtle)";
-          event.currentTarget.style.transform = "translateY(-1px)";
-          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.backgroundColor = "transparent";
-          event.currentTarget.style.transform = "translateY(0)";
-          event.currentTarget.style.boxShadow = "none";
-        }}
+        onMouseDown={editRipple.onMouseDown}
       >
         <span aria-hidden="true">✎</span>
         Edit
@@ -122,25 +44,9 @@ function AksiTabelButtons({ onEdit, onDelete }) {
       </button>
       <button
         type="button"
+        className="aksi-btn aksi-btn-delete"
         onClick={onDelete}
-        onMouseDown={(event) => {
-          event.currentTarget.style.transform = "scale(0.97)";
-          deleteRipple.onMouseDown(event);
-        }}
-        onMouseUp={(event) => {
-          event.currentTarget.style.transform = "translateY(-1px)";
-        }}
-        style={actionButtonStyle("var(--color-danger)")}
-        onMouseEnter={(event) => {
-          event.currentTarget.style.backgroundColor = "var(--color-danger-subtle)";
-          event.currentTarget.style.transform = "translateY(-1px)";
-          event.currentTarget.style.boxShadow = "var(--shadow-xs)";
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.backgroundColor = "transparent";
-          event.currentTarget.style.transform = "translateY(0)";
-          event.currentTarget.style.boxShadow = "none";
-        }}
+        onMouseDown={deleteRipple.onMouseDown}
       >
         <span aria-hidden="true">🗑</span>
         Hapus
@@ -153,13 +59,14 @@ function AksiTabelButtons({ onEdit, onDelete }) {
 function ManajemenData({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [keyword, setKeyword] = useState("");
-  const [toastMessage, setToastMessage] = useState("");
   const [editForm, setEditForm] = useState(initialEditForm);
   const [editErrors, setEditErrors] = useState({});
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [focusedField, setFocusedField] = useState("");
   const [hoveredField, setHoveredField] = useState("");
+  const [inlineEditingId, setInlineEditingId] = useState(null);
+  const [inlineValue, setInlineValue] = useState("");
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -168,18 +75,6 @@ function ManajemenData({ onNavigate }) {
 
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (!toastMessage) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToastMessage("");
-    }, 3200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [toastMessage]);
 
   const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
 
@@ -287,7 +182,7 @@ function ManajemenData({ onNavigate }) {
 
     setIsEditOpen(false);
     setEditForm(initialEditForm);
-    setToastMessage("Data permintaan berhasil diperbarui.");
+    showToast({ type: "success", message: "Data permintaan berhasil diperbarui." });
   };
 
   const confirmDelete = () => {
@@ -295,9 +190,41 @@ function ManajemenData({ onNavigate }) {
       return;
     }
 
-    store.removePermintaan(deleteTarget.id);
+    const itemDihapus = deleteTarget;
+    store.removePermintaan(itemDihapus.id);
     setDeleteTarget(null);
-    setToastMessage("Data permintaan berhasil dihapus.");
+    showToast({
+      type: "success",
+      message: "Data permintaan berhasil dihapus.",
+      action: {
+        label: "Urungkan",
+        onClick: () => {
+          store.addPermintaan(itemDihapus);
+          showToast({ type: "info", message: "Penghapusan data dibatalkan." });
+        },
+      },
+    });
+  };
+
+  const startInlineEdit = (item) => {
+    setInlineEditingId(item.id);
+    setInlineValue(String(item.jumlah_permintaan));
+  };
+
+  const commitInlineEdit = (item) => {
+    const nextValue = Number(inlineValue);
+
+    if (!inlineValue || nextValue <= 0) {
+      setInlineEditingId(null);
+      return;
+    }
+
+    if (nextValue !== item.jumlah_permintaan) {
+      store.updatePermintaan(item.id, { jumlah_permintaan: nextValue });
+      showToast({ type: "success", message: "Jumlah permintaan berhasil diperbarui." });
+    }
+
+    setInlineEditingId(null);
   };
 
   const tableRows = filteredPermintaan.map((item) => ({
@@ -306,7 +233,44 @@ function ManajemenData({ onNavigate }) {
     namaKota: item.kota,
     tanggalPermintaan: formatDate(item.tanggal_permintaan),
     tanggalInput: formatDate(item.tanggal_input),
-    jumlah: `${item.jumlah_permintaan} ton`,
+    jumlah:
+      inlineEditingId === item.id ? (
+        <input
+          type="number"
+          min="1"
+          step="1"
+          autoFocus
+          value={inlineValue}
+          onChange={(event) => setInlineValue(event.target.value)}
+          onBlur={() => commitInlineEdit(item)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              commitInlineEdit(item);
+            } else if (event.key === "Escape") {
+              setInlineEditingId(null);
+            }
+          }}
+          style={{
+            width: "80px",
+            border: "1px solid var(--color-primary)",
+            borderRadius: "var(--radius-xs)",
+            backgroundColor: "var(--color-surface-2)",
+            color: "var(--color-text-primary)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-sm)",
+            padding: "3px 6px",
+            outline: "none",
+          }}
+        />
+      ) : (
+        <span
+          onClick={() => startInlineEdit(item)}
+          title="Klik untuk edit cepat"
+          style={{ cursor: "pointer", borderBottom: "1px dashed var(--color-border-mid)" }}
+        >
+          {item.jumlah_permintaan} ton
+        </span>
+      ),
     keterangan: item.keterangan?.trim() ? item.keterangan : "-",
   }));
 
@@ -370,12 +334,7 @@ function ManajemenData({ onNavigate }) {
   };
 
   return (
-    <Layout
-      title="Switera"
-      roleAwal="Admin"
-      menuAwal="manajemen-data"
-      onMenuChange={onNavigate}
-    >
+    <>
       <PageHeader
         judul="Manajemen Data Permintaan"
         deskripsi="Tinjau, ubah, atau hapus data permintaan kota yang sudah tersimpan."
@@ -426,29 +385,27 @@ function ManajemenData({ onNavigate }) {
           </SectionHeader>
 
           {tableRows.length > 0 ? (
-            <>
-              <Tabel
-                kolom={[
-                  { key: "nomorId", label: "ID" },
-                  { key: "namaKota", label: "Nama Kota" },
-                  { key: "tanggalPermintaan", label: "Tanggal Permintaan" },
-                  { key: "tanggalInput", label: "Tanggal Input" },
-                  { key: "jumlah", label: "Jumlah (ton)", numeric: true },
-                  { key: "keterangan", label: "Keterangan" },
-                ]}
-                data={tableRows}
-                aksi={(baris) => {
-                  const currentItem = filteredPermintaan.find((item) => item.id === baris.id);
+            <Tabel
+              kolom={[
+                { key: "nomorId", label: "ID" },
+                { key: "namaKota", label: "Nama Kota" },
+                { key: "tanggalPermintaan", label: "Tanggal Permintaan" },
+                { key: "tanggalInput", label: "Tanggal Input" },
+                { key: "jumlah", label: "Jumlah (ton)", numeric: true },
+                { key: "keterangan", label: "Keterangan" },
+              ]}
+              data={tableRows}
+              aksi={(baris) => {
+                const currentItem = filteredPermintaan.find((item) => item.id === baris.id);
 
-                  return (
-                    <AksiTabelButtons
-                      onEdit={() => openEditModal(currentItem)}
-                      onDelete={() => setDeleteTarget(currentItem)}
-                    />
-                  );
-                }}
-              />
-            </>
+                return (
+                  <AksiTabelButtons
+                    onEdit={() => openEditModal(currentItem)}
+                    onDelete={() => setDeleteTarget(currentItem)}
+                  />
+                );
+              }}
+            />
           ) : (
             <EmptyState pesan="Tidak ada data yang cocok dengan kata kunci pencarian kota." />
           )}
@@ -478,8 +435,8 @@ function ManajemenData({ onNavigate }) {
                 >
                   <option value="">Pilih kota</option>
                   {daftarKota.map((kota) => (
-                    <option key={kota} value={kota}>
-                      {kota}
+                    <option key={kota.nama} value={kota.nama}>
+                      {kota.nama}
                     </option>
                   ))}
                 </select>
@@ -602,44 +559,7 @@ function ManajemenData({ onNavigate }) {
           }
         />
       ) : null}
-
-      {toastMessage ? (
-        <div
-          style={{
-            position: "fixed",
-            top: "1.5rem",
-            right: "1.5rem",
-            width: "min(360px, calc(100vw - 3rem))",
-            zIndex: 1100,
-          }}
-        >
-          <Card
-            style={{
-              borderLeft: "6px solid var(--color-success)",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                color: "var(--color-text-primary)",
-                fontWeight: 700,
-              }}
-            >
-              Berhasil
-            </p>
-            <p
-              style={{
-                margin: "0.35rem 0 0",
-                color: "var(--color-text-secondary)",
-                lineHeight: 1.6,
-              }}
-            >
-              {toastMessage}
-            </p>
-          </Card>
-        </div>
-      ) : null}
-    </Layout>
+    </>
   );
 }
 

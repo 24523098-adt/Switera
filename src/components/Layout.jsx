@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "./Card";
+import IkonDaun from "./IkonDaun";
 import Modal from "./Modal";
 import Tombol from "./Tombol";
 import CommandPalette from "./CommandPalette";
 import store from "../store";
 import { menuByRole, roleOptions } from "../utils/navigation";
 import { formatWaktuRelatif } from "../utils/waktu";
-import useRipple from "../hooks/useRipple";
+import useRipple, { RippleSpans } from "../hooks/useRipple";
 
 const HEADER_HEIGHT = "52px";
 const SIDEBAR_WIDTH = "220px";
@@ -41,48 +42,11 @@ const getInisial = (nama) => {
   return huruf.join("") || "?";
 };
 
-function RippleSpans({ ripples, removeRipple }) {
-  return ripples.map((ripple) => (
-    <span
-      key={ripple.id}
-      className="ripple-span"
-      style={{ left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size }}
-      onAnimationEnd={() => removeRipple(ripple.id)}
-    />
-  ));
-}
-
 const iconStyle = {
   width: "16px",
   height: "16px",
   flexShrink: 0,
 };
-
-function IkonDaun({ size = 20, color = "var(--color-primary)" }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M39 8C25.5 8.4 13 16.7 13 29.2C13 35.2 17.8 40 23.8 40C35.7 40 41.2 25.4 39 8Z"
-        stroke={color}
-        strokeWidth="4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M11 40C16.8 27.3 25.3 19.5 36 14"
-        stroke={color}
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function IkonBel({ size = 18, color = "currentColor" }) {
   return (
@@ -99,6 +63,14 @@ function IkonBel({ size = 18, color = "currentColor" }) {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+function IkonHamburger({ size = 18, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 6H20M4 12H20M4 18H20" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -231,22 +203,13 @@ function IkonMenu({ type, color }) {
   }
 }
 
-const onPressDown = (event) => {
-  event.currentTarget.style.transform = "scale(0.97)";
-};
-
-const onPressUp = (event) => {
-  event.currentTarget.style.transform = "scale(1)";
-};
-
 function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuChange }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [isResetOpen, setIsResetOpen] = useState(false);
-  const [hoveredMenu, setHoveredMenu] = useState("");
-  const [hoveredHeaderButton, setHoveredHeaderButton] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAvatarOpen, setIsAvatarOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const notifRef = useRef(null);
   const avatarRef = useRef(null);
   const { ripples, onMouseDown: onRippleDown, removeRipple } = useRipple();
@@ -323,6 +286,7 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
   const unreadCount = notifikasiList.filter((item) => !item.dibaca).length;
 
   const handleMenuChange = (key) => {
+    setIsSidebarOpen(false);
     if (onMenuChange) {
       onMenuChange(key);
     }
@@ -340,13 +304,16 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
   return (
     <>
       <header
+        className="app-header"
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
           height: HEADER_HEIGHT,
-          backgroundColor: "var(--color-elevated)",
+          backgroundColor: "var(--color-elevated-glass)",
+          backdropFilter: "blur(14px) saturate(160%)",
+          WebkitBackdropFilter: "blur(14px) saturate(160%)",
           borderBottom: "1px solid var(--color-border-mid)",
           boxShadow: "0 1px 0 rgba(255,255,255,0.04)",
           zIndex: "var(--z-sticky)",
@@ -354,48 +321,72 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          gap: "var(--space-3)",
         }}
       >
-        <a
-          href="/"
-          onClick={(event) => {
-            event.preventDefault();
-            window.history.pushState({}, "", "/");
-            window.dispatchEvent(new PopStateEvent("popstate"));
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            cursor: "pointer",
-            textDecoration: "none",
-            color: "inherit",
-            transition: "opacity var(--transition-fast)",
-          }}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.opacity = "0.8";
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.opacity = "1";
-          }}
-        >
-          <IkonDaun />
-          <span
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", minWidth: 0 }}>
+          <button
+            type="button"
+            className="app-sidebar-toggle"
+            aria-label="Buka menu"
+            onClick={() => setIsSidebarOpen((value) => !value)}
             style={{
-              fontSize: "var(--text-md)",
-              fontWeight: "var(--font-weight-bold)",
-              letterSpacing: "-0.03em",
-              color: "var(--color-text-primary)",
-              lineHeight: 1,
+              display: "none",
+              width: "32px",
+              height: "32px",
+              flexShrink: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-sm)",
+              backgroundColor: "transparent",
+              color: "var(--color-text-secondary)",
+              cursor: "pointer",
             }}
           >
-            {title}
-          </span>
-        </a>
+            <IkonHamburger />
+          </button>
+
+          <a
+            href="/"
+            className="app-logo-link"
+            onClick={(event) => {
+              event.preventDefault();
+              window.history.pushState({}, "", "/");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              cursor: "pointer",
+              textDecoration: "none",
+              color: "inherit",
+              minWidth: 0,
+            }}
+          >
+            <IkonDaun />
+            <span
+              style={{
+                fontSize: "var(--text-md)",
+                fontWeight: "var(--font-weight-bold)",
+                letterSpacing: "-0.03em",
+                color: "var(--color-text-primary)",
+                lineHeight: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {title}
+            </span>
+          </a>
+        </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
           <button
             type="button"
+            className="app-header-search"
             onClick={() => setIsPaletteOpen(true)}
             style={{
               display: "flex",
@@ -413,29 +404,6 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
               transition:
                 "border-color var(--transition-fast), color var(--transition-fast), width var(--transition-slow)",
             }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.borderColor = "var(--color-primary)";
-              event.currentTarget.style.width = "260px";
-              event.currentTarget.style.color = "var(--color-text-secondary)";
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.borderColor = "var(--color-border-mid)";
-              event.currentTarget.style.width = "200px";
-              event.currentTarget.style.color = "var(--color-text-muted)";
-              onPressUp(event);
-            }}
-            onFocus={(event) => {
-              event.currentTarget.style.borderColor = "var(--color-primary)";
-              event.currentTarget.style.width = "260px";
-              event.currentTarget.style.color = "var(--color-text-secondary)";
-            }}
-            onBlur={(event) => {
-              event.currentTarget.style.borderColor = "var(--color-border-mid)";
-              event.currentTarget.style.width = "200px";
-              event.currentTarget.style.color = "var(--color-text-muted)";
-            }}
-            onMouseDown={onPressDown}
-            onMouseUp={onPressUp}
           >
             <IkonSearch />
             <span style={{ flex: 1, textAlign: "left" }}>Cari...</span>
@@ -455,38 +423,15 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
           <button
             type="button"
             aria-label="Ganti tema"
+            className="app-header-icon-btn icon-tema"
             onClick={() => store.toggleTema()}
-            onMouseEnter={() => setHoveredHeaderButton("tema")}
-            onMouseLeave={(event) => {
-              setHoveredHeaderButton("");
-              onPressUp(event);
-            }}
-            onMouseDown={(event) => {
-              onPressDown(event);
-              onRippleDown(event, "tema");
-            }}
-            onMouseUp={onPressUp}
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              width: "32px",
-              height: "32px",
-              display: "grid",
-              placeItems: "center",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor:
-                hoveredHeaderButton === "tema" ? "var(--color-surface-2)" : "transparent",
-              color:
-                hoveredHeaderButton === "tema" ? "var(--color-accent)" : "var(--color-text-muted)",
-              cursor: "pointer",
-              transition: "background-color var(--transition-fast), color var(--transition-fast)",
-            }}
+            onMouseDown={(event) => onRippleDown(event, "tema")}
           >
             {snapshot.tema === "dark" ? <IkonMatahari /> : <IkonBulan />}
             <RippleSpans
-              ripples={ripples.filter((ripple) => ripple.groupId === "tema")}
+              ripples={ripples}
               removeRipple={removeRipple}
+              groupId="tema"
             />
           </button>
 
@@ -494,37 +439,9 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
             <button
               type="button"
               aria-label="Notifikasi"
+              className={`app-header-icon-btn${isNotifOpen ? " is-active" : ""}`}
               onClick={() => setIsNotifOpen((value) => !value)}
-              onMouseEnter={() => setHoveredHeaderButton("notifikasi")}
-              onMouseLeave={(event) => {
-                setHoveredHeaderButton("");
-                onPressUp(event);
-              }}
-              onMouseDown={(event) => {
-                onPressDown(event);
-                onRippleDown(event, "notifikasi");
-              }}
-              onMouseUp={onPressUp}
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                width: "32px",
-                height: "32px",
-                display: "grid",
-                placeItems: "center",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor:
-                  hoveredHeaderButton === "notifikasi" || isNotifOpen
-                    ? "var(--color-surface-2)"
-                    : "transparent",
-                color:
-                  hoveredHeaderButton === "notifikasi" || isNotifOpen
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-muted)",
-                cursor: "pointer",
-                transition: "background-color var(--transition-fast), color var(--transition-fast)",
-              }}
+              onMouseDown={(event) => onRippleDown(event, "notifikasi")}
             >
               <IkonBel />
               {unreadCount > 0 ? (
@@ -551,8 +468,9 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
                 </span>
               ) : null}
               <RippleSpans
-                ripples={ripples.filter((ripple) => ripple.groupId === "notifikasi")}
+                ripples={ripples}
                 removeRipple={removeRipple}
+                groupId="notifikasi"
               />
             </button>
 
@@ -598,13 +516,9 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
                   </span>
                   <button
                     type="button"
+                    className="app-press"
                     onClick={() => store.tandaiSemuaDibaca()}
-                    onMouseDown={(event) => {
-                      onPressDown(event);
-                      onRippleDown(event, "tandai-semua");
-                    }}
-                    onMouseUp={onPressUp}
-                    onMouseLeave={onPressUp}
+                    onMouseDown={(event) => onRippleDown(event, "tandai-semua")}
                     disabled={unreadCount === 0}
                     style={{
                       position: "relative",
@@ -625,8 +539,9 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
                   >
                     Tandai semua dibaca
                     <RippleSpans
-                      ripples={ripples.filter((ripple) => ripple.groupId === "tandai-semua")}
+                      ripples={ripples}
                       removeRipple={removeRipple}
+                      groupId="tandai-semua"
                     />
                   </button>
                 </div>
@@ -649,10 +564,8 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
                       <button
                         key={item.id}
                         type="button"
+                        className="app-press"
                         onClick={() => store.tandaiDibaca(item.id)}
-                        onMouseDown={onPressDown}
-                        onMouseUp={onPressUp}
-                        onMouseLeave={onPressUp}
                         style={{
                           display: "flex",
                           width: "100%",
@@ -729,10 +642,8 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
           <div ref={avatarRef} style={{ position: "relative" }}>
             <button
               type="button"
+              className="app-press"
               onClick={() => setIsAvatarOpen((value) => !value)}
-              onMouseDown={onPressDown}
-              onMouseUp={onPressUp}
-              onMouseLeave={onPressUp}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -796,20 +707,12 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
               >
                 <button
                   type="button"
+                  className="app-dropdown-item app-press"
                   onClick={() => {
                     setIsResetOpen(true);
                     setIsAvatarOpen(false);
                   }}
                   style={dropdownItemStyle}
-                  onMouseEnter={(event) => {
-                    event.currentTarget.style.backgroundColor = "var(--color-surface-hover)";
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.backgroundColor = "transparent";
-                    onPressUp(event);
-                  }}
-                  onMouseDown={onPressDown}
-                  onMouseUp={onPressUp}
                 >
                   Reset Data
                 </button>
@@ -819,6 +722,7 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
 
           <button
             type="button"
+            className="app-logout-btn app-press"
             onClick={handleLogout}
             style={{
               backgroundColor: "transparent",
@@ -829,28 +733,29 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
               fontFamily: "var(--font-body)",
               color: "var(--color-text-muted)",
               cursor: "pointer",
-              transition: "var(--transition-base)",
             }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.color = "var(--color-danger)";
-              event.currentTarget.style.borderColor = "var(--color-danger)";
-              event.currentTarget.style.backgroundColor = "var(--color-danger-subtle)";
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.color = "var(--color-text-muted)";
-              event.currentTarget.style.borderColor = "var(--color-border)";
-              event.currentTarget.style.backgroundColor = "transparent";
-              onPressUp(event);
-            }}
-            onMouseDown={onPressDown}
-            onMouseUp={onPressUp}
           >
             Keluar
           </button>
         </div>
       </header>
 
+      <div
+        className={`app-sidebar-backdrop${isSidebarOpen ? " is-open" : ""}`}
+        onClick={() => setIsSidebarOpen(false)}
+        aria-hidden="true"
+        style={{
+          display: "none",
+          position: "fixed",
+          inset: 0,
+          top: HEADER_HEIGHT,
+          backgroundColor: "var(--color-overlay)",
+          zIndex: "calc(var(--z-sticky) - 1)",
+        }}
+      />
+
       <aside
+        className={`app-sidebar${isSidebarOpen ? " is-open" : ""}`}
         style={{
           position: "fixed",
           top: HEADER_HEIGHT,
@@ -862,6 +767,7 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
+          zIndex: "var(--z-sticky)",
         }}
       >
         <div
@@ -886,59 +792,21 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
         >
         {menuItems.map((item) => {
           const active = item.key === menuAktif;
-          const hovered = item.key === hoveredMenu;
 
           return (
             <button
               key={item.key}
               type="button"
+              className={`app-sidebar-menu-item${active ? " is-active" : ""}`}
               onClick={() => handleMenuChange(item.key)}
-              onMouseEnter={() => setHoveredMenu(item.key)}
-              onMouseLeave={(event) => {
-                setHoveredMenu("");
-                onPressUp(event);
-              }}
-              onMouseDown={(event) => {
-                onPressDown(event);
-                onRippleDown(event, item.key);
-              }}
-              onMouseUp={onPressUp}
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-2)",
-                width: "100%",
-                padding: `8px var(--space-3) 8px calc(var(--space-3) - 2px)`,
-                borderLeft: active ? "2px solid var(--color-primary)" : "2px solid transparent",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: active
-                  ? "var(--color-primary-subtle)"
-                  : hovered
-                    ? "var(--color-surface-2)"
-                    : "transparent",
-                color: active
-                  ? "var(--color-primary)"
-                  : hovered
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-secondary)",
-                boxShadow: active ? "inset 0 0 0 1px rgba(45,106,79,0.1)" : "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-body)",
-                fontSize: "var(--text-sm)",
-                fontWeight: active ? "var(--font-weight-semibold)" : "var(--font-weight-medium)",
-                userSelect: "none",
-                whiteSpace: "nowrap",
-                textAlign: "left",
-                transition: "all var(--transition-fast)",
-              }}
+              onMouseDown={(event) => onRippleDown(event, item.key)}
             >
-              <IkonMenu type={item.icon} color={active || hovered ? "var(--color-primary)" : "var(--color-text-muted)"} />
+              <IkonMenu type={item.icon} color={active ? "var(--color-primary)" : "currentColor"} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
               <RippleSpans
-                ripples={ripples.filter((ripple) => ripple.groupId === item.key)}
+                ripples={ripples}
                 removeRipple={removeRipple}
+                groupId={item.key}
               />
             </button>
           );
@@ -948,7 +816,7 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
 
       <main
         key={menuAktif}
-        className="content-main"
+        className="content-main app-main"
         style={{
           marginLeft: SIDEBAR_WIDTH,
           marginTop: HEADER_HEIGHT,

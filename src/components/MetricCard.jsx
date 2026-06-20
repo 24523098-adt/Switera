@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "./Card";
+import Sparkline from "./Sparkline";
 
 const accentColors = {
   primary: { subtle: "var(--color-primary-subtle)", solid: "var(--color-primary)" },
@@ -62,7 +63,7 @@ function useCountUp(target, duration = 800) {
   return value;
 }
 
-function MetricCard({ label, nilai, ikon, accent = "primary", shimmer = false, size = "md", trend, valueFontSize }) {
+function MetricCard({ label, nilai, ikon, accent = "primary", shimmer = false, size = "md", trend, valueFontSize, sparkline, style, children }) {
   const colors = accentColors[accent] ?? accentColors.primary;
   const parsed = useMemo(() => parseNilai(nilai), [nilai]);
   const animatedNumber = useCountUp(parsed.isNumeric ? parsed.number : 0, 800);
@@ -163,6 +164,7 @@ function MetricCard({ label, nilai, ikon, accent = "primary", shimmer = false, s
         display: "flex",
         flexDirection: "column",
         gap: "var(--space-3)",
+        ...style,
       }}
     >
       <div
@@ -217,6 +219,8 @@ function MetricCard({ label, nilai, ikon, accent = "primary", shimmer = false, s
         </p>
       </div>
 
+      {children ? <div style={{ position: "relative", flex: 1 }}>{children}</div> : null}
+
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)" }}>
         <p
           style={{
@@ -230,21 +234,24 @@ function MetricCard({ label, nilai, ikon, accent = "primary", shimmer = false, s
         >
           {label}
         </p>
-        {trend ? (
-          <span
-            style={{
-              fontSize: "var(--text-2xs)",
-              backgroundColor: colors.subtle,
-              color: colors.solid,
-              padding: "2px 8px",
-              borderRadius: "var(--radius-full)",
-              fontWeight: "var(--font-weight-semibold)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {trend}
-          </span>
-        ) : null}
+        <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexShrink: 0 }}>
+          {sparkline ? <Sparkline data={sparkline} color={colors.solid} width={56} height={18} /> : null}
+          {trend ? (
+            <span
+              style={{
+                fontSize: "var(--text-2xs)",
+                backgroundColor: colors.subtle,
+                color: colors.solid,
+                padding: "2px 8px",
+                borderRadius: "var(--radius-full)",
+                fontWeight: "var(--font-weight-semibold)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {trend}
+            </span>
+          ) : null}
+        </span>
       </div>
     </Card>
   );

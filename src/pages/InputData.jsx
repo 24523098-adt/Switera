@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../components/Card";
-import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
 import Tombol from "../components/Tombol";
+import { showToast } from "../components/Toast";
 import store from "../store";
+import { parseCsvToObjects } from "../utils/csv";
 
 function IkonCheck() {
   return (
@@ -32,10 +33,10 @@ function InputData({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-  const [toastMessage, setToastMessage] = useState("");
   const [focusedField, setFocusedField] = useState("");
   const [hoveredField, setHoveredField] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -44,18 +45,6 @@ function InputData({ onNavigate }) {
 
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (!toastMessage) {
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToastMessage("");
-    }, 3000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [toastMessage]);
 
   const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
 
@@ -125,8 +114,67 @@ function InputData({ onNavigate }) {
       setForm(initialForm);
       setErrors({});
       setIsSaving(false);
-      setToastMessage("Data permintaan berhasil disimpan.");
+      showToast({ type: "success", message: "Data permintaan berhasil disimpan." });
     }, 800);
+  };
+
+  const handleImportCsv = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    const text = await file.text();
+    const rows = parseCsvToObjects(text);
+    const namaKotaValid = new Set(daftarKota.map((kota) => kota.nama));
+
+    let berhasil = 0;
+    const gagal = [];
+
+    rows.forEach((row, index) => {
+      const kota = (row.kota ?? "").trim();
+      const tanggalPermintaan = (row.tanggal_permintaan ?? "").trim();
+      const jumlahPermintaan = Number(row.jumlah_permintaan);
+      const keterangan = (row.keterangan ?? "").trim();
+      const baris = index + 2;
+
+      if (!kota || !namaKotaValid.has(kota)) {
+        gagal.push(`Baris ${baris}: kota "${kota}" tidak ditemukan di daftar kota.`);
+        return;
+      }
+
+      if (!tanggalPermintaan || !/^\d{4}-\d{2}-\d{2}$/.test(tanggalPermintaan)) {
+        gagal.push(`Baris ${baris}: tanggal_permintaan harus berformat YYYY-MM-DD.`);
+        return;
+      }
+
+      if (!jumlahPermintaan || jumlahPermintaan <= 0) {
+        gagal.push(`Baris ${baris}: jumlah_permintaan harus lebih dari 0.`);
+        return;
+      }
+
+      if (store.hasPermintaanDuplikat({ kota, tanggalPermintaan })) {
+        gagal.push(`Baris ${baris}: data ${kota} pada ${tanggalPermintaan} sudah ada.`);
+        return;
+      }
+
+      store.addPermintaan({
+        kota,
+        tanggal_permintaan: tanggalPermintaan,
+        tanggal_input: getTodayKey(),
+        jumlah_permintaan: jumlahPermintaan,
+        keterangan,
+      });
+      berhasil += 1;
+    });
+
+    setImportResult({ berhasil, gagal });
+
+    if (berhasil > 0) {
+      showToast({ type: "success", message: `${berhasil} data permintaan berhasil diimpor.` });
+    }
   };
 
   const fieldBaseStyle = {
@@ -185,15 +233,7 @@ function InputData({ onNavigate }) {
   };
 
   return (
-    <Layout title="Switera" roleAwal="Admin" menuAwal="input-data" onMenuChange={onNavigate}>
-      <style>
-        {`
-          @keyframes toastSlideIn {
-            from { opacity: 0; transform: translateX(24px); }
-            to { opacity: 1; transform: translateX(0); }
-          }
-        `}
-      </style>
+    <>
       <PageHeader
         judul="Input Data Permintaan Kota"
         deskripsi="Isi permintaan TBS per kota sebagai dasar ranking dan keputusan distribusi."
@@ -214,6 +254,7 @@ function InputData({ onNavigate }) {
         >
           <form onSubmit={handleSubmit}>
             <div
+              className="app-grid-2"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
@@ -221,8 +262,9 @@ function InputData({ onNavigate }) {
               }}
             >
               <div>
-                <label style={labelStyle}>Nama Kota</label>
+                <label htmlFor="input-kota" style={labelStyle}>Nama Kota</label>
                 <select
+                  id="input-kota"
                   className="field-select"
                   value={form.kota}
                   onChange={(event) => handleChange("kota", event.target.value)}
@@ -231,8 +273,8 @@ function InputData({ onNavigate }) {
                 >
                   <option value="">⚑ Pilih kota</option>
                   {daftarKota.map((kota) => (
-                    <option key={kota} value={kota}>
-                      ⚑ {kota}
+                    <option key={kota.nama} value={kota.nama}>
+                      ⚑ {kota.nama}
                     </option>
                   ))}
                 </select>
@@ -240,8 +282,9 @@ function InputData({ onNavigate }) {
               </div>
 
               <div>
-                <label style={labelStyle}>Tanggal Permintaan</label>
+                <label htmlFor="input-tanggal-permintaan" style={labelStyle}>Tanggal Permintaan</label>
                 <input
+                  id="input-tanggal-permintaan"
                   type="date"
                   value={form.tanggalPermintaan}
                   onChange={(event) =>
@@ -257,8 +300,9 @@ function InputData({ onNavigate }) {
             </div>
 
             <div style={{ marginTop: "var(--space-4)" }}>
-              <label style={labelStyle}>Jumlah Permintaan dalam ton</label>
+              <label htmlFor="input-jumlah-permintaan" style={labelStyle}>Jumlah Permintaan dalam ton</label>
               <input
+                id="input-jumlah-permintaan"
                 type="number"
                 className="field-no-spinner"
                 min="1"
@@ -276,8 +320,9 @@ function InputData({ onNavigate }) {
             </div>
 
             <div style={{ marginTop: "var(--space-4)" }}>
-              <label style={labelStyle}>Keterangan</label>
+              <label htmlFor="input-keterangan" style={labelStyle}>Keterangan</label>
               <textarea
+                id="input-keterangan"
                 rows="5"
                 value={form.keterangan}
                 onChange={(event) => handleChange("keterangan", event.target.value)}
@@ -316,34 +361,62 @@ function InputData({ onNavigate }) {
             </div>
           </form>
         </Card>
-      </div>
 
-      {toastMessage ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "var(--space-6)",
-            right: "var(--space-6)",
-            zIndex: "var(--z-toast)",
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            backgroundColor: "var(--color-success-subtle)",
-            border: "1px solid rgba(48,164,108,0.3)",
-            color: "var(--color-success)",
-            borderRadius: "var(--radius-md)",
-            boxShadow: "var(--shadow-lg)",
-            padding: "var(--space-3) var(--space-5)",
-            fontSize: "var(--text-sm)",
-            maxWidth: "min(360px, calc(100vw - 3rem))",
-            animation: "toastSlideIn 300ms ease",
-          }}
-        >
-          <IkonCheck />
-          {toastMessage}
-        </div>
-      ) : null}
-    </Layout>
+        <Card style={{ marginTop: "var(--space-6)" }}>
+          <p
+            style={{
+              margin: "0 0 0.75rem",
+              fontSize: "var(--text-sm)",
+              fontWeight: "var(--font-weight-semibold)",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Impor Data Massal (CSV)
+          </p>
+          <p style={{ margin: "0 0 1rem", color: "var(--color-text-secondary)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
+            Unggah file CSV dengan kolom <code>kota,tanggal_permintaan,jumlah_permintaan,keterangan</code>{" "}
+            (format tanggal YYYY-MM-DD) untuk menambahkan banyak data permintaan sekaligus.
+          </p>
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              border: "1px solid var(--color-border-mid)",
+              borderRadius: "var(--radius-sm)",
+              backgroundColor: "var(--color-surface-2)",
+              color: "var(--color-text-primary)",
+              fontSize: "var(--text-sm)",
+              padding: "9px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Pilih File CSV
+            <input type="file" accept=".csv,text/csv" onChange={handleImportCsv} style={{ display: "none" }} />
+          </label>
+
+          {importResult ? (
+            <div style={{ marginTop: "1rem" }}>
+              <p style={{ margin: 0, color: "var(--color-success)", fontSize: "var(--text-sm)" }}>
+                {importResult.berhasil} data berhasil diimpor.
+              </p>
+              {importResult.gagal.length > 0 ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <p style={{ margin: "0 0 4px", color: "var(--color-danger)", fontSize: "var(--text-sm)" }}>
+                    {importResult.gagal.length} baris gagal diimpor:
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: "1.2rem", color: "var(--color-text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.6 }}>
+                    {importResult.gagal.map((pesan) => (
+                      <li key={pesan}>{pesan}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
+      </div>
+    </>
   );
 }
 

@@ -28,15 +28,16 @@ const akunSeed = [
   },
 ];
 const kotaSeed = [
-  "Pekanbaru",
-  "Medan",
-  "Palembang",
-  "Jambi",
-  "Padang",
-  "Dumai",
-  "Bengkalis",
-  "Rokan Hilir",
+  { nama: "Pekanbaru", kapasitas: 320 },
+  { nama: "Medan", kapasitas: 280 },
+  { nama: "Palembang", kapasitas: 220 },
+  { nama: "Jambi", kapasitas: 190 },
+  { nama: "Padang", kapasitas: 170 },
+  { nama: "Dumai", kapasitas: 150 },
+  { nama: "Bengkalis", kapasitas: 110 },
+  { nama: "Rokan Hilir", kapasitas: 140 },
 ];
+const stokTbsSeed = 150;
 const statusLabelMap = {
   menunggu: "Menunggu",
   "dalam-pengiriman": "Dalam Pengiriman",
@@ -59,22 +60,68 @@ const getNextId = (items, prefix) => {
   return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
 };
 
+const STORAGE_KEY = "switera_state_v1";
+
+const loadPersisted = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const persisted = loadPersisted();
+
+const isLegacyDaftarKota = (value) =>
+  !Array.isArray(value) || value.some((item) => typeof item === "string");
+
+const getSystemPreferredTema = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "dark";
+  }
+
+  try {
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+};
+
 const state = {
-  userAktif: null,
-  daftarAkun: clone(akunSeed),
-  roleAktif: roleSeed,
-  tema: "dark",
-  daftarKota: clone(kotaSeed),
-  permintaan: normalizePermintaanList(clone(permintaanSeed)),
-  keputusan: clone(keputusanSeed),
-  riwayatKeputusan: clone(keputusanSeed),
-  notifikasi: clone(notifikasiSeed),
-  activityLog: clone(activityLogSeed),
+  userAktif: persisted?.userAktif ?? null,
+  daftarAkun: persisted?.daftarAkun ?? clone(akunSeed),
+  roleAktif: persisted?.roleAktif ?? roleSeed,
+  tema: persisted?.tema ?? getSystemPreferredTema(),
+  daftarKota: isLegacyDaftarKota(persisted?.daftarKota) ? clone(kotaSeed) : persisted.daftarKota,
+  stokTbs: typeof persisted?.stokTbs === "number" ? persisted.stokTbs : stokTbsSeed,
+  permintaan: persisted?.permintaan ?? normalizePermintaanList(clone(permintaanSeed)),
+  keputusan: persisted?.keputusan ?? clone(keputusanSeed),
+  riwayatKeputusan: persisted?.riwayatKeputusan ?? clone(keputusanSeed),
+  notifikasi: persisted?.notifikasi ?? clone(notifikasiSeed),
+  activityLog: persisted?.activityLog ?? clone(activityLogSeed),
+};
+
+const persistState = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // localStorage unavailable (private mode/quota) — continue without persistence
+  }
 };
 
 const listeners = new Set();
 
 const notify = () => {
+  persistState();
   const snapshot = store.getState();
   listeners.forEach((listener) => listener(snapshot));
 };
@@ -193,6 +240,49 @@ export const store = {
     return clone(state.daftarKota);
   },
 
+  getKapasitasKota(namaKota) {
+    return state.daftarKota.find((kota) => kota.nama === namaKota)?.kapasitas ?? null;
+  },
+
+  tambahKota({ nama, kapasitas }) {
+    if (state.daftarKota.some((kota) => kota.nama === nama)) {
+      throw new Error("Kota dengan nama tersebut sudah ada.");
+    }
+
+    state.daftarKota = [...state.daftarKota, { nama, kapasitas: Number(kapasitas) || 0 }];
+    recordActivity(`Menambahkan kota ${nama} ke daftar kota`);
+    notify();
+    return clone(state.daftarKota);
+  },
+
+  updateKota(namaLama, { nama, kapasitas }) {
+    state.daftarKota = state.daftarKota.map((kota) =>
+      kota.nama === namaLama ? { nama, kapasitas: Number(kapasitas) || 0 } : kota
+    );
+    recordActivity(`Memperbarui data kota ${namaLama}`);
+    notify();
+    return clone(state.daftarKota);
+  },
+
+  hapusKota(nama) {
+    state.daftarKota = state.daftarKota.filter((kota) => kota.nama !== nama);
+    recordActivity(`Menghapus kota ${nama} dari daftar kota`);
+    notify();
+    return clone(state.daftarKota);
+  },
+
+  getStokTbs() {
+    return state.stokTbs;
+  },
+
+  setStokTbs(value) {
+    const numericValue = Number(value) || 0;
+    state.stokTbs = numericValue;
+    recordActivity(`Memperbarui stok TBS tersedia menjadi ${numericValue} ton`);
+    notify();
+    return state.stokTbs;
+  },
+
   getRoleAktif() {
     return state.roleAktif;
   },
@@ -223,6 +313,8 @@ export const store = {
   },
 
   addPermintaan(entry) {
+    const riwayatSebelumnya = state.permintaan.filter((item) => item.kota === entry.kota);
+
     const hasil = updateCollection("permintaan", (items) => [
       ...items,
       {
@@ -236,6 +328,23 @@ export const store = {
       pesan: `Data permintaan ${entry.jumlah_permintaan} ton untuk kota ${entry.kota} berhasil ditambahkan.`,
       tipe: "info",
     });
+
+    if (riwayatSebelumnya.length > 0) {
+      const rataRataSebelumnya =
+        riwayatSebelumnya.reduce((total, item) => total + (Number(item.jumlah_permintaan) || 0), 0) /
+        riwayatSebelumnya.length;
+      const nilaiBaru = Number(entry.jumlah_permintaan) || 0;
+      const batasAnomali = rataRataSebelumnya * 1.5;
+
+      if (rataRataSebelumnya > 0 && nilaiBaru > batasAnomali) {
+        pushNotifikasi({
+          judul: "Anomali permintaan terdeteksi",
+          pesan: `Permintaan kota ${entry.kota} (${nilaiBaru} ton) melebihi rata-rata historisnya (${Math.round(rataRataSebelumnya)} ton) lebih dari 50%.`,
+          tipe: "warning",
+        });
+      }
+    }
+
     recordActivity(`Menambahkan data permintaan kota ${entry.kota}`);
     notify();
 
@@ -279,6 +388,7 @@ export const store = {
     const keputusanBaru = {
       ...clone(entry),
       id: entry.id ?? getNextId(state.riwayatKeputusan, "KPT"),
+      [`waktu_${entry.status ?? "menunggu"}`]: new Date().toISOString(),
     };
 
     state.keputusan = [...state.keputusan, keputusanBaru];
@@ -300,6 +410,10 @@ export const store = {
       Object.prototype.hasOwnProperty.call(normalizedUpdates, "status") &&
       existing &&
       existing.status !== normalizedUpdates.status;
+
+    if (statusBerubah) {
+      normalizedUpdates[`waktu_${normalizedUpdates.status}`] = new Date().toISOString();
+    }
 
     state.keputusan = state.keputusan.map((item) =>
       item.id === id ? { ...item, ...normalizedUpdates } : item
@@ -328,12 +442,23 @@ export const store = {
 
   removeKeputusan(id) {
     const item = state.keputusan.find((entry) => entry.id === id);
+    const waktuDibatalkan = new Date().toISOString();
 
     state.riwayatKeputusan = state.riwayatKeputusan.map((entry) =>
-      entry.id === id ? { ...entry, status: "dibatalkan" } : entry
+      entry.id === id ? { ...entry, status: "dibatalkan", waktu_dibatalkan: waktuDibatalkan } : entry
     );
     state.keputusan = state.keputusan.filter((entry) => entry.id !== id);
     recordActivity(`Membatalkan keputusan distribusi kota ${item?.kota_tujuan ?? id}`);
+    notify();
+    return clone(state.keputusan);
+  },
+
+  restoreKeputusan(item) {
+    state.keputusan = [...state.keputusan, clone(item)];
+    state.riwayatKeputusan = state.riwayatKeputusan.map((entry) =>
+      entry.id === item.id ? clone(item) : entry
+    );
+    recordActivity(`Mengembalikan keputusan distribusi kota ${item.kota_tujuan}`);
     notify();
     return clone(state.keputusan);
   },

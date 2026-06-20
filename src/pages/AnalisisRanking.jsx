@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import { SkeletonChart } from "../components/Skeleton";
 import store from "../store";
@@ -13,17 +14,7 @@ import {
   withOpacity,
 } from "../utils/chartDefaults";
 import { aggregatePermintaanRanking } from "../utils/distribusi";
-
-const formatterAngka = new Intl.NumberFormat("id-ID");
-const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-const formatTonase = (value) => `${formatterAngka.format(value)} ton`;
-const formatDate = (value) =>
-  value ? formatterTanggal.format(new Date(`${value}T00:00:00`)) : "-";
+import { formatDate, formatTonase } from "../utils/format";
 
 const getRankColor = (rank) => {
   if (rank === 1) {
@@ -40,26 +31,6 @@ const getRankColor = (rank) => {
 
   return { backgroundColor: "var(--color-surface-2)", color: "var(--color-text-secondary)" };
 };
-
-function SectionHeader({ children }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        marginBottom: "var(--space-3)",
-        paddingBottom: "var(--space-3)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "var(--text-sm)",
-        fontWeight: "var(--font-weight-semibold)",
-        color: "var(--color-text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
 
 function GrafikRankingHorizontal({ ranking }) {
   const canvasRef = useRef(null);

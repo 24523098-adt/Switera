@@ -13,9 +13,9 @@ function dismissToast(id) {
   notify();
 }
 
-function showToast({ type = "info", message, subMessage, duration = 3000 }) {
+function showToast({ type = "info", message, subMessage, duration = 3000, action }) {
   const id = ++idCounter;
-  toasts = [...toasts, { id, type, message, subMessage, duration }];
+  toasts = [...toasts, { id, type, message, subMessage, duration, action }];
   notify();
 
   if (duration > 0) {
@@ -82,26 +82,23 @@ function ToastItem({ toast }) {
           </p>
         ) : null}
       </div>
+      {toast.action ? (
+        <button
+          type="button"
+          className="toast-action-btn"
+          onClick={() => {
+            toast.action.onClick();
+            dismissToast(toast.id);
+          }}
+        >
+          {toast.action.label}
+        </button>
+      ) : null}
       <button
         type="button"
+        className="toast-dismiss-btn"
         onClick={() => dismissToast(toast.id)}
         aria-label="Tutup"
-        style={{
-          border: "none",
-          background: "transparent",
-          color: "var(--color-text-muted)",
-          cursor: "pointer",
-          fontSize: "var(--text-md)",
-          lineHeight: 1,
-          padding: 0,
-          flexShrink: 0,
-        }}
-        onMouseEnter={(event) => {
-          event.currentTarget.style.color = "var(--color-text-primary)";
-        }}
-        onMouseLeave={(event) => {
-          event.currentTarget.style.color = "var(--color-text-muted)";
-        }}
       >
         ×
       </button>
@@ -143,6 +140,9 @@ function ToastContainer() {
 
   return (
     <div
+      role="region"
+      aria-live="polite"
+      aria-label="Notifikasi"
       style={{
         position: "fixed",
         bottom: "var(--space-6)",

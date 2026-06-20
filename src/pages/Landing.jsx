@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useRipple from "../hooks/useRipple";
 import Login from "./Login";
 import Register from "./Register";
+import PetaGeografis from "../components/PetaGeografis";
+import store from "../store";
+import { aggregatePermintaanRanking } from "../utils/distribusi";
 
 const FITUR_LIST = [
   {
@@ -98,10 +101,33 @@ const LANGKAH_LIST = [
 ];
 
 const STATISTIK_LIST = [
-  { nilai: "8", label: "Kota Terpantau" },
-  { nilai: "20+", label: "Data Permintaan" },
-  { nilai: "<1 Detik", label: "Analisis Ranking" },
-  { nilai: "3 Role", label: "Akses Terstruktur" },
+  { nilai: "8", label: "Kota Terpantau", icon: "kota" },
+  { nilai: "20+", label: "Data Permintaan", icon: "data" },
+  { nilai: "<1 Detik", label: "Analisis Ranking", icon: "kecepatan" },
+  { nilai: "3 Role", label: "Akses Terstruktur", icon: "role" },
+];
+
+const FAQ_LIST = [
+  {
+    pertanyaan: "Apakah Switera bisa digunakan oleh banyak role sekaligus?",
+    jawaban:
+      "Ya. Switera mendukung tiga role: Admin, Manajer Distribusi, dan Tim Logistik. Setiap role memiliki akses dan tampilan menu yang berbeda sesuai tanggung jawabnya.",
+  },
+  {
+    pertanyaan: "Bagaimana sistem menentukan rekomendasi kota tujuan?",
+    jawaban:
+      "Sistem menghitung skor gabungan dari total permintaan dan kapasitas kota, lalu menyarankan kota dengan skor tertinggi sebagai tujuan distribusi yang paling efisien.",
+  },
+  {
+    pertanyaan: "Apakah data yang sudah diinput bisa diubah kembali?",
+    jawaban:
+      "Bisa. Admin dapat mengedit atau menghapus data permintaan kapan saja melalui halaman Manajemen Data, dan perubahannya langsung tercermin di seluruh halaman terkait.",
+  },
+  {
+    pertanyaan: "Apakah riwayat keputusan distribusi tersimpan secara permanen?",
+    jawaban:
+      "Ya. Seluruh keputusan distribusi, termasuk yang dibatalkan, tetap tercatat pada halaman Laporan untuk keperluan audit dan evaluasi di kemudian hari.",
+  },
 ];
 
 function IkonDaun({ size = 22, color = "var(--color-primary)" }) {
@@ -259,29 +285,115 @@ function RippleSpans({ ripples, removeRipple }) {
   ));
 }
 
-const TONE_STYLES = {
-  primer: {
-    backgroundColor: "#fff",
-    color: "#000",
-    border: "1px solid transparent",
-  },
-  sekunder: {
-    backgroundColor: "transparent",
-    color: "var(--color-text-primary)",
-    border: "1px solid var(--color-border-mid)",
-  },
-  ghost: {
-    backgroundColor: "transparent",
-    color: "rgba(255,255,255,0.5)",
-    border: "1px solid transparent",
-  },
-};
+function StatIcon({ type }) {
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", "aria-hidden": true };
+  const stroke = "var(--color-primary)";
 
-const HOVER_STYLES = {
-  primer: { backgroundColor: "rgba(255,255,255,0.88)", color: "#000", transform: "scale(1.02)" },
-  sekunder: { backgroundColor: "var(--color-surface-3)", color: "var(--color-text-primary)", transform: "translateY(-1px)" },
-  ghost: { backgroundColor: "var(--color-surface-hover)", color: "rgba(255,255,255,0.85)", transform: "translateY(-1px)" },
-};
+  switch (type) {
+    case "kota":
+      return (
+        <svg {...common}>
+          <path
+            d="M12 21C12 21 19 14.5 19 9.5C19 5.35786 15.6421 2 12 2C8.35786 2 5 5.35786 5 9.5C5 14.5 12 21 12 21Z"
+            stroke={stroke}
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <circle cx="12" cy="9.5" r="2.5" stroke={stroke} strokeWidth="1.8" />
+        </svg>
+      );
+    case "data":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="6" rx="7" ry="3" stroke={stroke} strokeWidth="1.8" />
+          <path d="M5 6V18C5 19.6569 8.13401 21 12 21C15.866 21 19 19.6569 19 18V6" stroke={stroke} strokeWidth="1.8" />
+        </svg>
+      );
+    case "kecepatan":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" stroke={stroke} strokeWidth="1.8" />
+          <path d="M12 7V12L15.5 14" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "role":
+    default:
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" stroke={stroke} strokeWidth="1.8" />
+          <path
+            d="M3.5 19C4.8 15.8 6.8 14 9 14C11.2 14 13.2 15.8 14.5 19"
+            stroke={stroke}
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <circle cx="17" cy="7" r="2.3" stroke={stroke} strokeWidth="1.6" />
+        </svg>
+      );
+  }
+}
+
+function FaqItem({ pertanyaan, jawaban, isOpen, onToggle }) {
+  return (
+    <div style={{ borderBottom: "1px solid var(--color-border)" }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          background: "transparent",
+          border: "none",
+          padding: "20px 4px",
+          textAlign: "left",
+          cursor: "pointer",
+          color: "#fff",
+          fontFamily: "var(--font-display)",
+          fontSize: "16px",
+          fontWeight: "var(--font-weight-semibold)",
+        }}
+      >
+        {pertanyaan}
+        <span
+          aria-hidden="true"
+          style={{
+            flexShrink: 0,
+            display: "inline-flex",
+            transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
+            transition: "transform var(--transition-base)",
+            color: "var(--color-primary)",
+            fontSize: "20px",
+            lineHeight: 1,
+          }}
+        >
+          +
+        </span>
+      </button>
+      <div
+        style={{
+          maxHeight: isOpen ? "200px" : "0px",
+          overflow: "hidden",
+          transition: "max-height var(--transition-base)",
+        }}
+      >
+        <p
+          style={{
+            margin: "0 4px 20px",
+            color: "rgba(255,255,255,0.45)",
+            fontSize: "14px",
+            lineHeight: "1.7",
+          }}
+        >
+          {jawaban}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const SIZE_STYLES = {
   sm: { padding: "7px 16px", fontSize: "var(--text-xs)" },
@@ -290,44 +402,14 @@ const SIZE_STYLES = {
 
 function LandingButton({ label, onClick, tone = "primer", size = "md", iconRight, style }) {
   const { ripples, onMouseDown, removeRipple } = useRipple();
-  const [hovered, setHovered] = useState(false);
-  const [pressed, setPressed] = useState(false);
-  const hoverStyle = hovered ? HOVER_STYLES[tone] : null;
 
   return (
     <button
       type="button"
+      className={`landing-btn landing-btn-${tone}`}
       onClick={onClick}
-      onMouseDown={(event) => {
-        setPressed(true);
-        onMouseDown(event);
-      }}
-      onMouseUp={() => setPressed(false)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => {
-        setHovered(false);
-        setPressed(false);
-      }}
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: "var(--radius-sm)",
-        cursor: "pointer",
-        fontFamily: "var(--font-body)",
-        fontWeight: "var(--font-weight-semibold)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "6px",
-        whiteSpace: "nowrap",
-        transition: "all var(--transition-base)",
-        transform: pressed ? "scale(0.97)" : hoverStyle ? hoverStyle.transform : "translateY(0)",
-        backgroundColor: hoverStyle ? hoverStyle.backgroundColor : TONE_STYLES[tone].backgroundColor,
-        color: hoverStyle ? hoverStyle.color : TONE_STYLES[tone].color,
-        border: TONE_STYLES[tone].border,
-        ...SIZE_STYLES[size],
-        ...style,
-      }}
+      onMouseDown={onMouseDown}
+      style={{ ...SIZE_STYLES[size], ...style }}
     >
       {label}
       {iconRight}
@@ -766,6 +848,10 @@ function Landing({ onNavigate }) {
   const [scrolled, setScrolled] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState(0);
+
+  const rankingDemo = useMemo(() => aggregatePermintaanRanking(store.getPermintaan()), []);
+  const daftarKotaDemo = useMemo(() => store.getDaftarKota(), []);
 
   const openLogin = () => {
     setShowRegisterModal(false);
@@ -938,9 +1024,7 @@ function Landing({ onNavigate }) {
               event.preventDefault();
               scrollToId("fitur");
             }}
-            style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", textDecoration: "none", transition: "color 150ms" }}
-            onMouseEnter={(event) => (event.currentTarget.style.color = "#fff")}
-            onMouseLeave={(event) => (event.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+            className="landing-nav-link"
           >
             Fitur
           </a>
@@ -950,11 +1034,29 @@ function Landing({ onNavigate }) {
               event.preventDefault();
               scrollToId("cara-kerja");
             }}
-            style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", textDecoration: "none", transition: "color 150ms" }}
-            onMouseEnter={(event) => (event.currentTarget.style.color = "#fff")}
-            onMouseLeave={(event) => (event.currentTarget.style.color = "rgba(255,255,255,0.55)")}
+            className="landing-nav-link"
           >
             Cara Kerja
+          </a>
+          <a
+            href="#peta"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToId("peta");
+            }}
+            className="landing-nav-link"
+          >
+            Peta
+          </a>
+          <a
+            href="#faq"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToId("faq");
+            }}
+            className="landing-nav-link"
+          >
+            FAQ
           </a>
         </nav>
 
@@ -1103,6 +1205,9 @@ function Landing({ onNavigate }) {
             {STATISTIK_LIST.map((stat, index) => (
               <div key={stat.label} style={{ display: "flex", alignItems: "center", gap: "64px" }}>
                 <div style={{ textAlign: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
+                    <StatIcon type={stat.icon} />
+                  </div>
                   <div
                     style={{
                       fontFamily: "var(--font-display)",
@@ -1313,6 +1418,78 @@ function Landing({ onNavigate }) {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section
+        id="peta"
+        style={{
+          padding: "120px 48px",
+          backgroundColor: "var(--color-bg)",
+          borderTop: "1px solid var(--color-border)",
+        }}
+      >
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <Reveal>
+            <div style={{ maxWidth: "640px", margin: "0 auto 56px" }}>
+              <p style={sectionLabelStyle}>Jangkauan Distribusi</p>
+              <h2 style={sectionHeadingStyle}>Peta Distribusi TBS</h2>
+              <p style={sectionSubtextStyle}>
+                Visualisasi geografis kota-kota yang dipantau Switera beserta volume
+                permintaan saat ini.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <div
+              style={{
+                border: "1px solid var(--color-border-mid)",
+                borderRadius: "14px",
+                overflow: "hidden",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+              }}
+            >
+              <PetaGeografis ranking={rankingDemo} daftarKota={daftarKotaDemo} />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section
+        id="faq"
+        style={{
+          padding: "120px 48px",
+          backgroundColor: "var(--color-surface)",
+          borderTop: "1px solid var(--color-border)",
+        }}
+      >
+        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+          <Reveal>
+            <div style={{ maxWidth: "640px", margin: "0 auto 48px" }}>
+              <p style={sectionLabelStyle}>FAQ</p>
+              <h2 style={sectionHeadingStyle}>Pertanyaan Umum</h2>
+              <p style={sectionSubtextStyle}>
+                Jawaban singkat untuk pertanyaan yang paling sering diajukan.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <div>
+              {FAQ_LIST.map((faq, index) => (
+                <FaqItem
+                  key={faq.pertanyaan}
+                  pertanyaan={faq.pertanyaan}
+                  jawaban={faq.jawaban}
+                  isOpen={openFaqIndex === index}
+                  onToggle={() =>
+                    setOpenFaqIndex((current) => (current === index ? -1 : index))
+                  }
+                />
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 

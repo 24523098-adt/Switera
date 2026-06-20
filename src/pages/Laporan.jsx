@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Badge from "../components/Badge";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
-import Layout from "../components/Layout";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
+import Tombol from "../components/Tombol";
 import { SkeletonChart } from "../components/Skeleton";
 import store from "../store";
 import {
@@ -20,17 +21,8 @@ import {
   isDateInRange,
   parseDate,
 } from "../utils/distribusi";
-
-const formatterTanggal = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-const formatterAngka = new Intl.NumberFormat("id-ID");
-
-const formatDate = (value) => formatterTanggal.format(parseDate(value));
-const formatTonase = (value) => `${formatterAngka.format(value)} ton`;
+import { downloadCsv } from "../utils/csv";
+import { formatDate, formatTonase } from "../utils/format";
 
 const roleOptions = ["Manajer Distribusi", "Tim Logistik"];
 
@@ -38,26 +30,6 @@ const periodeOptions = [
   ["minggu-ini", "Minggu ini"],
   ["bulan-ini", "Bulan ini"],
 ];
-
-function SectionHeader({ children }) {
-  return (
-    <p
-      style={{
-        margin: 0,
-        marginBottom: "var(--space-3)",
-        paddingBottom: "var(--space-3)",
-        borderBottom: "1px solid var(--color-border)",
-        fontSize: "var(--text-sm)",
-        fontWeight: "var(--font-weight-semibold)",
-        color: "var(--color-text-secondary)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
 
 function PeriodePills({ value, onChange }) {
   return (
@@ -297,17 +269,34 @@ function Laporan({ onNavigate }) {
   const noData =
     filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
 
+  const handleExportCsv = () => {
+    const rows = filteredRiwayat.map((item) => ({
+      tanggal: item.tanggal_keputusan,
+      kota_tujuan: item.kota_tujuan,
+      volume_tbs: item.volume_tbs,
+      diputuskan_oleh: item.diputuskan_oleh,
+      status: item.status,
+    }));
+
+    downloadCsv(`laporan-distribusi-${periode}.csv`, rows);
+  };
+
   return (
-    <Layout
-      title="Switera"
-      roleAwal={roleAktif}
-      menuAwal="laporan"
-      onMenuChange={onNavigate}
-    >
+    <>
       <PageHeader
         judul="Laporan Distribusi"
         deskripsi="Riwayat keputusan bersifat permanen dan tetap tersedia untuk audit periode sebelumnya."
-        aksi={<PeriodePills value={periode} onChange={setPeriode} />}
+        aksi={
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
+            <PeriodePills value={periode} onChange={setPeriode} />
+            <Tombol
+              label="Ekspor CSV"
+              variant="sekunder"
+              onClick={handleExportCsv}
+              disabled={filteredRiwayat.length === 0}
+            />
+          </div>
+        }
       />
       <div
         style={{
@@ -360,7 +349,7 @@ function Laporan({ onNavigate }) {
           </>
         )}
       </div>
-    </Layout>
+    </>
   );
 }
 
