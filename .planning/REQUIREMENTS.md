@@ -71,30 +71,30 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ADMIN-01 | TBD | Pending |
-| ADMIN-02 | TBD | Pending |
-| ADMIN-03 | TBD | Pending |
-| ADMIN-04 | TBD | Pending |
-| ADMIN-05 | TBD | Pending |
-| ADMIN-06 | TBD | Pending |
-| REPORT-01 | TBD | Pending |
-| REPORT-02 | TBD | Pending |
-| REPORT-03 | TBD | Pending |
-| VALID-01 | TBD | Pending |
-| VALID-02 | TBD | Pending |
-| VALID-03 | TBD | Pending |
-| VALID-04 | TBD | Pending |
-| DESIGN-01 | TBD | Pending |
-| DESIGN-02 | TBD | Pending |
-| DESIGN-03 | TBD | Pending |
-| DESIGN-04 | TBD | Pending |
-| AUDIT-01 | TBD | Pending |
+| ADMIN-01 | Phase 1 | Pending |
+| ADMIN-02 | Phase 1 | Pending |
+| ADMIN-03 | Phase 1 | Pending |
+| ADMIN-04 | Phase 1 | Pending |
+| ADMIN-05 | Phase 1 | Pending |
+| ADMIN-06 | Phase 1 | Pending |
+| REPORT-01 | Phase 2 | Pending |
+| REPORT-02 | Phase 2 | Pending |
+| REPORT-03 | Phase 2 | Pending |
+| VALID-01 | Phase 3 | Pending |
+| VALID-02 | Phase 3 | Pending |
+| VALID-03 | Phase 3 | Pending |
+| VALID-04 | Phase 3 | Pending |
+| DESIGN-01 | Phase 4 | Pending |
+| DESIGN-02 | Phase 4 | Pending |
+| DESIGN-03 | Phase 4 | Pending |
+| DESIGN-04 | Phase 4 | Pending |
+| AUDIT-01 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 18 ⚠️ (expected before roadmap step)
+- Mapped to phases: 18/18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-21*
-*Last updated: 2026-06-21 after initial definition*
+*Last updated: 2026-06-21 after roadmap creation (18/18 requirements mapped across 5 phases)*
