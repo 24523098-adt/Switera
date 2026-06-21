@@ -94,6 +94,8 @@ function ManajemenKota({ onNavigate }) {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [stockValue, setStockValue] = useState("");
   const [stockError, setStockError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [blockedTarget, setBlockedTarget] = useState(null);
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -179,6 +181,26 @@ function ManajemenKota({ onNavigate }) {
     }
   };
 
+  const requestDelete = (kota) => {
+    const { permintaanCount, keputusanCount } = store.getKotaReferenceCounts(kota.nama);
+
+    if (permintaanCount > 0 || keputusanCount > 0) {
+      setBlockedTarget({ ...kota, permintaanCount, keputusanCount });
+    } else {
+      setDeleteTarget(kota);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    store.hapusKota(deleteTarget.nama);
+    setDeleteTarget(null);
+    showToast({ type: "success", message: "Kota berhasil dihapus." });
+  };
+
   const openStockModal = () => {
     setStockValue(String(snapshot.stokTbs ?? 0));
     setStockError("");
@@ -239,7 +261,7 @@ function ManajemenKota({ onNavigate }) {
                 return (
                   <AksiTabelButtons
                     onEdit={() => openEditModal(currentItem)}
-                    onDelete={() => {}}
+                    onDelete={() => requestDelete(currentItem)}
                   />
                 );
               }}
@@ -350,6 +372,85 @@ function ManajemenKota({ onNavigate }) {
                   onClick={() => setIsStockModalOpen(false)}
                 />
                 <Tombol label="Simpan" onClick={submitStock} />
+              </div>
+            </div>
+          }
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <Modal
+          judul="Hapus Kota"
+          onTutup={() => setDeleteTarget(null)}
+          konten={
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              <p style={{ margin: 0, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Kota{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>
+                  {deleteTarget.nama}
+                </strong>{" "}
+                akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Tombol
+                  label="Batal"
+                  variant="sekunder"
+                  onClick={() => setDeleteTarget(null)}
+                />
+                <Tombol label="Ya, Hapus" variant="bahaya" onClick={confirmDelete} />
+              </div>
+            </div>
+          }
+        />
+      ) : null}
+
+      {blockedTarget ? (
+        <Modal
+          judul="Tidak Bisa Menghapus Kota"
+          onTutup={() => setBlockedTarget(null)}
+          konten={
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              <p style={{ margin: 0, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Kota{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>
+                  {blockedTarget.nama}
+                </strong>{" "}
+                tidak bisa dihapus karena masih digunakan oleh {blockedTarget.permintaanCount}{" "}
+                permintaan dan {blockedTarget.keputusanCount} keputusan distribusi. Hapus atau
+                pindahkan data tersebut terlebih dahulu.
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <Tombol
+                  label="Mengerti"
+                  variant="sekunder"
+                  onClick={() => setBlockedTarget(null)}
+                />
               </div>
             </div>
           }
