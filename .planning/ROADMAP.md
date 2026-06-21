@@ -35,10 +35,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Admin can delete a city, and if that city is already referenced by existing requests/decisions, the app takes an explicit, deliberate action (block, warn, or cascade) rather than leaving a silent dangling reference
   5. Admin can view and update the current TBS stock value, and the change is immediately visible to the recommendation engine and other pages that read it
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Reachable Admin-only Manajemen Kota page: route/nav/icon registration, city list table (ADMIN-01), TBS stock summary card (ADMIN-05 read)
+- [x] 01-01-PLAN.md — Reachable Admin-only Manajemen Kota page: route/nav/icon registration, city list table (ADMIN-01), TBS stock summary card (ADMIN-05 read)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Admin City & Stock Management | 0/3 | Not started | - |
+| 1. Admin City & Stock Management | 1/3 | In Progress|  |
 | 2. Role-Differentiated Reporting | 0/TBD | Not started | - |
 | 3. Validation & Edge-Case Completion | 0/TBD | Not started | - |
 | 4. Auth & Landing Design-System Unification | 0/TBD | Not started | - |

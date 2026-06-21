@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: Admin City & Stock Management
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-21T06:21:28.589Z"
+stopped_at: Phase 1 Plan 1 complete — Manajemen Kota page scaffold verified and approved
+last_updated: "2026-06-21T10:00:10.675Z"
 last_activity: 2026-06-21
-last_activity_desc: Roadmap created from requirements (18 v1 requirements mapped across 5 phases)
+last_activity_desc: Phase 1 execution started
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 3
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-21)
 
 **Core value:** The app must feel complete and trustworthy end-to-end for every role — every page works, every action persists and reflects instantly, and nothing looks unfinished or inconsistent.
-**Current focus:** Phase 1 - Admin City & Stock Management
+**Current focus:** Phase 1 — Admin City & Stock Management
 
 ## Current Position
 
-Phase: 1 of 5 (Admin City & Stock Management)
-Plan: 0 of TBD in current phase
+Phase: 1 (Admin City & Stock Management) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-21 — Roadmap created from requirements (18 v1 requirements mapped across 5 phases)
+Last activity: 2026-06-21 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 
 - Roadmap: Phases 1-4 derived directly from research/SUMMARY.md's proposed structure (additive Admin CRUD, Laporan role-dispatcher fix, validation sweep, auth/landing design unification); confirmed against requirements with no changes needed.
 - Roadmap: AUDIT-01 kept as a standalone Phase 5 (not folded into a neighbor) because it depends on Phases 1-4 all being complete before it can audit the full app — it cannot run concurrently with them.
+- [Phase 01]: Cities remain keyed by nama (string) — no synthetic id field introduced, matching existing store.js contract — Plan 01-01 (Manajemen Kota scaffold)
+- [Phase 01]: Add/Edit/Delete/Stock-edit actions rendered as no-op placeholders in plan 01-01 to lock in final page layout before CRUD wiring in plans 02/03 — Avoids layout churn when real handlers are wired
 
 ### Pending Todos
 
@@ -88,6 +91,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-21T05:54:12.483Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-admin-city-stock-management/01-UI-SPEC.md
+Last session: 2026-06-21T10:00:10.662Z
+Stopped at: Phase 1 Plan 1 complete — Manajemen Kota page scaffold verified and approved
+Resume file: .planning/phases/01-admin-city-stock-management/01-02-PLAN.md
