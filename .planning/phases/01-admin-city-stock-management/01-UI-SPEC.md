@@ -1,7 +1,7 @@
 ---
 phase: 1
 slug: admin-city-stock-management
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-21
@@ -71,8 +71,10 @@ Exceptions: none. Use `var(--space-N)` tokens exclusively — do not hardcode pi
 |------|------|--------|-------------|
 | Body | `var(--text-sm)` = 13px | `var(--font-weight-normal)` = 400 | `var(--leading-normal)` = 1.5 |
 | Label (field labels, table headers) | `var(--text-xs)` = 12px, uppercase, `var(--tracking-wider)` | `var(--font-weight-semibold)` = 600 | 1.2 (tight, single line) |
-| Heading (page title `h1`, `Modal` title `h2`) | `var(--text-2xl)` = 26px (page) / `var(--text-lg)` = 18px (modal) | `var(--font-weight-bold)` = 700 (page) / `var(--font-weight-semibold)` = 600 (modal) | `var(--leading-tight)` = 1.2 |
-| Display (TBS stock summary number) | `var(--text-2xl)` = 26px, `var(--font-mono)` | `var(--font-weight-bold)` = 700 | `var(--leading-tight)` = 1.2 |
+| Heading (page title `h1`, `Modal` title `h2`) | `var(--text-2xl)` = 26px (page) / `var(--text-lg)` = 18px (modal) | `var(--font-weight-semibold)` = 600 | `var(--leading-tight)` = 1.2 |
+| Display (TBS stock summary number) | `var(--text-2xl)` = 26px, `var(--font-mono)` | `var(--font-weight-semibold)` = 600 | `var(--leading-tight)` = 1.2 |
+
+Exactly 2 weights are used in this contract: `var(--font-weight-normal)` (400) for Body text, and `var(--font-weight-semibold)` (600) for everything needing emphasis — Label, page Heading, modal Heading, and the Display/stock number. `var(--font-weight-bold)` (700) exists in `tokens.css` but is intentionally NOT used anywhere in this phase's contract — emphasis on the page title and the stock display number is carried by size (26px) and color/position, not by a third weight.
 
 These map directly to `src/tokens.css:42-60`. Do not introduce font sizes outside this set (`--text-2xs` through `--text-4xl` already cover every case used elsewhere in the app; this phase only needs `--text-xs`, `--text-sm`, `--text-lg`, `--text-2xl`).
 
@@ -143,6 +145,8 @@ This project does not use shadcn. No registry vetting gate applies. `Tool: none`
 
 These are not in the standard template but are necessary contract details given this phase builds directly on existing precedent:
 
+**Focal point:** Focal point utama: tombol "+ Tambah Kota" di `PageHeader` (top-right), diikuti angka stok TBS pada `MetricCard`.
+
 **Page layout (single page, two zones, per D-03/D-04):**
 1. `PageHeader` — title "Manajemen Kota", description chip, `aksi` slot holds "+ Tambah Kota" button (top-right, matches `ManajemenData.jsx` header pattern where `aksi` holds the search input instead).
 2. TBS stock summary `Card` (or `MetricCard size="lg"`) — positioned above the city table, full width or alongside it in a 2-column grid on wide viewports (`>900px`), stacking to 1 column below that (reuse `.bento-grid`/`.app-grid-2` responsive helpers already in `tokens.css:277-307` if a 2-column layout is chosen; otherwise single full-width stacked `Card` is equally acceptable and simpler — Claude's Discretion per CONTEXT.md, default to single-column stacked unless the executor finds a clean 2-column fit).
@@ -165,11 +169,11 @@ These are not in the standard template but are necessary contract details given 
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS (non-blocking recommendation: restate accessible label/tooltip fallback for `aksi-btn-edit`/`aksi-btn-delete` row actions, consistent with `ManajemenData.jsx` precedent)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS (revised — consolidated to 2 font weights, 400/600)
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (2026-06-21, after 1 revision cycle)
