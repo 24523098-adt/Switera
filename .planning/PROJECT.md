@@ -23,10 +23,10 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 - ✓ Per-role dashboard branching with distinct widgets per role (`Dashboard.jsx`) — existing
 - ✓ Empty states via shared `EmptyState` component — used consistently across nearly all pages — existing
 - ✓ Auth flow (login/register/logout) against the in-app account store — existing, intentionally kept client-only for this milestone
+- ✓ Admin can add, edit, and delete cities, and set TBS stock, through a dedicated "Manajemen Kota" page — Phase 1, including cascade-rename across `permintaan`/`keputusan`/`riwayatKeputusan` and block-delete-if-referenced (no silent data-integrity gaps)
 
 ### Active
 
-- [ ] Admin can add, edit, and delete cities, and set TBS stock, through a real UI (store methods `tambahKota`/`updateKota`/`hapusKota`/`setStokTbs` already exist but have no page)
 - [ ] `Laporan.jsx` shows role-differentiated content for Manajer Distribusi vs Tim Logistik instead of an identical report (currently computes `roleAktif` but never uses it)
 - [ ] Landing, Login, and Register pages are rebuilt to use the existing shared component library (`Tombol`, `Card`, `IkonDaun`, design tokens) instead of 100% ad-hoc inline styles
 - [ ] Login has field-level inline validation (currently a single generic error message)
@@ -61,7 +61,7 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Stay client-only (localStorage), no real backend | School project; "production-ready" means polish and completeness, not infrastructure | — Pending |
-| Build Admin city/stock management UI | Store methods already exist but have zero UI — a real functional gap, not just polish | — Pending |
+| Build Admin city/stock management UI | Store methods already exist but have zero UI — a real functional gap, not just polish | ✓ Good — Phase 1 complete, all 6 ADMIN-* requirements verified |
 | Rebuild Landing/Login/Register on the shared component library | Directly fixes the design-consistency gap found in the page audit | — Pending |
 
 ## Evolution
@@ -82,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-21 after initialization*
+*Last updated: 2026-06-21 after Phase 1 completion*
