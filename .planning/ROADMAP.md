@@ -13,7 +13,7 @@ Switera is a functioning client-only React SPA; this milestone closes the gap be
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Admin City & Stock Management** - Admin can manage cities and TBS stock through a real UI backed by existing store mutators
+- [x] **Phase 1: Admin City & Stock Management** - Admin can manage cities and TBS stock through a real UI backed by existing store mutators (completed 2026-06-21)
 - [ ] **Phase 2: Role-Differentiated Reporting** - Laporan shows genuinely different data for Manajer Distribusi vs Tim Logistik
 - [ ] **Phase 3: Validation & Edge-Case Completion** - Login, StatusDistribusi, InputData, and Register close their remaining validation/convention gaps
 - [ ] **Phase 4: Auth & Landing Design-System Unification** - Landing, Login, and Register run on the shared component library with no regressions elsewhere
@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Admin can delete a city, and if that city is already referenced by existing requests/decisions, the app takes an explicit, deliberate action (block, warn, or cascade) rather than leaving a silent dangling reference
   5. Admin can view and update the current TBS stock value, and the change is immediately visible to the recommendation engine and other pages that read it
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Reachable Admin-only Manajemen Kota page: route/nav/icon registration, city list table (ADMIN-01), TBS stock summary card (ADMIN-05 read)
@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Store cascade-rename (D-02) + block-delete (D-01) and delete/rename UI (ADMIN-03 rename, ADMIN-04)
+- [x] 01-03-PLAN.md — Store cascade-rename (D-02) + block-delete (D-01) and delete/rename UI (ADMIN-03 rename, ADMIN-04)
 
 ### Phase 2: Role-Differentiated Reporting
 
@@ -115,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Admin City & Stock Management | 2/3 | In Progress|  |
+| 1. Admin City & Stock Management | 3/3 | Complete   | 2026-06-21 |
 | 2. Role-Differentiated Reporting | 0/TBD | Not started | - |
 | 3. Validation & Edge-Case Completion | 0/TBD | Not started | - |
 | 4. Auth & Landing Design-System Unification | 0/TBD | Not started | - |
