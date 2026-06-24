@@ -210,6 +210,10 @@ export const store = {
     return clone(akunBaru);
   },
 
+  getNextAkunId() {
+    return getNextId(state.daftarAkun, "U");
+  },
+
   cariAkun(username, password, role) {
     const normalizedUsername = String(username).trim();
     const akunDitemukan = state.daftarAkun.find(

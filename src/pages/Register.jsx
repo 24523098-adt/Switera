@@ -96,7 +96,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
     }
 
     store.tambahAkun({
-      id: `U${Date.now()}`,
+      id: store.getNextAkunId(),
       nama: nama.trim(),
       username: username.trim(),
       password,
