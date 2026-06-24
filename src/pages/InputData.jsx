@@ -51,7 +51,7 @@ function InputData({ onNavigate }) {
   const validate = (nextForm) => {
     const nextErrors = {};
 
-    if (!nextForm.kota) {
+    if (daftarKota.length > 0 && !nextForm.kota) {
       nextErrors.kota = "Nama kota wajib dipilih.";
     }
 
@@ -92,6 +92,14 @@ function InputData({ onNavigate }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
+    if (daftarKota.length === 0) {
+      showToast({
+        type: "error",
+        message: "Belum ada kota yang dikonfigurasi. Hubungi Admin untuk menambahkan kota terlebih dahulu.",
+      });
+      return;
+    }
 
     const nextErrors = validate(form);
     setErrors(nextErrors);
@@ -263,21 +271,26 @@ function InputData({ onNavigate }) {
             >
               <div>
                 <label htmlFor="input-kota" style={labelStyle}>Nama Kota</label>
-                <select
-                  id="input-kota"
-                  className="field-select"
-                  value={form.kota}
-                  onChange={(event) => handleChange("kota", event.target.value)}
-                  style={getFieldStyle("kota")}
-                  {...getFieldHandlers("kota")}
-                >
-                  <option value="">⚑ Pilih kota</option>
-                  {daftarKota.map((kota) => (
-                    <option key={kota.nama} value={kota.nama}>
-                      ⚑ {kota.nama}
-                    </option>
-                  ))}
-                </select>
+                {daftarKota.length === 0 ? (
+                  <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--text-sm)" }}>
+                    Belum ada kota yang dikonfigurasi. Hubungi Admin untuk menambahkan kota terlebih dahulu.
+                  </p>
+                ) : (
+                  <select id="input-kota"
+                    className="field-select"
+                    value={form.kota}
+                    onChange={(event) => handleChange("kota", event.target.value)}
+                    style={getFieldStyle("kota")}
+                    {...getFieldHandlers("kota")}
+                  >
+                    <option value="">⚑ Pilih kota</option>
+                    {daftarKota.map((kota) => (
+                      <option key={kota.nama} value={kota.nama}>
+                        ⚑ {kota.nama}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {errors.kota ? <p style={errorStyle}>{errors.kota}</p> : null}
               </div>
 
