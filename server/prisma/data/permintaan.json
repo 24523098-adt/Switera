@@ -1,0 +1,122 @@
+[
+  {
+    "id": "PMT-001",
+    "kota": "Pekanbaru",
+    "tanggal_permintaan": "2026-05-20",
+    "tanggal_input": "2026-05-20",
+    "jumlah_permintaan": 18,
+    "keterangan": "Permintaan awal untuk suplai mingguan."
+  },
+  {
+    "id": "PMT-002",
+    "kota": "Medan",
+    "tanggal_permintaan": "2026-05-22",
+    "tanggal_input": "2026-05-22",
+    "jumlah_permintaan": 24,
+    "keterangan": "Kebutuhan meningkat menjelang akhir bulan."
+  },
+  {
+    "id": "PMT-003",
+    "kota": "Palembang",
+    "tanggal_permintaan": "2026-05-25",
+    "tanggal_input": "2026-05-25",
+    "jumlah_permintaan": 15,
+    "keterangan": "Permintaan untuk distribusi area selatan."
+  },
+  {
+    "id": "PMT-004",
+    "kota": "Jambi",
+    "tanggal_permintaan": "2026-05-28",
+    "tanggal_input": "2026-05-28",
+    "jumlah_permintaan": 11,
+    "keterangan": "Tambahan kebutuhan dari mitra baru."
+  },
+  {
+    "id": "PMT-005",
+    "kota": "Padang",
+    "tanggal_permintaan": "2026-05-30",
+    "tanggal_input": "2026-05-30",
+    "jumlah_permintaan": 20,
+    "keterangan": "Permintaan reguler akhir pekan."
+  },
+  {
+    "id": "PMT-006",
+    "kota": "Dumai",
+    "tanggal_permintaan": "2026-06-01",
+    "tanggal_input": "2026-06-01",
+    "jumlah_permintaan": 14,
+    "keterangan": "Distribusi diarahkan ke gudang pesisir."
+  },
+  {
+    "id": "PMT-007",
+    "kota": "Bengkalis",
+    "tanggal_permintaan": "2026-06-03",
+    "tanggal_input": "2026-06-03",
+    "jumlah_permintaan": 9,
+    "keterangan": "Permintaan kecil untuk pengisian stok lokal."
+  },
+  {
+    "id": "PMT-008",
+    "kota": "Rokan Hilir",
+    "tanggal_permintaan": "2026-06-05",
+    "tanggal_input": "2026-06-05",
+    "jumlah_permintaan": 16,
+    "keterangan": "Permintaan dari jalur distribusi barat."
+  },
+  {
+    "id": "PMT-009",
+    "kota": "Pekanbaru",
+    "tanggal_permintaan": "2026-06-07",
+    "tanggal_input": "2026-06-07",
+    "jumlah_permintaan": 21,
+    "keterangan": "Penyesuaian kebutuhan pertengahan bulan."
+  },
+  {
+    "id": "PMT-010",
+    "kota": "Medan",
+    "tanggal_permintaan": "2026-06-09",
+    "tanggal_input": "2026-06-09",
+    "jumlah_permintaan": 17,
+    "keterangan": "Permintaan tambahan dari cabang timur."
+  },
+  {
+    "id": "PMT-011",
+    "kota": "Rokan Hilir",
+    "tanggal_permintaan": "2026-06-05",
+    "tanggal_input": "2026-06-05",
+    "jumlah_permintaan": 13,
+    "keterangan": "Permintaan duplikat hari yang sama untuk verifikasi."
+  },
+  {
+    "id": "PMT-012",
+    "kota": "Palembang",
+    "tanggal_permintaan": "2026-06-11",
+    "tanggal_input": "2026-06-11",
+    "jumlah_permintaan": 19,
+    "keterangan": "Permintaan untuk redistribusi stok kota."
+  },
+  {
+    "id": "PMT-013",
+    "kota": "Jambi",
+    "tanggal_permintaan": "2026-06-13",
+    "tanggal_input": "2026-06-13",
+    "jumlah_permintaan": 12,
+    "keterangan": "Kebutuhan mendadak dari pelanggan utama."
+  },
+  {
+    "id": "PMT-014",
+    "kota": "Dumai",
+    "tanggal_permintaan": "2026-06-15",
+    "tanggal_input": "2026-06-15",
+    "jumlah_permintaan": 10,
+    "keterangan": "Revisi volume untuk pengiriman akhir pekan."
+  },
+  {
+    "id": "PMT-015",
+    "kota": "Bengkalis",
+    "tanggal_permintaan": "2026-06-17",
+    "tanggal_input": "2026-06-17",
+    "jumlah_permintaan": 8,
+    "keterangan": "Permintaan terbaru yang masih menunggu tindak lanjut."
+  }
+]

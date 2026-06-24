@@ -1,0 +1,42 @@
+[
+  {
+    "id": "NTF-001",
+    "judul": "Keputusan distribusi baru",
+    "pesan": "Keputusan distribusi baru tersedia untuk kota Pekanbaru.",
+    "tipe": "info",
+    "dibaca": false,
+    "waktu": "2026-06-19T08:10:00"
+  },
+  {
+    "id": "NTF-002",
+    "judul": "Anomali permintaan terdeteksi",
+    "pesan": "Data permintaan kota Medan melebihi rata-rata bulanan.",
+    "tipe": "warning",
+    "dibaca": false,
+    "waktu": "2026-06-18T14:45:00"
+  },
+  {
+    "id": "NTF-003",
+    "judul": "Status distribusi diperbarui",
+    "pesan": "Status distribusi ke Jambi telah diperbarui menjadi Selesai.",
+    "tipe": "success",
+    "dibaca": false,
+    "waktu": "2026-06-18T09:30:00"
+  },
+  {
+    "id": "NTF-004",
+    "judul": "Data permintaan baru",
+    "pesan": "Data permintaan 14 ton untuk kota Dumai berhasil ditambahkan.",
+    "tipe": "info",
+    "dibaca": true,
+    "waktu": "2026-06-16T11:05:00"
+  },
+  {
+    "id": "NTF-005",
+    "judul": "Pengingat validasi data",
+    "pesan": "Beberapa data permintaan kota Bengkalis menunggu validasi di Manajemen Data.",
+    "tipe": "warning",
+    "dibaca": true,
+    "waktu": "2026-06-14T16:20:00"
+  }
+]

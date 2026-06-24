@@ -1,0 +1,26 @@
+[
+  {
+    "id": "KPT-001",
+    "kota_tujuan": "Pekanbaru",
+    "volume_tbs": 25,
+    "tanggal_keputusan": "2026-06-10",
+    "diputuskan_oleh": "Rina Saputri",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-002",
+    "kota_tujuan": "Medan",
+    "volume_tbs": 18,
+    "tanggal_keputusan": "2026-06-14",
+    "diputuskan_oleh": "Dedi Pratama",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-003",
+    "kota_tujuan": "Padang",
+    "volume_tbs": 12,
+    "tanggal_keputusan": "2026-06-16",
+    "diputuskan_oleh": "Siska Wulandari",
+    "status": "menunggu"
+  }
+]
