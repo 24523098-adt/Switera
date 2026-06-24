@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 0
-status: Awaiting next milestone
-stopped_at: Completed 05-01-PLAN.md — v1.0 milestone fully complete
-last_updated: "2026-06-24T11:53:23.259Z"
+milestone: v2.0
+milestone_name: Backend & Multi-User Migration
+status: planning
+last_updated: "2026-06-24T12:16:46.246Z"
 last_activity: 2026-06-24
-last_activity_desc: Milestone v1.0 completed and archived
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
-current_phase_name: Full Completeness Pass
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,14 +20,14 @@ current_phase_name: Full Completeness Pass
 See: .planning/PROJECT.md (updated 2026-06-24)
 
 **Core value:** The app must feel complete and trustworthy end-to-end for every role — every page works, every action persists and reflects instantly, and nothing looks unfinished or inconsistent.
-**Current focus:** v1.0 shipped and archived — planning next milestone
+**Current focus:** Milestone v2.0 (Backend & Multi-User Migration) — defining requirements and roadmap
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-24 — Milestone v1.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-24 — Milestone v2.0 started
 
 ## Performance Metrics
 

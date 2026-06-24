@@ -2,11 +2,22 @@
 
 ## What This Is
 
-Switera is a client-only React SPA for managing the distribution of TBS (kelapa sawit / palm fruit) stock across cities — covering requests, ranking-based distribution decisions, status tracking, reporting, and activity history, with three distinct roles (Admin, Manajer Distribusi, Tim Logistik). It's a school project that demos at production quality: complete features, proper validation, consistent UI built on a shared component library, and clean code — shipped as v1.0 deliberately client-only (no real backend, `localStorage`-only persistence).
+Switera is a React SPA for managing the distribution of TBS (kelapa sawit / palm fruit) stock across cities — covering requests, ranking-based distribution decisions, status tracking, reporting, and activity history, with three distinct roles (Admin, Manajer Distribusi, Tim Logistik). It's a school project that demos at production quality: complete features, proper validation, consistent UI, and clean code. v1.0 shipped as a client-only (`localStorage`-backed) demo; v2.0 is migrating it onto a real Node.js/Express/PostgreSQL backend with server-side auth and genuine multi-user support.
 
 ## Core Value
 
 The app must feel complete and trustworthy end-to-end for every role — every page works, every action persists and reflects instantly, and nothing looks unfinished or inconsistent.
+
+## Current Milestone: v2.0 Backend & Multi-User Migration
+
+**Goal:** Migrate Switera off `localStorage` onto a real backend (Node.js + Express + PostgreSQL via Prisma) with server-side authentication, enabling genuine multi-user concurrent access while preserving the existing "instant reflect, no refresh" UX and the v1.0 design system unchanged.
+
+**Target features:**
+- REST API covering every data domain currently in `store.js` (akun, daftarKota, permintaan, keputusan, riwayatKeputusan/activityLog)
+- Server-side auth: bcrypt password hashing, JWT-based sessions, replacing plaintext `localStorage` auth
+- Real multi-user concurrent support — multiple users across all 3 roles logged in simultaneously see consistent, synchronized data
+- Frontend (React) adapted to call the new API instead of reading/writing local store state directly
+- Data-sync mechanism decision (polling vs WebSocket) to preserve the no-manual-refresh UX across multiple clients — to be resolved during roadmap/phase planning
 
 ## Requirements
 
@@ -34,14 +45,18 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 
 ### Active
 
-*(none — all v1.0 requirements complete)*
+- [ ] All data domains (akun, daftarKota, permintaan, keputusan, riwayatKeputusan) migrated from `localStorage` to a real backend (Node.js + Express + PostgreSQL + Prisma)
+- [ ] Server-side authentication replacing plaintext `localStorage` auth (bcrypt password hashing, JWT-based sessions)
+- [ ] True multi-user concurrent support — multiple users across all 3 roles can log in simultaneously and see consistent, synchronized data
+- [ ] Frontend (React) adapted to call the new REST API instead of reading/writing `store.js`'s local state directly, preserving the existing "instant reflect, no refresh" UX
 
 ### Out of Scope
 
-- Real backend/database/API — staying client-only (localStorage) for this milestone; revisit only if this becomes more than a school demo
-- Real authentication (hashed passwords, server-side authorization) — current plaintext/localStorage auth is acceptable for a single-browser demo
-- Multi-user / concurrent-session support — inherent to the client-only architecture; out of scope until a backend exists
-- New features beyond completing what's already scoped (no new pages, no new roles, no new domains of functionality)
+- New UI/visual design or design-system changes — the v1.0 design system carries over unchanged; this milestone is backend/data-layer only
+- New pages, roles, or business domains beyond what already exists
+- CI/CD pipeline or production deployment infrastructure — school project scope; local run (`npm run dev` + backend dev server) is sufficient
+- Horizontal scaling, caching layers, microservices — unnecessary complexity at this scale
+- Mobile app / native clients
 
 ## Context
 
@@ -57,10 +72,10 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 
 ## Constraints
 
-- **Tech stack**: React 18 + Vite 7, no new frameworks/libraries beyond what's already in `package.json` unless a requirement clearly needs one — keeps the app simple and consistent with its current footprint
-- **Persistence**: `window.localStorage` via the existing `src/store.js` singleton — no real backend this milestone
-- **Design system**: Reuse existing shared components (`src/components/*`) and tokens (`src/tokens.css`) rather than introducing new styling approaches — required to fix the design-consistency gap, not optional
-- **Scope**: Completion and polish of existing functionality only — no new pages, roles, or business domains
+- **Frontend tech stack**: React 18 + Vite 7 stay as-is; no rewrite of existing pages/components beyond what's needed to call the new API instead of `store.js` directly
+- **Backend tech stack**: Node.js + Express + PostgreSQL via Prisma; JWT + bcrypt for auth — chosen for language consistency with the existing JS/JSX frontend and because the data model (kota/permintaan/keputusan/akun) is clearly relational
+- **Design system**: No changes to `src/components/*` or `src/tokens.css` — the v1.0 design-system unification work is final; this milestone is backend/data-layer only
+- **Scope**: Backend migration and multi-user support only — no new pages, roles, or business domains beyond what already exists
 
 ## Key Decisions
 
@@ -71,6 +86,7 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 | Rebuild Landing/Login/Register on the shared component library | Directly fixes the design-consistency gap found in the page audit | ✓ Good — Phase 4 complete, all 4 DESIGN-* requirements verified |
 | Run code review/security audit/UI review inline (no subagent spawning) for Phases 4-5 | Token-efficiency preference — full multi-agent GSD pipeline is expensive for a well-scoped polish milestone | ✓ Good — all quality gates passed, no defects found post-ship |
 | Accept structural (not pixel-level) verification for DESIGN-04/Phase 5 visual claims | No browser automation tooling (`chromium-cli`/Playwright) available in execution environment | ⚠️ Revisit — do one real manual browser pass before treating UI as fully signed off |
+| Migrate to Node.js + Express + PostgreSQL + Prisma for v2.0 backend | Language consistency with existing JS frontend; relational data model fits SQL; simple enough for a school project timeline; user-recommended after considering BaaS (Supabase/Firebase) and other stacks (Django/Laravel) | — Pending |
 
 ## Evolution
 
@@ -90,4 +106,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-24 after v1.0 milestone*
+*Last updated: 2026-06-24 after starting Milestone v2.0 (Backend & Multi-User Migration)*
