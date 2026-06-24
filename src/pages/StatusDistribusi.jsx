@@ -253,7 +253,9 @@ function StatusDistribusi({ onNavigate }) {
                       placeholder="Contoh: Truk B-1234-XY / Andi"
                       style={{
                         width: "100%",
-                        border: "1px solid var(--color-border)",
+                        border: modalErrors.armada
+                          ? "1px solid var(--color-danger)"
+                          : "1px solid var(--color-border)",
                         borderRadius: "var(--radius-sm)",
                         backgroundColor: "var(--color-surface-2)",
                         color: "var(--color-text-primary)",
@@ -279,7 +281,9 @@ function StatusDistribusi({ onNavigate }) {
                       }}
                       style={{
                         width: "100%",
-                        border: "1px solid var(--color-border)",
+                        border: modalErrors.eta
+                          ? "1px solid var(--color-danger)"
+                          : "1px solid var(--color-border)",
                         borderRadius: "var(--radius-sm)",
                         backgroundColor: "var(--color-surface-2)",
                         color: "var(--color-text-primary)",

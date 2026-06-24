@@ -207,12 +207,14 @@ function InputData({ onNavigate }) {
     return {
       ...fieldBaseStyle,
       backgroundColor: isHovered ? "var(--color-surface-3)" : "var(--color-surface-2)",
-      borderColor: isFocused
-        ? "var(--color-primary)"
-        : isHovered
-          ? "var(--color-border-strong)"
-          : "var(--color-border-mid)",
-      boxShadow: isFocused ? "0 0 0 3px var(--color-primary-glow)" : "none",
+      borderColor: errors[field]
+        ? "var(--color-danger)"
+        : isFocused
+          ? "var(--color-primary)"
+          : isHovered
+            ? "var(--color-border-strong)"
+            : "var(--color-border-mid)",
+      boxShadow: errors[field] ? "none" : isFocused ? "0 0 0 3px var(--color-primary-glow)" : "none",
     };
   };
 

@@ -26,8 +26,16 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
 
   const getInputStyle = (field) => ({
     ...inputBaseStyle,
-    borderColor: focusedField === field ? "var(--color-primary)" : "var(--color-border-mid)",
-    boxShadow: focusedField === field ? "0 0 0 3px var(--color-primary-glow)" : "none",
+    borderColor: errors[field]
+      ? "var(--color-danger)"
+      : focusedField === field
+        ? "var(--color-primary)"
+        : "var(--color-border-mid)",
+    boxShadow: errors[field]
+      ? "none"
+      : focusedField === field
+        ? "0 0 0 3px var(--color-primary-glow)"
+        : "none",
   });
 
   const handleSubmit = (event) => {
