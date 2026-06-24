@@ -253,7 +253,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
                     setNama(event.target.value);
-                    setErrors({});
+                    setErrors((previous) => ({ ...previous, nama: undefined }));
                   }}
                   style={getInputStyle("nama")}
                   autoComplete="name"
@@ -277,7 +277,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
                     setUsername(event.target.value);
-                    setErrors({});
+                    setErrors((previous) => ({ ...previous, username: undefined }));
                   }}
                   style={getInputStyle("username")}
                   autoComplete="username"
@@ -301,7 +301,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
                     setPassword(event.target.value);
-                    setErrors({});
+                    setErrors((previous) => ({ ...previous, password: undefined }));
                   }}
                   style={getInputStyle("password")}
                   autoComplete="new-password"
@@ -325,7 +325,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                   onBlur={() => setFocusedField("")}
                   onChange={(event) => {
                     setKonfirmasiPassword(event.target.value);
-                    setErrors({});
+                    setErrors((previous) => ({ ...previous, konfirmasiPassword: undefined }));
                   }}
                   style={getInputStyle("konfirmasiPassword")}
                   autoComplete="new-password"
