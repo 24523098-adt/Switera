@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Akun {
+  id        String   @id
+  nama      String
+  username  String   @unique
+  // bcrypt hash, never plaintext (see DATA-02)
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model Kota {
+  nama             String             @id
+  kapasitas        Int
+  permintaan       Permintaan[]
+  keputusan        Keputusan[]
+  riwayatKeputusan RiwayatKeputusan[]
+}
+
+model Permintaan {
+  id                 String   @id
+  kotaNama           String
+  kota               Kota     @relation(fields: [kotaNama], references: [nama])
+  tanggalPermintaan  String
+  tanggalInput       String
+  jumlahPermintaan   Float
+  keterangan         String?
+  createdAt          DateTime @default(now())
+
+  @@index([kotaNama])
+}
+
+model Keputusan {
+  id                   String    @id
+  kotaTujuanNama       String
+  kotaTujuan           Kota      @relation(fields: [kotaTujuanNama], references: [nama])
+  volumeTbs            Float
+  tanggalKeputusan     String
+  diputuskanOleh       String
+  status               String
+  waktuMenunggu        DateTime?
+  waktuDalamPengiriman DateTime?
+  waktuSelesai         DateTime?
+  waktuDibatalkan      DateTime?
+
+  @@index([kotaTujuanNama])
+}
+
+model RiwayatKeputusan {
+  id                   String    @id
+  kotaTujuanNama       String
+  kotaTujuan           Kota      @relation(fields: [kotaTujuanNama], references: [nama])
+  volumeTbs            Float
+  tanggalKeputusan     String
+  diputuskanOleh       String
+  status               String
+  waktuMenunggu        DateTime?
+  waktuDalamPengiriman DateTime?
+  waktuSelesai         DateTime?
+  waktuDibatalkan      DateTime?
+
+  @@index([kotaTujuanNama])
+}
+
+model ActivityLog {
+  id    String   @id
+  aktor String
+  role  String
+  aksi  String
+  waktu DateTime @default(now())
+}
+
+model Notifikasi {
+  id     String   @id
+  judul  String
+  pesan  String
+  tipe   String
+  dibaca Boolean  @default(false)
+  waktu  DateTime @default(now())
+}
