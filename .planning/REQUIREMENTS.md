@@ -18,27 +18,27 @@ Requirements for this completion/polish milestone. Each maps to roadmap phases.
 
 ### Role-Differentiated Reporting
 
-- [ ] **REPORT-01**: Manajer Distribusi sees decision/ranking-focused data on the Laporan page
-- [ ] **REPORT-02**: Tim Logistik sees status/delivery-focused data on the Laporan page
-- [ ] **REPORT-03**: The two role views are materially different in underlying data shown, not just a relabeled heading
+- [x] **REPORT-01**: Manajer Distribusi sees decision/ranking-focused data on the Laporan page
+- [x] **REPORT-02**: Tim Logistik sees status/delivery-focused data on the Laporan page
+- [x] **REPORT-03**: The two role views are materially different in underlying data shown, not just a relabeled heading
 
 ### Form Validation & Completeness
 
-- [ ] **VALID-01**: Login shows field-level inline errors (username/password) instead of one generic error message
-- [ ] **VALID-02**: StatusDistribusi's armada and ETA fields require a value before saving, with inline error messages
-- [ ] **VALID-03**: InputData shows a clear message when no cities are configured, instead of an empty dropdown with no explanation
-- [ ] **VALID-04**: New accounts created via Register get IDs following the same `getNextId` convention used elsewhere in the store, instead of `Date.now()`
+- [x] **VALID-01**: Login shows field-level inline errors (username/password) instead of one generic error message
+- [x] **VALID-02**: StatusDistribusi's armada and ETA fields require a value before saving, with inline error messages
+- [x] **VALID-03**: InputData shows a clear message when no cities are configured, instead of an empty dropdown with no explanation
+- [x] **VALID-04**: New accounts created via Register get IDs following the same `getNextId` convention used elsewhere in the store, instead of `Date.now()`
 
 ### Design System Consistency
 
-- [ ] **DESIGN-01**: Landing page is rebuilt on the shared component library (`Tombol`, `Card`, `IkonDaun`, design tokens) instead of one-off inline styles
-- [ ] **DESIGN-02**: Login page is rebuilt on the shared component library instead of one-off inline styles
-- [ ] **DESIGN-03**: Register page is rebuilt on the shared component library instead of one-off inline styles
-- [ ] **DESIGN-04**: No visual or layout regression on any other page that consumes a shared component touched during this work
+- [x] **DESIGN-01**: Landing page is rebuilt on the shared component library (`Tombol`, `Card`, `IkonDaun`, design tokens) instead of one-off inline styles
+- [x] **DESIGN-02**: Login page is rebuilt on the shared component library instead of one-off inline styles
+- [x] **DESIGN-03**: Register page is rebuilt on the shared component library instead of one-off inline styles
+- [x] **DESIGN-04**: No visual or layout regression on any other page that consumes a shared component touched during this work
 
 ### Full Completeness Pass
 
-- [ ] **AUDIT-01**: Every existing page is re-verified against the full completeness checklist (CRUD via store, role-correct data, working navigation, inline validation, empty states, loading states, design consistency, no-reload data flow), and any additional gap found beyond ADMIN/REPORT/VALID/DESIGN above is fixed
+- [x] **AUDIT-01**: Every existing page is re-verified against the full completeness checklist (CRUD via store, role-correct data, working navigation, inline validation, empty states, loading states, design consistency, no-reload data flow), and any additional gap found beyond ADMIN/REPORT/VALID/DESIGN above is fixed
 
 ## v2 Requirements
 
@@ -77,18 +77,18 @@ Populated during roadmap creation.
 | ADMIN-04 | Phase 1 | Complete |
 | ADMIN-05 | Phase 1 | Complete |
 | ADMIN-06 | Phase 1 | Complete |
-| REPORT-01 | Phase 2 | Pending |
-| REPORT-02 | Phase 2 | Pending |
-| REPORT-03 | Phase 2 | Pending |
-| VALID-01 | Phase 3 | Pending |
-| VALID-02 | Phase 3 | Pending |
-| VALID-03 | Phase 3 | Pending |
-| VALID-04 | Phase 3 | Pending |
-| DESIGN-01 | Phase 4 | Pending |
-| DESIGN-02 | Phase 4 | Pending |
-| DESIGN-03 | Phase 4 | Pending |
-| DESIGN-04 | Phase 4 | Pending |
-| AUDIT-01 | Phase 5 | Pending |
+| REPORT-01 | Phase 2 | Complete |
+| REPORT-02 | Phase 2 | Complete |
+| REPORT-03 | Phase 2 | Complete |
+| VALID-01 | Phase 3 | Complete |
+| VALID-02 | Phase 3 | Complete |
+| VALID-03 | Phase 3 | Complete |
+| VALID-04 | Phase 3 | Complete |
+| DESIGN-01 | Phase 4 | Complete |
+| DESIGN-02 | Phase 4 | Complete |
+| DESIGN-03 | Phase 4 | Complete |
+| DESIGN-04 | Phase 4 | Complete |
+| AUDIT-01 | Phase 5 | Complete |
 
 **Coverage:**
 

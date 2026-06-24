@@ -14,10 +14,10 @@ Switera is a functioning client-only React SPA; this milestone closes the gap be
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Admin City & Stock Management** - Admin can manage cities and TBS stock through a real UI backed by existing store mutators (completed 2026-06-21)
-- [ ] **Phase 2: Role-Differentiated Reporting** - Laporan shows genuinely different data for Manajer Distribusi vs Tim Logistik
-- [ ] **Phase 3: Validation & Edge-Case Completion** - Login, StatusDistribusi, InputData, and Register close their remaining validation/convention gaps
-- [ ] **Phase 4: Auth & Landing Design-System Unification** - Landing, Login, and Register run on the shared component library with no regressions elsewhere
-- [ ] **Phase 5: Full Completeness Pass** - Every page is re-verified against the full completeness checklist and any residual gap is fixed
+- [x] **Phase 2: Role-Differentiated Reporting** - Laporan shows genuinely different data for Manajer Distribusi vs Tim Logistik (completed 2026-06-24)
+- [x] **Phase 3: Validation & Edge-Case Completion** - Login, StatusDistribusi, InputData, and Register close their remaining validation/convention gaps (completed 2026-06-24)
+- [x] **Phase 4: Auth & Landing Design-System Unification** - Landing, Login, and Register run on the shared component library with no regressions elsewhere (completed 2026-06-24)
+- [x] **Phase 5: Full Completeness Pass** - Every page is re-verified against the full completeness checklist and any residual gap is fixed (completed 2026-06-24)
 
 ## Phase Details
 
@@ -60,7 +60,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Tim Logistik sees status/delivery-focused data on the Laporan page
   3. Switching the active role changes the underlying data shown on Laporan, not just a heading or label
 
-**Plans**: TBD
+**Plans**: 1/1 plans complete
+
+Plans:
+
+- [x] 02-01-PLAN.md — Role-conditional Laporan data layer + Tim Logistik table/chart, role-branched JSX render and CSV export (REPORT-01, REPORT-02, REPORT-03)
 
 ### Phase 3: Validation & Edge-Case Completion
 
@@ -75,7 +79,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. InputData shows a clear explanatory message when no cities are configured, instead of presenting an empty, unexplained dropdown
   4. New accounts created via Register receive IDs using the same `getNextId` convention as the rest of `store.js`, instead of `Date.now()`
 
-**Plans**: TBD
+**Plans**: 1/2 plans complete
+**Wave 1**
+
+Plans:
+
+- [x] 03-01-PLAN.md — Login field-level inline errors (VALID-01) + Register getNextId-based account IDs (VALID-04)
+- [x] 03-02-PLAN.md — StatusDistribusi armada/ETA required validation (VALID-02) + InputData empty-city-list message (VALID-03)
 
 ### Phase 4: Auth & Landing Design-System Unification
 
@@ -90,8 +100,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Register page renders using the shared component library instead of inline styles
   4. Every other page that consumes a shared component touched during this work renders with no visual or layout regression
 
-**Plans**: TBD
+**Plans**: 2/2 plans complete
 **UI hint**: yes
+**Wave 1**
+
+Plans:
+
+- [x] 04-01-PLAN.md — Login + Register submit buttons migrated to shared Tombol (DESIGN-02, DESIGN-03)
+- [x] 04-02-PLAN.md — Landing de-duplicated IkonDaun, migrated to Tombol/Card (DESIGN-01, DESIGN-04)
 
 ### Phase 5: Full Completeness Pass
 
@@ -105,7 +121,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Any additional gap found during this pass (beyond ADMIN/REPORT/VALID/DESIGN) is fixed, not just logged
   3. No page in the app exhibits a stale-after-mutation or manual-refresh-required data flow
 
-**Plans**: TBD
+**Plans**: 1/1 plans complete
+
+Plans:
+
+- [x] 05-01-PLAN.md — Full 12-page audit against the 9-dimension checklist; fixed 4 concrete gaps (Dashboard armada/ETA validation, KeputusanDistribusi duplicate-decision guard, Register per-field error clearing, store.js updateKota duplicate-name guard) (AUDIT-01)
 
 ## Progress
 
@@ -116,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Admin City & Stock Management | 3/3 | Complete    | 2026-06-21 |
-| 2. Role-Differentiated Reporting | 0/TBD | Not started | - |
-| 3. Validation & Edge-Case Completion | 0/TBD | Not started | - |
-| 4. Auth & Landing Design-System Unification | 0/TBD | Not started | - |
-| 5. Full Completeness Pass | 0/TBD | Not started | - |
+| 2. Role-Differentiated Reporting | 1/1 | Complete    | 2026-06-24 |
+| 3. Validation & Edge-Case Completion | 2/2 | Complete    | 2026-06-24 |
+| 4. Auth & Landing Design-System Unification | 2/2 | Complete    | 2026-06-24 |
+| 5. Full Completeness Pass | 1/1 | Complete    | 2026-06-24 |

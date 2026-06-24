@@ -24,16 +24,17 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 - ✓ Empty states via shared `EmptyState` component — used consistently across nearly all pages — existing
 - ✓ Auth flow (login/register/logout) against the in-app account store — existing, intentionally kept client-only for this milestone
 - ✓ Admin can add, edit, and delete cities, and set TBS stock, through a dedicated "Manajemen Kota" page — Phase 1, including cascade-rename across `permintaan`/`keputusan`/`riwayatKeputusan` and block-delete-if-referenced (no silent data-integrity gaps)
+- ✓ `Laporan.jsx` shows role-differentiated content for Manajer Distribusi (decision/ranking-focused: Riwayat Keputusan + Tren Permintaan) vs Tim Logistik (status/delivery-focused: Distribusi Aktif + Status Pengiriman chart) — Phase 2, distinct data sources and CSV exports per role, not just a relabeled heading
+- ✓ Login has field-level inline validation (independent username/password/role errors, replacing one generic message) — Phase 3
+- ✓ `StatusDistribusi.jsx`'s armada/ETA fields require a value before saving "Dalam Pengiriman", with inline error messages — Phase 3
+- ✓ `InputData.jsx` shows an explanatory message instead of an empty dropdown when no cities are configured — Phase 3
+- ✓ `Register.jsx` generates account IDs via `store.getNextAkunId()` (same `getNextId` convention as the rest of `store.js`), instead of `Date.now()` — Phase 3
+- ✓ Landing, Login, and Register pages are rebuilt to use the existing shared component library (`Tombol`, `Card`, `IkonDaun`, design tokens) instead of ad-hoc inline styles — Phase 4, with zero edits to the shared component source files and no visual/layout regression on other Tombol/Card-consuming pages (structurally verified; see 04-VERIFICATION.md's Pixel-Confirmation Advisory for the one disclosed tooling limitation)
+- ✓ Full pass across every existing page confirming: complete UI, correct CRUD via store, correct role-based data, working navigation, inline validation, empty states, loading states, consistent design system, and no-reload data flow — Phase 5, audited all 12 pages, fixed 4 additional gaps found (Dashboard armada/ETA validation parity with StatusDistribusi, KeputusanDistribusi duplicate-decision guard parity with Dashboard, Register per-field error clearing parity with Login, store.js updateKota duplicate-name guard parity with tambahKota); 2 non-functional Login.jsx controls ("Lupa Password?", "Ingat saya") explicitly reviewed and accepted as-is (deferred to a planned future backend milestone / harmless placeholder, respectively — not silently dropped)
 
 ### Active
 
-- [ ] `Laporan.jsx` shows role-differentiated content for Manajer Distribusi vs Tim Logistik instead of an identical report (currently computes `roleAktif` but never uses it)
-- [ ] Landing, Login, and Register pages are rebuilt to use the existing shared component library (`Tombol`, `Card`, `IkonDaun`, design tokens) instead of 100% ad-hoc inline styles
-- [ ] Login has field-level inline validation (currently a single generic error message)
-- [ ] `StatusDistribusi.jsx`'s armada/ETA fields have inline validation (currently accept blank values silently)
-- [ ] `InputData.jsx` shows a warning/empty-state when no cities are configured, instead of an empty dropdown
-- [ ] `Register.jsx` generates account IDs using the same `getNextId` convention as the rest of `store.js`, instead of `Date.now()`
-- [ ] Full pass across every existing page confirming: complete UI, correct CRUD via store, correct role-based data, working navigation, inline validation, empty states, loading states, consistent design system, and no-reload data flow — fixing any additional gaps found beyond the ones already identified
+*(none — all v1.0 requirements complete)*
 
 ### Out of Scope
 
@@ -62,7 +63,7 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 |----------|-----------|---------|
 | Stay client-only (localStorage), no real backend | School project; "production-ready" means polish and completeness, not infrastructure | — Pending |
 | Build Admin city/stock management UI | Store methods already exist but have zero UI — a real functional gap, not just polish | ✓ Good — Phase 1 complete, all 6 ADMIN-* requirements verified |
-| Rebuild Landing/Login/Register on the shared component library | Directly fixes the design-consistency gap found in the page audit | — Pending |
+| Rebuild Landing/Login/Register on the shared component library | Directly fixes the design-consistency gap found in the page audit | ✓ Good — Phase 4 complete, all 4 DESIGN-* requirements verified |
 
 ## Evolution
 
@@ -82,4 +83,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-21 after Phase 1 completion*
+*Last updated: 2026-06-24 after Phase 5 completion (v1.0 milestone complete)*
