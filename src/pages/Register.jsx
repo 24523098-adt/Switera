@@ -59,8 +59,20 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
     const normalizedUsername = username.trim();
     const daftarAkun = store.getDaftarAkun();
 
-    if (!nama.trim() || !normalizedUsername || !password || !konfirmasiPassword || !role) {
-      nextErrors.umum = "Semua field wajib diisi.";
+    if (!nama.trim()) {
+      nextErrors.nama = "Nama lengkap wajib diisi.";
+    }
+
+    if (!normalizedUsername) {
+      nextErrors.username = "Username wajib diisi.";
+    }
+
+    if (!password) {
+      nextErrors.password = "Password wajib diisi.";
+    }
+
+    if (!konfirmasiPassword) {
+      nextErrors.konfirmasiPassword = "Konfirmasi password wajib diisi.";
     }
 
     if (normalizedUsername && normalizedUsername.length < 4) {
@@ -222,14 +234,11 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
 
           <RolePills selectedRole={role} onSelectRole={setRole} />
 
-          <ErrorText>{errors.umum}</ErrorText>
-
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               gap: "var(--space-4)",
-              marginTop: errors.umum ? "var(--space-4)" : 0,
             }}
           >
             <label style={{ display: "block" }}>
@@ -253,6 +262,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                   <IkonOrang />
                 </FieldIcon>
               </span>
+              <ErrorText>{errors.nama}</ErrorText>
             </label>
 
             <label style={{ display: "block" }}>
