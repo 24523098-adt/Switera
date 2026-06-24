@@ -202,6 +202,108 @@ function GrafikTrenPermintaan({ datasets, labels }) {
   );
 }
 
+function GrafikStatusPengiriman({ counts }) {
+  const canvasRef = useRef(null);
+  const [chartError, setChartError] = useState("");
+  const [isChartReady, setIsChartReady] = useState(false);
+
+  const total = counts.menunggu + counts["dalam-pengiriman"] + counts.selesai;
+
+  useEffect(() => {
+    if (!canvasRef.current || total === 0 || typeof window === "undefined") {
+      return undefined;
+    }
+
+    setIsChartReady(false);
+    let chartInstance;
+    let isActive = true;
+
+    import("chart.js/auto")
+      .then((module) => {
+        if (!isActive || !canvasRef.current) {
+          return;
+        }
+
+        const Chart = module.default;
+        const ctx = canvasRef.current.getContext("2d");
+
+        chartInstance = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: [
+              statusLabels.menunggu,
+              statusLabels["dalam-pengiriman"],
+              statusLabels.selesai,
+            ],
+            datasets: [
+              {
+                data: [counts.menunggu, counts["dalam-pengiriman"], counts.selesai],
+                backgroundColor: [
+                  withOpacity(CHART_PALETTE[0], 0.7),
+                  withOpacity(CHART_PALETTE[1], 0.7),
+                  withOpacity(CHART_PALETTE[2], 0.7),
+                ],
+                borderColor: [CHART_PALETTE[0], CHART_PALETTE[1], CHART_PALETTE[2]],
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+                ...chartLegendDefaults,
+              },
+              tooltip: {
+                ...chartTooltipDefaults,
+              },
+            },
+            cutout: "60%",
+          },
+        });
+
+        setChartError("");
+        setIsChartReady(true);
+      })
+      .catch(() => {
+        if (isActive) {
+          setChartError("Grafik tidak dapat dimuat karena Chart.js belum tersedia.");
+        }
+      });
+
+    return () => {
+      isActive = false;
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+    };
+  }, [counts, total]);
+
+  return (
+    <Card style={{ minHeight: "420px" }}>
+      <SectionHeader>Status Pengiriman</SectionHeader>
+
+      {chartError ? (
+        <EmptyState pesan={chartError} />
+      ) : (
+        <div style={{ height: "320px" }}>
+          {isChartReady ? null : <SkeletonChart height="320px" />}
+          <canvas
+            ref={canvasRef}
+            aria-label="Grafik status pengiriman"
+            style={{
+              display: isChartReady ? "block" : "none",
+              animation: "fadeInUp 300ms var(--ease-smooth) both",
+            }}
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function Laporan({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
   const [periode, setPeriode] = useState("minggu-ini");
@@ -312,6 +414,20 @@ function Laporan({ onNavigate }) {
     : filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
 
   const handleExportCsv = () => {
+    if (isTimLogistik) {
+      const rows = filteredKeputusan.map((item) => ({
+        tanggal: item.tanggal_keputusan,
+        kota_tujuan: item.kota_tujuan,
+        volume_tbs: item.volume_tbs,
+        armada: item.armada ?? "",
+        eta: item.eta ?? "",
+        status: item.status,
+      }));
+
+      downloadCsv(`laporan-status-${periode}.csv`, rows);
+      return;
+    }
+
     const rows = filteredRiwayat.map((item) => ({
       tanggal: item.tanggal_keputusan,
       kota_tujuan: item.kota_tujuan,
@@ -326,8 +442,12 @@ function Laporan({ onNavigate }) {
   return (
     <>
       <PageHeader
-        judul="Laporan Distribusi"
-        deskripsi="Riwayat keputusan bersifat permanen dan tetap tersedia untuk audit periode sebelumnya."
+        judul={isTimLogistik ? "Laporan Status Distribusi" : "Laporan Distribusi"}
+        deskripsi={
+          isTimLogistik
+            ? "Pantau progres distribusi aktif dan riwayat pengiriman per periode."
+            : "Riwayat keputusan bersifat permanen dan tetap tersedia untuk audit periode sebelumnya."
+        }
         aksi={
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
             <PeriodePills value={periode} onChange={setPeriode} />
@@ -335,7 +455,7 @@ function Laporan({ onNavigate }) {
               label="Ekspor CSV"
               variant="sekunder"
               onClick={handleExportCsv}
-              disabled={filteredRiwayat.length === 0}
+              disabled={isTimLogistik ? filteredKeputusan.length === 0 : filteredRiwayat.length === 0}
             />
           </div>
         }
@@ -349,6 +469,43 @@ function Laporan({ onNavigate }) {
       >
         {noData ? (
           <EmptyState pesan="Tidak ada data pada periode yang dipilih." />
+        ) : isTimLogistik ? (
+          <>
+            {filteredKeputusan.length > 0 ? (
+              <Card>
+                <SectionHeader>Distribusi Aktif</SectionHeader>
+                <p
+                  style={{
+                    margin: "0 0 1rem",
+                    color: "var(--color-text-secondary)",
+                    lineHeight: 1.6,
+                    fontSize: "var(--text-sm)",
+                  }}
+                >
+                  Seluruh distribusi dengan detail armada dan status pengiriman untuk audit periode sebelumnya.
+                </p>
+
+                <Tabel
+                  kolom={[
+                    { key: "tanggal", label: "Tanggal" },
+                    { key: "kotaTujuan", label: "Kota Tujuan" },
+                    { key: "volume", label: "Volume TBS", numeric: true },
+                    { key: "armada", label: "Armada / ETA" },
+                    { key: "status", label: "Status" },
+                  ]}
+                  data={tableRowsTimLogistik}
+                />
+              </Card>
+            ) : (
+              <EmptyState pesan="Belum ada distribusi aktif pada periode yang dipilih." />
+            )}
+
+            {statusCounts.menunggu + statusCounts["dalam-pengiriman"] + statusCounts.selesai > 0 ? (
+              <GrafikStatusPengiriman counts={statusCounts} />
+            ) : (
+              <EmptyState pesan="Belum ada data status distribusi pada periode yang dipilih." />
+            )}
+          </>
         ) : (
           <>
             {filteredRiwayat.length > 0 ? (
