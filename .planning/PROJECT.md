@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Switera is a client-only React SPA for managing the distribution of TBS (kelapa sawit / palm fruit) stock across cities — covering requests, ranking-based distribution decisions, status tracking, reporting, and activity history, with three distinct roles (Admin, Manajer Distribusi, Tim Logistik). It's a school project meant to demo at production quality: complete features, proper validation, consistent UI, and clean code, while deliberately staying client-only (no real backend) for this milestone.
+Switera is a client-only React SPA for managing the distribution of TBS (kelapa sawit / palm fruit) stock across cities — covering requests, ranking-based distribution decisions, status tracking, reporting, and activity history, with three distinct roles (Admin, Manajer Distribusi, Tim Logistik). It's a school project that demos at production quality: complete features, proper validation, consistent UI built on a shared component library, and clean code — shipped as v1.0 deliberately client-only (no real backend, `localStorage`-only persistence).
 
 ## Core Value
 
@@ -46,8 +46,13 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 ## Context
 
 - Existing codebase fully mapped in `.planning/codebase/` (STACK.md, ARCHITECTURE.md, STRUCTURE.md, CONVENTIONS.md, TESTING.md, INTEGRATIONS.md, CONCERNS.md) — read these before planning any phase.
-- A full page-by-page audit against the completeness checklist was performed before this PROJECT.md was written; results are folded into Active requirements above. Routing is functionally correct but architecturally fragile (4 interlocking `useEffect`s in `App.jsx`) — flagged in CONCERNS.md, not in scope to refactor unless it blocks a requirement above.
-- No automated tests exist anywhere in the repo. Given "clean code structure" is part of the production-quality bar, phases touching `src/utils/distribusi.js` / `forecast.js` should consider adding tests, but this wasn't requested as an explicit requirement — raise it during roadmap/phase planning if it fits.
+- v1.0 shipped 2026-06-24: 5 phases, 9 plans, 25 tasks, ~11,300 LOC (JS/JSX). Full accomplishment list in `.planning/MILESTONES.md`.
+- Routing is functionally correct but architecturally fragile (4 interlocking `useEffect`s in `App.jsx`) — flagged in CONCERNS.md, not yet addressed; revisit if it blocks a v2.0 requirement.
+- No automated tests exist anywhere in the repo (TEST-01, deferred to v2 — see REQUIREMENTS.md history in `.planning/milestones/v1.0-REQUIREMENTS.md`).
+- Known, deliberately-accepted gaps carried out of v1.0 (none are bugs — all explicitly reviewed and decided):
+  - `Login.jsx`'s "Lupa Password?" link and "Ingat saya" checkbox remain non-functional — the former defers intentionally to a real backend (genuine password reset needs server-side infra); the latter is an accepted cosmetic placeholder.
+  - DESIGN-04/Phase 5 visual-regression claims were verified structurally (build passes, byte-unchanged shared components) but never pixel-confirmed in a real browser — no `chromium-cli`/Playwright was available in the execution environment.
+  - `store.setRoleAktif` is dead code (never called).
 - Indonesian domain terminology is used throughout (`permintaan` = request, `keputusan` = decision, `kota` = city, `distribusi` = distribution) — match this convention in any new code.
 
 ## Constraints
@@ -61,9 +66,11 @@ The app must feel complete and trustworthy end-to-end for every role — every p
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Stay client-only (localStorage), no real backend | School project; "production-ready" means polish and completeness, not infrastructure | — Pending |
+| Stay client-only (localStorage), no real backend for v1.0 | School project; "production-ready" means polish and completeness, not infrastructure | ✓ Good — shipped as scoped; real backend explicitly planned as next milestone |
 | Build Admin city/stock management UI | Store methods already exist but have zero UI — a real functional gap, not just polish | ✓ Good — Phase 1 complete, all 6 ADMIN-* requirements verified |
 | Rebuild Landing/Login/Register on the shared component library | Directly fixes the design-consistency gap found in the page audit | ✓ Good — Phase 4 complete, all 4 DESIGN-* requirements verified |
+| Run code review/security audit/UI review inline (no subagent spawning) for Phases 4-5 | Token-efficiency preference — full multi-agent GSD pipeline is expensive for a well-scoped polish milestone | ✓ Good — all quality gates passed, no defects found post-ship |
+| Accept structural (not pixel-level) verification for DESIGN-04/Phase 5 visual claims | No browser automation tooling (`chromium-cli`/Playwright) available in execution environment | ⚠️ Revisit — do one real manual browser pass before treating UI as fully signed off |
 
 ## Evolution
 
@@ -83,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-24 after Phase 5 completion (v1.0 milestone complete)*
+*Last updated: 2026-06-24 after v1.0 milestone*
