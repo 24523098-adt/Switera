@@ -31,6 +31,12 @@ const periodeOptions = [
   ["bulan-ini", "Bulan ini"],
 ];
 
+const statusLabels = {
+  menunggu: "Menunggu",
+  "dalam-pengiriman": "Dalam Pengiriman",
+  selesai: "Selesai",
+};
+
 function PeriodePills({ value, onChange }) {
   return (
     <div
@@ -212,6 +218,8 @@ function Laporan({ onNavigate }) {
     ? snapshot.roleAktif
     : "Manajer Distribusi";
 
+  const isTimLogistik = roleAktif === "Tim Logistik";
+
   const range = useMemo(() => getPeriodRange(periode), [periode]);
 
   const filteredRiwayat = useMemo(
@@ -233,12 +241,44 @@ function Laporan({ onNavigate }) {
     [range, snapshot.permintaan]
   );
 
-  const tableRows = filteredRiwayat.map((item) => ({
+  const filteredKeputusan = useMemo(
+    () =>
+      [...(snapshot.keputusan ?? [])]
+        .filter((item) => isDateInRange(item.tanggal_keputusan, range))
+        .sort(
+          (first, second) =>
+            parseDate(second.tanggal_keputusan) - parseDate(first.tanggal_keputusan)
+        ),
+    [range, snapshot.keputusan]
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts = { menunggu: 0, "dalam-pengiriman": 0, selesai: 0 };
+    filteredKeputusan.forEach((item) => {
+      if (counts[item.status] !== undefined) {
+        counts[item.status] += 1;
+      }
+    });
+    return counts;
+  }, [filteredKeputusan]);
+
+  const tableRowsManajer = filteredRiwayat.map((item) => ({
     id: item.id,
     tanggal: formatDate(item.tanggal_keputusan),
     kotaTujuan: item.kota_tujuan,
     volume: formatTonase(item.volume_tbs),
     diputuskanOleh: item.diputuskan_oleh,
+    status: <Badge status={item.status} />,
+  }));
+
+  const tableRowsTimLogistik = filteredKeputusan.map((item) => ({
+    id: item.id,
+    tanggal: formatDate(item.tanggal_keputusan),
+    kotaTujuan: item.kota_tujuan,
+    volume: formatTonase(item.volume_tbs),
+    armada: item.armada
+      ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}`
+      : "-",
     status: <Badge status={item.status} />,
   }));
 
@@ -266,8 +306,10 @@ function Laporan({ onNavigate }) {
     };
   }, [filteredPermintaan]);
 
-  const noData =
-    filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
+  const noData = isTimLogistik
+    ? filteredKeputusan.length === 0 &&
+      statusCounts.menunggu + statusCounts["dalam-pengiriman"] + statusCounts.selesai === 0
+    : filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
 
   const handleExportCsv = () => {
     const rows = filteredRiwayat.map((item) => ({
@@ -331,7 +373,7 @@ function Laporan({ onNavigate }) {
                     { key: "diputuskanOleh", label: "Diputuskan Oleh" },
                     { key: "status", label: "Status" },
                   ]}
-                  data={tableRows}
+                  data={tableRowsManajer}
                 />
               </Card>
             ) : (
