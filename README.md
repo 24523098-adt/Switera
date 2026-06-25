@@ -1,83 +1,138 @@
 # Switera
 
-Switera adalah aplikasi web (SPA) untuk mengelola distribusi stok TBS (Tandan Buah Segar / kelapa sawit) ke berbagai kota — mulai dari pencatatan permintaan, keputusan distribusi berbasis ranking, pelacakan status pengiriman, pelaporan, hingga riwayat aktivitas. Dibangun sebagai tugas mata kuliah Pengembangan Sistem Informasi, dengan standar kualitas setara produk produksi: fitur lengkap, validasi yang benar, UI konsisten, dan kode yang rapi.
+Switera adalah aplikasi web untuk mengelola distribusi stok TBS (Tandan Buah Segar / kelapa sawit) ke berbagai kota — mulai dari pencatatan permintaan, keputusan distribusi berbasis ranking, pelacakan status pengiriman, pelaporan, hingga riwayat aktivitas. Mendukung multi-pengguna secara bersamaan dengan tiga peran yang berbeda, dan setiap perubahan data langsung tersinkron ke semua pengguna yang sedang login tanpa perlu memuat ulang halaman.
 
-> **Catatan:** Aplikasi ini **client-only** — tidak ada backend/database sungguhan. Semua data disimpan di `localStorage` browser melalui store terpusat (`src/store.js`). Backend nyata direncanakan dibangun pada milestone berikutnya.
+## Peran Pengguna
+
+| Peran | Akses Utama |
+|---|---|
+| **Admin** | Kelola kota & kapasitas, atur stok TBS, input & kelola data permintaan, lihat riwayat aktivitas |
+| **Manajer Distribusi** | Analisis & ranking kota, buat dan kelola keputusan distribusi, lihat laporan |
+| **Tim Logistik** | Perbarui status pengiriman (menunggu → dalam pengiriman → selesai), lihat laporan |
 
 ## Fitur Utama
 
-- **Tiga role pengguna** dengan menu dan tampilan dashboard yang berbeda: **Admin**, **Manajer Distribusi**, **Tim Logistik**
-- **Manajemen Kota** (Admin) — tambah/edit/hapus kota dan kapasitas, atur stok TBS, dengan cascade-rename dan block-delete agar tidak ada data menggantung
-- **Input & Manajemen Data** (Admin) — catat dan kelola data permintaan TBS per kota
-- **Analisis & Ranking** (Manajer) — ranking kota otomatis berbasis data permintaan, dengan grafik
-- **Keputusan Distribusi** (Manajer) — rekomendasi tujuan distribusi berbasis data, dengan guard anti-duplikat keputusan aktif
-- **Status Distribusi** (Tim Logistik) — pelacakan status pengiriman (menunggu → dalam pengiriman → selesai) dengan validasi armada/ETA
-- **Laporan** — konten dan ekspor CSV yang berbeda sesuai role (Manajer melihat data keputusan/ranking, Tim Logistik melihat data status/pengiriman)
-- **Riwayat Aktivitas** — log seluruh aksi penting di aplikasi
-- **Dashboard** — ringkasan metrik dan aksi cepat, berbeda tampilan untuk setiap role
+- **Autentikasi** — login berbasis JWT dengan password ter-hash (bcrypt); pemilihan peran saat login divalidasi terhadap akun, bukan sekadar tampilan
+- **Manajemen Kota** — tambah/edit/hapus kota dan kapasitas, atur stok TBS, dengan cascade-rename dan pencegahan hapus data yang masih dipakai
+- **Input & Manajemen Data Permintaan** — catat dan kelola data permintaan TBS per kota, dengan deteksi duplikat dan deteksi anomali (lonjakan permintaan di luar kewajaran)
+- **Analisis & Ranking** — ranking kota otomatis berbasis volume permintaan dan kapasitas, dengan visualisasi grafik
+- **Keputusan Distribusi** — rekomendasi tujuan distribusi berbasis data, dengan penguncian optimistik agar dua persetujuan bersamaan terhadap keputusan yang sama tidak pernah menghasilkan alokasi ganda
+- **Status Distribusi** — pelacakan status pengiriman lengkap dengan data armada dan estimasi tiba (ETA)
+- **Laporan** — konten dan ekspor CSV yang berbeda sesuai peran
+- **Riwayat Aktivitas & Notifikasi** — log otomatis setiap aksi penting, dibuat di sisi server pada saat aksi terjadi
+- **Sinkronisasi multi-klien** — perubahan data oleh satu pengguna otomatis terlihat oleh pengguna lain yang sedang login dalam hitungan detik
 
-## Tech Stack
+## Arsitektur
 
-- [React 18](https://react.dev/) + [Vite 7](https://vitejs.dev/) — UI dan dev server
-- [Chart.js](https://www.chartjs.org/) via `react-chartjs-2` — grafik dashboard/analisis
-- [Leaflet](https://leafletjs.com/) — peta geografis distribusi
-- `window.localStorage` — persistensi data (tidak ada backend)
-- Routing manual via `window.history.pushState` (tanpa React Router)
+| Bagian | Teknologi |
+|---|---|
+| Frontend | React 18, Vite 7, Chart.js, Leaflet |
+| Backend | Node.js, Express 5 |
+| Database | PostgreSQL via Prisma ORM |
+| Autentikasi | JWT (jsonwebtoken) + bcrypt |
+| Validasi | Zod |
 
-Tidak ada test runner, linter, atau type-checker yang dikonfigurasi — proyek ini JavaScript murni (`.jsx`, bukan TypeScript).
+Frontend dan backend berjalan sebagai dua proses terpisah yang berkomunikasi lewat REST API.
 
 ## Menjalankan Secara Lokal
 
-Prasyarat: Node.js dan npm.
+### Prasyarat
+
+- Node.js dan npm
+- Docker (untuk menjalankan PostgreSQL secara lokal)
+
+### 1. Database
+
+```bash
+docker compose up -d
+```
+
+### 2. Backend
+
+```bash
+cd server
+npm install
+```
+
+Buat `server/.env` berisi:
+
+```
+DATABASE_URL="postgresql://switera:switera_dev_password@localhost:5432/switera"
+JWT_SECRET="ganti-dengan-random-string-yang-panjang"
+PORT=4000
+CORS_ORIGIN="http://localhost:5173"
+```
+
+```bash
+npm run prisma:migrate
+npm run db:seed
+npm run dev
+```
+
+Backend berjalan di `http://localhost:4000`.
+
+### 3. Frontend
+
+Di terminal baru, dari root proyek:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Dev server berjalan di `http://localhost:5173` (dapat diakses dari semua interface jaringan).
+Frontend berjalan di `http://localhost:5173`.
 
-Untuk build produksi:
+## Akun Demo
 
-```bash
-npm run build
-```
-
-Hasil build statis akan ada di folder `dist/`, siap untuk hosting statis apa pun.
-
-## Login Demo
-
-Karena tidak ada backend, gunakan salah satu akun seed berikut untuk mencoba aplikasi:
-
-| Role | Username | Password |
-|------|----------|----------|
+| Peran | Username | Password |
+|---|---|---|
 | Admin | `admin` | `admin123` |
 | Manajer Distribusi | `manajer` | `manajer123` |
 | Tim Logistik | `logistik` | `logistik123` |
 
-Atau buat akun baru lewat halaman Daftar — data akun tersimpan di `localStorage` browser Anda.
+Atau buat akun baru lewat halaman Daftar.
+
+## REST API
+
+| Resource | Endpoint |
+|---|---|
+| Autentikasi | `POST /auth/login`, `POST /auth/register` |
+| Kota & Stok | `GET/POST/PUT/DELETE /kota`, `GET/PUT /stok-tbs` |
+| Permintaan | `GET/POST/PUT/DELETE /permintaan` |
+| Keputusan Distribusi | `GET/POST/PUT/DELETE /keputusan`, `GET /riwayat-keputusan` |
+| Ranking & KPI | `GET /rekomendasi-distribusi`, `GET /kpi` |
+| Notifikasi | `GET /notifikasi`, `PUT /notifikasi/:id/baca` |
+| Riwayat Aktivitas | `GET /activity-log` |
+
+Seluruh endpoint mutasi memerlukan token JWT (header `Authorization: Bearer <token>`) dan menerapkan otorisasi berbasis peran di sisi server.
 
 ## Struktur Proyek
 
 ```
-src/
-  pages/        # Satu komponen per halaman/route (Dashboard, Laporan, ManajemenKota, dll.)
-  components/   # Komponen UI bersama (Tombol, Card, Modal, Tabel, Toast, dll.)
-  store.js      # Single source of truth — pengganti backend (pub/sub + localStorage)
-  utils/        # Logika bisnis murni (ranking, forecast, format, csv) — tanpa dependensi React
-  data/         # Data seed JSON awal
-  tokens.css    # Design tokens (warna, spacing, tipografi)
+src/                  # Frontend (React)
+  pages/              # Satu komponen per halaman/route
+  components/         # Komponen UI bersama (Tombol, Card, Modal, Tabel, Toast, dll.)
+  store.js            # State management terpusat (pub/sub) yang berkomunikasi dengan API
+  api/                # Klien HTTP ke backend
+  utils/              # Logika bisnis murni (ranking, forecast, format, csv)
+
+server/               # Backend (Express)
+  src/
+    routes/           # Endpoint REST per domain
+    services/         # Logika bisnis & akses database
+    middleware/        # Autentikasi, otorisasi, validasi
+  prisma/
+    schema.prisma     # Skema database
+    seed.js           # Data awal
 ```
 
 ## Skrip
 
-| Skrip | Fungsi |
-|-------|--------|
-| `npm run dev` | Menjalankan dev server Vite |
-| `npm run build` | Build produksi ke `dist/` |
-
-## Batasan Lingkup (Out of Scope)
-
-- Backend/database/API sungguhan — direncanakan sebagai milestone selanjutnya
-- Autentikasi nyata (password hash, sesi server) — saat ini plaintext, cocok untuk demo single-browser
-- Dukungan multi-user/sesi bersamaan
+| Lokasi | Skrip | Fungsi |
+|---|---|---|
+| root | `npm run dev` | Menjalankan dev server frontend (Vite) |
+| root | `npm run build` | Build produksi frontend ke `dist/` |
+| `server/` | `npm run dev` | Menjalankan backend dengan auto-restart |
+| `server/` | `npm run prisma:migrate` | Menjalankan migrasi database |
+| `server/` | `npm run db:seed` | Mengisi database dengan data awal |
+| `server/` | `npm run prisma:studio` | GUI untuk melihat/mengedit data database |
