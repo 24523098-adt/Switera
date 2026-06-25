@@ -9,6 +9,8 @@ import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
 import keputusanRouter from "./routes/keputusanRoutes.js";
 import distribusiRouter from "./routes/distribusiRoutes.js";
+import notifikasiRouter from "./routes/notifikasiRoutes.js";
+import activityLogRouter from "./routes/activityLogRoutes.js";
 import requireAuth from "./middleware/requireAuth.js";
 import { getRiwayatKeputusan } from "./services/keputusanService.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -36,6 +38,8 @@ app.use("/kota", kotaRouter);
 app.use("/stok-tbs", stokRouter);
 app.use("/permintaan", permintaanRouter);
 app.use("/keputusan", keputusanRouter);
+app.use("/notifikasi", notifikasiRouter);
+app.use("/activity-log", activityLogRouter);
 
 // distribusiRouter defines its own full paths (/rekomendasi-distribusi,
 // /kpi) rather than being mounted under a shared prefix — mounted with no
