@@ -7,13 +7,17 @@ const router = express.Router();
 
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body ?? {};
+    const { username, password, role } = req.body ?? {};
 
     if (!username || !password) {
       return res.status(400).json({ error: "Username dan password wajib diisi." });
     }
 
-    const akun = await verifyLogin(username, password);
+    if (!role) {
+      return res.status(400).json({ error: "Role wajib diisi." });
+    }
+
+    const akun = await verifyLogin(username, password, role);
     if (!akun) {
       // Same generic message for unknown-user and wrong-password — prevents
       // credential enumeration (T-07-ENUM).
