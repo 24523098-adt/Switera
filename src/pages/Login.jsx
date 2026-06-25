@@ -61,7 +61,7 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
     }
 
     try {
-      await store.login(username, password);
+      await store.login(username, password, role);
       onNavigate?.("/dashboard");
     } catch {
       // The server returns one generic 401 for unknown-user/wrong-password/

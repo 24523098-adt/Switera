@@ -270,11 +270,11 @@ export const store = {
     return store.getUserAktif();
   },
 
-  async login(username, password) {
+  async login(username, password, role) {
     return runMutation(async () => {
       const resp = await apiFetch("/auth/login", {
         method: "POST",
-        body: { username, password },
+        body: { username, password, role },
         auth: false,
       });
       setToken(resp.token);
