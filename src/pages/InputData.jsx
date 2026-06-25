@@ -46,9 +46,14 @@ function InputData({ onNavigate }) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    store.loadPermintaan();
+    store.loadKota();
+  }, []);
+
   const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
 
-  const validate = (nextForm) => {
+  const validate = async (nextForm) => {
     const nextErrors = {};
 
     if (daftarKota.length > 0 && !nextForm.kota) {
@@ -68,10 +73,10 @@ function InputData({ onNavigate }) {
     if (
       nextForm.kota &&
       nextForm.tanggalPermintaan &&
-      store.hasPermintaanDuplikat({
+      (await store.hasPermintaanDuplikat({
         kota: nextForm.kota,
         tanggalPermintaan: nextForm.tanggalPermintaan,
-      })
+      }))
     ) {
       nextErrors.tanggalPermintaan =
         "Data untuk kota ini pada tanggal tersebut sudah ada.";
@@ -80,17 +85,17 @@ function InputData({ onNavigate }) {
     return nextErrors;
   };
 
-  const handleChange = (field, value) => {
+  const handleChange = async (field, value) => {
     const nextForm = {
       ...form,
       [field]: value,
     };
 
     setForm(nextForm);
-    setErrors(validate(nextForm));
+    setErrors(await validate(nextForm));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (daftarKota.length === 0) {
@@ -101,7 +106,7 @@ function InputData({ onNavigate }) {
       return;
     }
 
-    const nextErrors = validate(form);
+    const nextErrors = await validate(form);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -110,8 +115,8 @@ function InputData({ onNavigate }) {
 
     setIsSaving(true);
 
-    window.setTimeout(() => {
-      store.addPermintaan({
+    try {
+      await store.addPermintaan({
         kota: form.kota,
         tanggal_permintaan: form.tanggalPermintaan,
         tanggal_input: getTodayKey(),
@@ -121,9 +126,18 @@ function InputData({ onNavigate }) {
 
       setForm(initialForm);
       setErrors({});
-      setIsSaving(false);
       showToast({ type: "success", message: "Data permintaan berhasil disimpan." });
-    }, 800);
+    } catch (error) {
+      if (error.fields?.jumlah_permintaan) {
+        setErrors({ jumlahPermintaan: error.fields.jumlah_permintaan });
+      } else if (error.fields?.tanggal_permintaan) {
+        setErrors({ tanggalPermintaan: error.fields.tanggal_permintaan });
+      } else if (error.fields?.kota) {
+        setErrors({ kota: error.fields.kota });
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImportCsv = async (event) => {
@@ -141,7 +155,8 @@ function InputData({ onNavigate }) {
     let berhasil = 0;
     const gagal = [];
 
-    rows.forEach((row, index) => {
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
       const kota = (row.kota ?? "").trim();
       const tanggalPermintaan = (row.tanggal_permintaan ?? "").trim();
       const jumlahPermintaan = Number(row.jumlah_permintaan);
@@ -150,33 +165,37 @@ function InputData({ onNavigate }) {
 
       if (!kota || !namaKotaValid.has(kota)) {
         gagal.push(`Baris ${baris}: kota "${kota}" tidak ditemukan di daftar kota.`);
-        return;
+        continue;
       }
 
       if (!tanggalPermintaan || !/^\d{4}-\d{2}-\d{2}$/.test(tanggalPermintaan)) {
         gagal.push(`Baris ${baris}: tanggal_permintaan harus berformat YYYY-MM-DD.`);
-        return;
+        continue;
       }
 
       if (!jumlahPermintaan || jumlahPermintaan <= 0) {
         gagal.push(`Baris ${baris}: jumlah_permintaan harus lebih dari 0.`);
-        return;
+        continue;
       }
 
-      if (store.hasPermintaanDuplikat({ kota, tanggalPermintaan })) {
+      if (await store.hasPermintaanDuplikat({ kota, tanggalPermintaan })) {
         gagal.push(`Baris ${baris}: data ${kota} pada ${tanggalPermintaan} sudah ada.`);
-        return;
+        continue;
       }
 
-      store.addPermintaan({
-        kota,
-        tanggal_permintaan: tanggalPermintaan,
-        tanggal_input: getTodayKey(),
-        jumlah_permintaan: jumlahPermintaan,
-        keterangan,
-      });
-      berhasil += 1;
-    });
+      try {
+        await store.addPermintaan({
+          kota,
+          tanggal_permintaan: tanggalPermintaan,
+          tanggal_input: getTodayKey(),
+          jumlah_permintaan: jumlahPermintaan,
+          keterangan,
+        });
+        berhasil += 1;
+      } catch (error) {
+        gagal.push(`Baris ${baris}: ${error.message}`);
+      }
+    }
 
     setImportResult({ berhasil, gagal });
 
