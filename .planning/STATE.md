@@ -186,6 +186,7 @@ New from 09-05 (Phase 9's final plan — ALL resolved within this plan, no open 
 |---|-------------|------|--------|-----------|
 | 260624-ny8 | Buatkan README.md untuk repo Switera | 2026-06-24 | (pending) | [260624-ny8-buatkan-readme-md-untuk-repo-switera](./quick/260624-ny8-buatkan-readme-md-untuk-repo-switera/) |
 | 260625-cvb | Tambahkan kolom armada/eta ke model Keputusan+RiwayatKeputusan | 2026-06-25 | c3c1aaa | [260625-cvb-tambahkan-kolom-armada-dan-eta-ke-model-](./quick/260625-cvb-tambahkan-kolom-armada-dan-eta-ke-model-/) |
+| 260625-izb | Kembalikan validasi role pada login ke perilaku v1.0 | 2026-06-25 | 43adbfb (Tasks 1-3 done; checkpoint Task 4 pending human-verify) | [260625-izb-kembalikan-validasi-role-pada-login-ke-p](./quick/260625-izb-kembalikan-validasi-role-pada-login-ke-p/) |
 
 ## Deferred Items
 
