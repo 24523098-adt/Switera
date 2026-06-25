@@ -31,6 +31,7 @@ async function main() {
   const TEST_TANGGAL = "2026-06-25";
 
   let createdId = null;
+  let armadaId = null;
 
   try {
     const admin = await login(baseUrl, "admin", "admin123");
@@ -185,6 +186,63 @@ async function main() {
     report("KEPUTUSAN_DELETE_OK", deleteOk, deleteOk ? "" : `(status=${deleteRes.status})`);
     createdId = null;
 
+    // (7) Separate decision for the armada/eta round-trip check (created
+    // fresh so it does not disturb the race test above, which already
+    // consumed createdId's single legitimate status transition).
+    const armadaCreateRes = await fetch(`${baseUrl}/keputusan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${manajer.token}` },
+      body: JSON.stringify({
+        kota_tujuan: TEST_KOTA,
+        volume_tbs: 30,
+        tanggal_keputusan: TEST_TANGGAL,
+        diputuskan_oleh: "__ArmadaEtaVerifyTemp__",
+      }),
+    });
+    const armadaCreateBody = await armadaCreateRes.json();
+    armadaId = armadaCreateBody.id;
+
+    // PUT with logistik token, transitioning to "dalam-pengiriman" while
+    // carrying armada + eta -> expect 200, response body echoes both values.
+    const armadaPutRes = await fetch(`${baseUrl}/keputusan/${encodeURIComponent(armadaId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${logistik.token}` },
+      body: JSON.stringify({ status: "dalam-pengiriman", armada: "Truk B 1234 XY", eta: "2026-07-01" }),
+    });
+    const armadaPutBody = await armadaPutRes.json();
+    const armadaPutOk =
+      armadaPutRes.status === 200 &&
+      armadaPutBody.armada === "Truk B 1234 XY" &&
+      armadaPutBody.eta === "2026-07-01";
+
+    // GET /keputusan, find the row by id, confirm armada/eta persisted and
+    // round-trip on a fresh read (the actual persistence proof).
+    const armadaListRes = await fetch(`${baseUrl}/keputusan`, {
+      headers: { Authorization: `Bearer ${admin.token}` },
+    });
+    const armadaListBody = await armadaListRes.json();
+    const armadaRow = Array.isArray(armadaListBody)
+      ? armadaListBody.find((row) => row.id === armadaId)
+      : null;
+    const armadaRoundtripOk =
+      Boolean(armadaRow) && armadaRow.armada === "Truk B 1234 XY" && armadaRow.eta === "2026-07-01";
+
+    const armadaEtaRoundtripOk = armadaPutOk && armadaRoundtripOk;
+    report(
+      "KEPUTUSAN_ARMADA_ETA_ROUNDTRIP_OK",
+      armadaEtaRoundtripOk,
+      armadaEtaRoundtripOk
+        ? ""
+        : `(putStatus=${armadaPutRes.status}, putBody=${JSON.stringify(armadaPutBody)}, row=${JSON.stringify(armadaRow)})`
+    );
+
+    // Self-clean the temp decision.
+    await fetch(`${baseUrl}/keputusan/${encodeURIComponent(armadaId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${manajer.token}` },
+    });
+    armadaId = null;
+
     report(
       "KEPUTUSAN_ROUTES_OK",
       listOk &&
@@ -195,7 +253,8 @@ async function main() {
         raceOk &&
         conflictMessageOk &&
         deleteForbiddenOk &&
-        deleteOk,
+        deleteOk &&
+        armadaEtaRoundtripOk,
       `(race: count200=${count200}, count409=${count409})`
     );
   } finally {
@@ -205,6 +264,17 @@ async function main() {
       try {
         const admin = await login(baseUrl, "admin", "admin123");
         await fetch(`${baseUrl}/keputusan/${encodeURIComponent(createdId)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${admin.token}` },
+        });
+      } catch {
+        // Best-effort — ignore.
+      }
+    }
+    if (armadaId) {
+      try {
+        const admin = await login(baseUrl, "admin", "admin123");
+        await fetch(`${baseUrl}/keputusan/${encodeURIComponent(armadaId)}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${admin.token}` },
         });
