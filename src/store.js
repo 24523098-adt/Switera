@@ -1,43 +1,15 @@
-import permintaanSeed from "./data/permintaan.json";
-import keputusanSeed from "./data/keputusan.json";
-import notifikasiSeed from "./data/notifikasi.json";
-import activityLogSeed from "./data/activityLog.json";
+import {
+  apiFetch,
+  getToken,
+  setToken,
+  clearToken,
+  setUnauthorizedHandler,
+  subscribeLoading,
+  isLoading,
+} from "./api/apiClient";
+import { showToast } from "./components/Toast";
 
 const roleSeed = "Admin";
-const akunSeed = [
-  {
-    id: "U001",
-    nama: "Budi Santoso",
-    username: "manajer",
-    password: "manajer123",
-    role: "Manajer Distribusi",
-  },
-  {
-    id: "U002",
-    nama: "Rina Wati",
-    username: "logistik",
-    password: "logistik123",
-    role: "Tim Logistik",
-  },
-  {
-    id: "U003",
-    nama: "Administrator",
-    username: "admin",
-    password: "admin123",
-    role: "Admin",
-  },
-];
-const kotaSeed = [
-  { nama: "Pekanbaru", kapasitas: 320 },
-  { nama: "Medan", kapasitas: 280 },
-  { nama: "Palembang", kapasitas: 220 },
-  { nama: "Jambi", kapasitas: 190 },
-  { nama: "Padang", kapasitas: 170 },
-  { nama: "Dumai", kapasitas: 150 },
-  { nama: "Bengkalis", kapasitas: 110 },
-  { nama: "Rokan Hilir", kapasitas: 140 },
-];
-const stokTbsSeed = 150;
 const statusLabelMap = {
   menunggu: "Menunggu",
   "dalam-pengiriman": "Dalam Pengiriman",
@@ -67,25 +39,26 @@ const getNextId = (items, prefix) => {
   return candidate;
 };
 
-const STORAGE_KEY = "switera_state_v1";
+// switera_session_v2 replaces the old switera_state_v1 domain blob: the
+// server is now the source of truth for all DOMAIN collections (Phase 9
+// hydrated in-memory cache decision). Only the session (active user) and
+// the tema UI preference — never a backend concern — are persisted here.
+const SESSION_STORAGE_KEY = "switera_session_v2";
 
-const loadPersisted = () => {
+const loadPersistedSession = () => {
   if (typeof window === "undefined") {
     return null;
   }
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 };
 
-const persisted = loadPersisted();
-
-const isLegacyDaftarKota = (value) =>
-  !Array.isArray(value) || value.some((item) => typeof item === "string");
+const persistedSession = loadPersistedSession();
 
 const getSystemPreferredTema = () => {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -100,17 +73,22 @@ const getSystemPreferredTema = () => {
 };
 
 const state = {
-  userAktif: persisted?.userAktif ?? null,
-  daftarAkun: persisted?.daftarAkun ?? clone(akunSeed),
-  roleAktif: persisted?.roleAktif ?? roleSeed,
-  tema: persisted?.tema ?? getSystemPreferredTema(),
-  daftarKota: isLegacyDaftarKota(persisted?.daftarKota) ? clone(kotaSeed) : persisted.daftarKota,
-  stokTbs: typeof persisted?.stokTbs === "number" ? persisted.stokTbs : stokTbsSeed,
-  permintaan: persisted?.permintaan ?? normalizePermintaanList(clone(permintaanSeed)),
-  keputusan: persisted?.keputusan ?? clone(keputusanSeed),
-  riwayatKeputusan: persisted?.riwayatKeputusan ?? clone(keputusanSeed),
-  notifikasi: persisted?.notifikasi ?? clone(notifikasiSeed),
-  activityLog: persisted?.activityLog ?? clone(activityLogSeed),
+  userAktif: persistedSession?.userAktif ?? null,
+  roleAktif: persistedSession?.userAktif?.role ?? roleSeed,
+  tema: persistedSession?.tema ?? getSystemPreferredTema(),
+  isLoading: false,
+  lastError: null,
+  // DOMAIN collections are no longer seeded client-side — the server is the
+  // source of truth. They start empty and are filled by store.hydrate()
+  // (introduced here, fully wired in 09-05) and by each domain's own
+  // mutators (09-02..09-05) writing the server's authoritative response.
+  daftarKota: [],
+  stokTbs: 0,
+  permintaan: [],
+  keputusan: [],
+  riwayatKeputusan: [],
+  notifikasi: [],
+  activityLog: [],
 };
 
 const persistState = () => {
@@ -119,7 +97,10 @@ const persistState = () => {
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({ userAktif: state.userAktif, tema: state.tema })
+    );
   } catch {
     // localStorage unavailable (private mode/quota) — continue without persistence
   }
@@ -131,6 +112,43 @@ const notify = () => {
   persistState();
   const snapshot = store.getState();
   listeners.forEach((listener) => listener(snapshot));
+};
+
+// Any in-flight apiFetch call updates the exposed isLoading boolean through
+// the EXISTING subscribe/notify contract — no new wiring required on any
+// page (FE-02 loading/error UX decision).
+subscribeLoading(() => {
+  state.isLoading = isLoading();
+  notify();
+});
+
+// A 401 from ANY request clears the session and forces re-login. App.jsx's
+// existing `!snapshot.userAktif` effect already redirects to /login — no
+// App.jsx change needed (T-09-401).
+setUnauthorizedHandler(() => {
+  state.userAktif = null;
+  try {
+    window.localStorage.removeItem("switera_user");
+  } catch {
+    // localStorage unavailable (private mode/quota) — continue without persistence
+  }
+  clearToken();
+  notify();
+});
+
+// Shared error-to-UX path for auth/domain mutators (FE-02): catches a
+// thrown apiFetch error, records it on the cache, surfaces a Toast, then
+// re-throws so the calling page's existing try/catch can still map
+// field-level errors exactly as in v1.0.
+const runMutation = async (fn) => {
+  try {
+    return await fn();
+  } catch (error) {
+    state.lastError = error.message;
+    showToast({ type: "error", message: error.message });
+    notify();
+    throw error;
+  }
 };
 
 const updateCollection = (key, updater) => {
@@ -195,52 +213,87 @@ export const store = {
   },
 
   setUserAktif(user) {
+    // Server-side login activity logging is the backend's job now
+    // (Phase 8 LOGIC-03 scope is domain mutations, not auth) — no
+    // client-side pushActivity here, to avoid fabricating a duplicate or
+    // out-of-band activity-log entry.
     state.userAktif = user ? clone(user) : null;
     if (user?.role) {
       state.roleAktif = user.role;
-    }
-    if (state.userAktif) {
-      pushActivity(state.userAktif.nama, state.userAktif.role, "Login ke sistem");
     }
     notify();
     return store.getUserAktif();
   },
 
-  getDaftarAkun() {
-    return clone(state.daftarAkun);
+  async login(username, password) {
+    return runMutation(async () => {
+      const resp = await apiFetch("/auth/login", {
+        method: "POST",
+        body: { username, password },
+        auth: false,
+      });
+      setToken(resp.token);
+      store.setUserAktif(resp.user);
+      return store.getUserAktif();
+    });
   },
 
-  tambahAkun(akun) {
-    const akunBaru = clone(akun);
-    state.daftarAkun = [...state.daftarAkun, akunBaru];
-    notify();
-    return clone(akunBaru);
+  async register({ nama, username, password, role }) {
+    return runMutation(async () => {
+      const resp = await apiFetch("/auth/register", {
+        method: "POST",
+        body: { nama, username, password, role },
+        auth: false,
+      });
+      return resp.user;
+    });
+  },
+
+  // Deprecated: login now goes through store.login() against the real
+  // server (Phase 9). cariAkun's plaintext in-memory match is gone — this
+  // shim exists so any missed caller fails loudly instead of silently
+  // matching against an empty/stale client-side account list.
+  cariAkun() {
+    throw new Error(
+      "store.cariAkun() tidak lagi tersedia — gunakan store.login(username, password)."
+    );
+  },
+
+  // Deprecated: registration now goes through store.register() against the
+  // real server, which also owns id generation. Kept as a loud shim so any
+  // missed caller fails instead of silently no-op'ing.
+  tambahAkun() {
+    throw new Error(
+      "store.tambahAkun() tidak lagi tersedia — gunakan store.register({ nama, username, password, role })."
+    );
   },
 
   getNextAkunId() {
-    return getNextId(state.daftarAkun, "U");
-  },
-
-  cariAkun(username, password, role) {
-    const normalizedUsername = String(username).trim();
-    const akunDitemukan = state.daftarAkun.find(
-      (akun) =>
-        akun.username === normalizedUsername &&
-        akun.password === password &&
-        akun.role === role
+    throw new Error(
+      "store.getNextAkunId() tidak lagi tersedia — id akun kini dibuat oleh server."
     );
-
-    return akunDitemukan ? clone(akunDitemukan) : null;
   },
 
   logout() {
-    const userSebelum = state.userAktif;
-    state.userAktif = null;
-    if (userSebelum) {
-      pushActivity(userSebelum.nama, userSebelum.role, "Logout dari sistem");
+    clearToken();
+    try {
+      window.localStorage.removeItem("switera_user");
+    } catch {
+      // localStorage unavailable (private mode/quota) — continue without persistence
     }
+    state.userAktif = null;
     notify();
     return store.getState();
+  },
+
+  // Bootstrap hydration entry point (introduced here, fully wired in
+  // 09-05): once reads are synchronous against the cache, the cache must
+  // be filled from the server before/at the moment an authenticated page
+  // renders. 09-01 only introduces the symbol so App.jsx wiring + later
+  // plans' collection fetches have a stable hook to extend; it
+  // intentionally fetches nothing yet beyond what 09-02..09-05 add.
+  async hydrate() {
+    notify();
   },
 
   getPermintaan() {
@@ -547,14 +600,17 @@ export const store = {
     return clone(activityBaru);
   },
 
+  // Deprecated: v1.0's "reset demo data" reset the client-side seed
+  // collections back to their JSON defaults. The server is now the source
+  // of truth for all domain data (Phase 9), so there is no client-side seed
+  // to reset to — this shim fails loudly rather than silently no-op'ing.
+  // Out of scope for 09-01 (auth-only plan) to redesign Layout.jsx's reset
+  // affordance; tracked for a later domain plan to either wire a real
+  // server-side reset endpoint or remove the UI control.
   reset() {
-    state.permintaan = normalizePermintaanList(clone(permintaanSeed));
-    state.keputusan = clone(keputusanSeed);
-    state.riwayatKeputusan = clone(keputusanSeed);
-    state.notifikasi = clone(notifikasiSeed);
-    state.activityLog = clone(activityLogSeed);
-    notify();
-    return store.getState();
+    throw new Error(
+      "store.reset() tidak lagi tersedia — data kini bersumber dari server, tidak ada seed klien untuk direset."
+    );
   },
 };
 
