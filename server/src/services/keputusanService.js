@@ -1,4 +1,18 @@
 import prisma from "../db/prismaClient.js";
+import { tambahNotifikasi } from "./notifikasiService.js";
+import { catatAktivitas } from "./activityLogService.js";
+
+/**
+ * Mirrors src/store.js's statusLabelMap exactly — used to build the
+ * human-readable status label in the "Status distribusi diperbarui"
+ * notification/activity-log message (updateKeputusan's LOGIC-03 side
+ * effect below).
+ */
+const statusLabelMap = {
+  menunggu: "Menunggu",
+  "dalam-pengiriman": "Dalam Pengiriman",
+  selesai: "Selesai",
+};
 
 /**
  * Maps a status value to its corresponding "waktu*" DateTime column name on
@@ -128,12 +142,13 @@ async function getNextKeputusanId() {
  * seed.js's seedKeputusanAndRiwayat comment: "store.js seeds BOTH
  * state.keputusan and state.riwayatKeputusan").
  *
- * NOTE: src/store.js's addKeputusan also pushes a notification + an
- * activity-log entry. Those server-side side effects (LOGIC-03) are
- * deferred to 08-05, which extends this function's mutation with that
- * behavior. This is pure CRUD only.
+ * Closes LOGIC-03 for this mutation: after the dual-table create commits,
+ * pushes a notification then records an activity-log entry — both inside
+ * this same async function body, awaited in sequence, before returning.
+ * (aktor, role) are supplied by the route layer from req.user; this
+ * function never reads req.user itself.
  */
-export async function addKeputusan(entry) {
+export async function addKeputusan(entry, aktor, role) {
   const id = entry.id ?? (await getNextKeputusanId());
   const status = entry.status ?? "menunggu";
   const waktuField = WAKTU_FIELD_BY_STATUS[status];
@@ -148,6 +163,13 @@ export async function addKeputusan(entry) {
     prisma.keputusan.create({ data: { id, ...baseData } }),
     prisma.riwayatKeputusan.create({ data: { id, ...baseData } }),
   ]);
+
+  await tambahNotifikasi({
+    judul: "Keputusan distribusi baru",
+    pesan: `Keputusan distribusi baru tersedia untuk kota ${entry.kota_tujuan}.`,
+    tipe: "info",
+  });
+  await catatAktivitas(aktor, role, `Menyimpan keputusan distribusi kota ${entry.kota_tujuan}`);
 
   return toApi(created);
 }
@@ -186,7 +208,7 @@ export async function addKeputusan(entry) {
  * status-change request arriving after the transition already happened —
  * rejected as a 409 conflict, exactly as if it had lost the updateMany race.
  */
-export async function updateKeputusan(id, updates) {
+export async function updateKeputusan(id, updates, aktor, role) {
   // Step 1: read the current row ONCE.
   const existing = await prisma.keputusan.findUnique({ where: { id } });
   if (!existing) {
@@ -251,9 +273,31 @@ export async function updateKeputusan(id, updates) {
 
   const updated = await prisma.keputusan.findUnique({ where: { id } });
 
-  // Step 7: return existing.status/statusBerubah so the route layer (and
-  // 08-05's LOGIC-03 wrapper) can decide whether to fire side effects
-  // without re-reading the row.
+  // Step 7 (LOGIC-03): side effects fire ONLY for the confirmed winner of
+  // the optimistic lock (this line is unreachable for the 409 loser, which
+  // already threw in Step 5), and ONLY when statusBerubah is true — mirrors
+  // src/store.js's updateKeputusan, which guards its pushNotifikasi/
+  // recordActivity calls behind the same statusBerubah check. This ordering
+  // is the binding LOGIC-02/LOGIC-03 interaction: side effects happen
+  // strictly after the lock-acquiring write is confirmed to have won, never
+  // before, and never for the request that lost the race.
+  if (statusBerubah) {
+    const labelStatus = statusLabelMap[updates.status] ?? updates.status;
+
+    await tambahNotifikasi({
+      judul: "Status distribusi diperbarui",
+      pesan: `Status distribusi ke ${existing.kotaTujuanNama} telah diperbarui menjadi ${labelStatus}.`,
+      tipe: "success",
+    });
+    await catatAktivitas(
+      aktor,
+      role,
+      `Memperbarui status distribusi kota ${existing.kotaTujuanNama} menjadi ${labelStatus}`
+    );
+  }
+
+  // Step 8: return existing.status/statusBerubah so the route layer can
+  // inspect the outcome without re-reading the row.
   return { updated: toApi(updated), statusBerubah, existingStatus: existing.status };
 }
 
@@ -263,7 +307,7 @@ export async function updateKeputusan(id, updates) {
  * src/store.js's removeKeputusan — NOT a soft delete on the live table,
  * only on the historical one).
  */
-export async function removeKeputusan(id) {
+export async function removeKeputusan(id, aktor, role) {
   const existing = await prisma.keputusan.findUnique({ where: { id } });
   if (!existing) {
     throw Object.assign(new Error("Keputusan tidak ditemukan."), { statusCode: 404 });
@@ -277,6 +321,8 @@ export async function removeKeputusan(id) {
     prisma.keputusan.delete({ where: { id } }),
   ]);
 
+  await catatAktivitas(aktor, role, `Membatalkan keputusan distribusi kota ${existing?.kotaTujuanNama ?? id}`);
+
   return toApi(existing);
 }
 
@@ -285,13 +331,15 @@ export async function removeKeputusan(id) {
  * Keputusan row and overwrites the matching RiwayatKeputusan row with the
  * restored item (mirrors src/store.js's restoreKeputusan exactly).
  */
-export async function restoreKeputusan(item) {
+export async function restoreKeputusan(item, aktor, role) {
   const data = toDb(item);
 
   const [created] = await prisma.$transaction([
     prisma.keputusan.create({ data: { id: item.id, ...data } }),
     prisma.riwayatKeputusan.update({ where: { id: item.id }, data }),
   ]);
+
+  await catatAktivitas(aktor, role, `Mengembalikan keputusan distribusi kota ${item.kota_tujuan}`);
 
   return toApi(created);
 }

@@ -3,7 +3,6 @@ import express from "express";
 import cors from "cors";
 import { pathToFileURL } from "url";
 import authRouter from "./routes/authRoutes.js";
-import protectedRouter from "./routes/protectedRoutes.js";
 import kotaRouter from "./routes/kotaRoutes.js";
 import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
@@ -33,7 +32,6 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/auth", authRouter);
-app.use("/protected", protectedRouter);
 app.use("/kota", kotaRouter);
 app.use("/stok-tbs", stokRouter);
 app.use("/permintaan", permintaanRouter);

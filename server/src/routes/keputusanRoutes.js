@@ -41,7 +41,7 @@ router.post(
   validate(keputusanCreateSchema),
   async (req, res, next) => {
     try {
-      const keputusan = await addKeputusan(req.body);
+      const keputusan = await addKeputusan(req.body, req.user.username, req.user.role);
       return res.status(201).json(keputusan);
     } catch (error) {
       return next(error);
@@ -61,7 +61,7 @@ router.put(
   validate(keputusanUpdateSchema),
   async (req, res, next) => {
     try {
-      const result = await updateKeputusan(req.params.id, req.body);
+      const result = await updateKeputusan(req.params.id, req.body, req.user.username, req.user.role);
       return res.status(200).json(result.updated);
     } catch (error) {
       return next(error);
@@ -71,7 +71,7 @@ router.put(
 
 router.delete("/:id", requireAuth, requireRole("Admin", "Manajer Distribusi"), async (req, res, next) => {
   try {
-    const keputusan = await removeKeputusan(req.params.id);
+    const keputusan = await removeKeputusan(req.params.id, req.user.username, req.user.role);
     return res.status(200).json(keputusan);
   } catch (error) {
     return next(error);
@@ -87,7 +87,7 @@ router.post(
       if (!req.body || req.body.id !== req.params.id) {
         return res.status(400).json({ error: "ID pada body tidak cocok dengan ID pada path." });
       }
-      const keputusan = await restoreKeputusan(req.body);
+      const keputusan = await restoreKeputusan(req.body, req.user.username, req.user.role);
       return res.status(201).json(keputusan);
     } catch (error) {
       return next(error);

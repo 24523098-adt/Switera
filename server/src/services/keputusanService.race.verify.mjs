@@ -18,13 +18,17 @@ async function main() {
 
   try {
     // Create one throwaway keputusan row via addKeputusan.
-    const created = await addKeputusan({
-      kota_tujuan: "Pekanbaru",
-      volume_tbs: 10,
-      tanggal_keputusan: "2026-06-25",
-      diputuskan_oleh: "__KeputusanRaceVerifyTemp__",
-      status: "menunggu",
-    });
+    const created = await addKeputusan(
+      {
+        kota_tujuan: "Pekanbaru",
+        volume_tbs: 10,
+        tanggal_keputusan: "2026-06-25",
+        diputuskan_oleh: "__KeputusanRaceVerifyTemp__",
+        status: "menunggu",
+      },
+      "verify-script",
+      "Admin"
+    );
     throwawayId = created.id;
 
     const createOk =
@@ -49,8 +53,8 @@ async function main() {
     // Fire TWO concurrent updateKeputusan calls targeting the same id and
     // the same target status — the LOGIC-02 race condition this plan closes.
     const results = await Promise.allSettled([
-      updateKeputusan(throwawayId, { status: "dalam-pengiriman" }),
-      updateKeputusan(throwawayId, { status: "dalam-pengiriman" }),
+      updateKeputusan(throwawayId, { status: "dalam-pengiriman" }, "verify-script", "Admin"),
+      updateKeputusan(throwawayId, { status: "dalam-pengiriman" }, "verify-script", "Admin"),
     ]);
 
     const fulfilled = results.filter((r) => r.status === "fulfilled");
@@ -110,7 +114,7 @@ async function main() {
     // of outcome, so this script is idempotent/re-runnable.
     if (throwawayId) {
       try {
-        await removeKeputusan(throwawayId);
+        await removeKeputusan(throwawayId, "verify-script", "Admin");
       } catch {
         // Best-effort cleanup — ignore errors here (e.g. row already gone).
       }

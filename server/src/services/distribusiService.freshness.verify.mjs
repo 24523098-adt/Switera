@@ -43,7 +43,7 @@ async function main() {
     // deliberately different value (double it, capped at a sane bound so
     // the score change stays visible relative to the other seeded cities).
     const mutatedKapasitas = originalKapasitas === 999 ? 111 : 999;
-    await updateKota(TARGET_CITY, { nama: TARGET_CITY, kapasitas: mutatedKapasitas });
+    await updateKota(TARGET_CITY, { nama: TARGET_CITY, kapasitas: mutatedKapasitas }, "verify-script", "Admin");
 
     // (3) Second call — must reflect the live DB value, not a cached one.
     const secondCall = await getRekomendasiDistribusi();
@@ -61,7 +61,7 @@ async function main() {
   } finally {
     // (4) Self-clean — always revert, even if an assertion above failed.
     if (originalKapasitas !== undefined) {
-      await updateKota(TARGET_CITY, { nama: TARGET_CITY, kapasitas: originalKapasitas });
+      await updateKota(TARGET_CITY, { nama: TARGET_CITY, kapasitas: originalKapasitas }, "verify-script", "Admin");
       const daftarKotaAfter = await getDaftarKota();
       const kotaAfter = daftarKotaAfter.find((kota) => kota.nama === TARGET_CITY);
       const restored = kotaAfter?.kapasitas === originalKapasitas;

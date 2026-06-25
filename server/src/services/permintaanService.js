@@ -1,4 +1,6 @@
 import prisma from "../db/prismaClient.js";
+import { tambahNotifikasi } from "./notifikasiService.js";
+import { catatAktivitas } from "./activityLogService.js";
 
 /**
  * Maps a Prisma Permintaan row (camelCase) to the src/store.js snake_case
@@ -112,18 +114,51 @@ export async function hasPermintaanDuplikat({ kota, tanggalPermintaan, excludeId
  * absent, normalizes tanggal_permintaan/tanggal_input mutual defaults, and
  * returns the created row in the store.js snake_case shape.
  *
- * NOTE: src/store.js's addPermintaan also pushes a notification + an
- * anomaly notification + an activity-log entry. Those server-side side
- * effects (LOGIC-03) are deferred to 08-05, which extends this function's
- * mutation with that behavior. This is pure CRUD only.
+ * Closes LOGIC-03 for this mutation: after creating the row, pushes a
+ * notification (and, when the new amount anomalously exceeds the historical
+ * average for that kota by more than 50%, a second warning notification),
+ * then records an activity-log entry — all inside this same async function
+ * body, awaited in sequence, before returning. (aktor, role) are supplied by
+ * the route layer from req.user; this function never reads req.user itself.
  */
-export async function addPermintaan(entry) {
+export async function addPermintaan(entry, aktor, role) {
+  // Read existing history for this kota BEFORE the insert, matching
+  // src/store.js:363's ordering (riwayatSebelumnya is computed before the
+  // new row is added to the collection).
+  const riwayatSebelumnya = await prisma.permintaan.findMany({
+    where: { kotaNama: entry.kota },
+  });
+
   const normalized = normalizeTanggal(entry);
   const id = normalized.id ?? (await getNextPermintaanId());
 
   const created = await prisma.permintaan.create({
     data: { id, ...toDb(normalized) },
   });
+
+  await tambahNotifikasi({
+    judul: "Data permintaan baru",
+    pesan: `Data permintaan ${entry.jumlah_permintaan} ton untuk kota ${entry.kota} berhasil ditambahkan.`,
+    tipe: "info",
+  });
+
+  if (riwayatSebelumnya.length > 0) {
+    const rataRataSebelumnya =
+      riwayatSebelumnya.reduce((total, item) => total + (Number(item.jumlahPermintaan) || 0), 0) /
+      riwayatSebelumnya.length;
+    const nilaiBaru = Number(entry.jumlah_permintaan) || 0;
+    const batasAnomali = rataRataSebelumnya * 1.5;
+
+    if (rataRataSebelumnya > 0 && nilaiBaru > batasAnomali) {
+      await tambahNotifikasi({
+        judul: "Anomali permintaan terdeteksi",
+        pesan: `Permintaan kota ${entry.kota} (${nilaiBaru} ton) melebihi rata-rata historisnya (${Math.round(rataRataSebelumnya)} ton) lebih dari 50%.`,
+        tipe: "warning",
+      });
+    }
+  }
+
+  await catatAktivitas(aktor, role, `Menambahkan data permintaan kota ${entry.kota}`);
 
   return toApi(created);
 }
@@ -135,7 +170,7 @@ export async function addPermintaan(entry) {
  * convention if the id does not exist, instead of letting Prisma's raw
  * P2025 error reach the client.
  */
-export async function updatePermintaan(id, updates) {
+export async function updatePermintaan(id, updates, aktor, role) {
   const existing = await prisma.permintaan.findUnique({ where: { id } });
   if (!existing) {
     throw Object.assign(new Error("Data permintaan tidak ditemukan."), { statusCode: 404 });
@@ -146,6 +181,8 @@ export async function updatePermintaan(id, updates) {
     data: toDb(updates),
   });
 
+  await catatAktivitas(aktor, role, `Mengubah data permintaan kota ${updates.kota ?? id}`);
+
   return toApi(updated);
 }
 
@@ -153,13 +190,15 @@ export async function updatePermintaan(id, updates) {
  * Deletes a Permintaan row by id. Throws the same statusCode-tagged 404
  * convention as updatePermintaan when the id does not exist.
  */
-export async function removePermintaan(id) {
+export async function removePermintaan(id, aktor, role) {
   const existing = await prisma.permintaan.findUnique({ where: { id } });
   if (!existing) {
     throw Object.assign(new Error("Data permintaan tidak ditemukan."), { statusCode: 404 });
   }
 
   await prisma.permintaan.delete({ where: { id } });
+
+  await catatAktivitas(aktor, role, `Menghapus data permintaan kota ${existing?.kotaNama ?? id}`);
 
   return { id };
 }

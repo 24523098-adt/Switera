@@ -28,7 +28,7 @@ async function checkFkJoin() {
 async function checkBlockDelete() {
   let threw = false;
   try {
-    await hapusKota("Pekanbaru");
+    await hapusKota("Pekanbaru", "verify-script", "Admin");
   } catch {
     threw = true;
   }
@@ -48,7 +48,7 @@ async function checkCascadeRename() {
   let ok = true;
   const details = [];
 
-  await updateKota("Padang", { nama: "Padang Baru", kapasitas: 170 });
+  await updateKota("Padang", { nama: "Padang Baru", kapasitas: 170 }, "verify-script", "Admin");
 
   const oldNamePermintaan = await prisma.permintaan.findMany({ where: { kotaNama: "Padang" } });
   const newNamePermintaan = await prisma.permintaan.findMany({ where: { kotaNama: "Padang Baru" } });
@@ -80,7 +80,7 @@ async function checkCascadeRename() {
   report("CASCADE_RENAME_OK", ok, ok ? "" : `(${details.join("; ")})`);
 
   // Revert the rename so the script is safely re-runnable without manual DB resets.
-  await updateKota("Padang Baru", { nama: "Padang", kapasitas: 170 });
+  await updateKota("Padang Baru", { nama: "Padang", kapasitas: 170 }, "verify-script", "Admin");
 }
 
 async function main() {

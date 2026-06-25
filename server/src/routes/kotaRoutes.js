@@ -40,7 +40,7 @@ router.get("/:nama/references", requireAuth, async (req, res, next) => {
 
 router.post("/", requireAuth, requireRole("Admin"), validate(kotaCreateSchema), async (req, res, next) => {
   try {
-    const daftarKota = await tambahKota(req.body);
+    const daftarKota = await tambahKota(req.body, req.user.username, req.user.role);
     return res.status(201).json(daftarKota);
   } catch (error) {
     return next(error);
@@ -49,7 +49,7 @@ router.post("/", requireAuth, requireRole("Admin"), validate(kotaCreateSchema), 
 
 router.put("/:nama", requireAuth, requireRole("Admin"), validate(kotaUpdateSchema), async (req, res, next) => {
   try {
-    const daftarKota = await updateKota(req.params.nama, req.body);
+    const daftarKota = await updateKota(req.params.nama, req.body, req.user.username, req.user.role);
     return res.status(200).json(daftarKota);
   } catch (error) {
     return next(error);
@@ -58,7 +58,7 @@ router.put("/:nama", requireAuth, requireRole("Admin"), validate(kotaUpdateSchem
 
 router.delete("/:nama", requireAuth, requireRole("Admin"), async (req, res, next) => {
   try {
-    const daftarKota = await hapusKota(req.params.nama);
+    const daftarKota = await hapusKota(req.params.nama, req.user.username, req.user.role);
     return res.status(200).json(daftarKota);
   } catch (error) {
     return next(error);

@@ -52,7 +52,7 @@ router.post(
   validate(permintaanCreateSchema),
   async (req, res, next) => {
     try {
-      const permintaan = await addPermintaan(req.body);
+      const permintaan = await addPermintaan(req.body, req.user.username, req.user.role);
       return res.status(201).json(permintaan);
     } catch (error) {
       return next(error);
@@ -67,7 +67,7 @@ router.put(
   validate(permintaanUpdateSchema),
   async (req, res, next) => {
     try {
-      const permintaan = await updatePermintaan(req.params.id, req.body);
+      const permintaan = await updatePermintaan(req.params.id, req.body, req.user.username, req.user.role);
       return res.status(200).json(permintaan);
     } catch (error) {
       return next(error);
@@ -77,7 +77,7 @@ router.put(
 
 router.delete("/:id", requireAuth, requireRole("Admin"), async (req, res, next) => {
   try {
-    const result = await removePermintaan(req.params.id);
+    const result = await removePermintaan(req.params.id, req.user.username, req.user.role);
     return res.status(200).json(result);
   } catch (error) {
     return next(error);
