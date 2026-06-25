@@ -8,6 +8,7 @@ import kotaRouter from "./routes/kotaRoutes.js";
 import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
 import keputusanRouter from "./routes/keputusanRoutes.js";
+import distribusiRouter from "./routes/distribusiRoutes.js";
 import requireAuth from "./middleware/requireAuth.js";
 import { getRiwayatKeputusan } from "./services/keputusanService.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -35,6 +36,13 @@ app.use("/kota", kotaRouter);
 app.use("/stok-tbs", stokRouter);
 app.use("/permintaan", permintaanRouter);
 app.use("/keputusan", keputusanRouter);
+
+// distribusiRouter defines its own full paths (/rekomendasi-distribusi,
+// /kpi) rather than being mounted under a shared prefix — mounted with no
+// prefix so the final URLs match the ROADMAP success criterion's literal
+// endpoint names exactly (Express 5 supports a router mounted at root with
+// full paths defined inside it).
+app.use(distribusiRouter);
 
 // riwayat-keputusan (decision history) is its own top-level data domain per
 // the ROADMAP/REQUIREMENTS, not a sub-resource of /keputusan — mounted as a
