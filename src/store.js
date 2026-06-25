@@ -89,6 +89,15 @@ const state = {
   riwayatKeputusan: [],
   notifikasi: [],
   activityLog: [],
+  // Optional read-only caches for the server-side ranking/KPI engine
+  // (distribusiService.js, Phase 8 LOGIC-01). AnalisisRanking/Laporan/
+  // Dashboard keep computing ranking client-side from the hydrated
+  // permintaan/kota/stok cache via src/utils/distribusi.js (09-05 decision:
+  // switching them onto these endpoints risks altering displayed numbers,
+  // out of scope for a no-visual-change phase) — these fields exist for
+  // optional future use only.
+  rekomendasi: [],
+  kpi: null,
 };
 
 const persistState = () => {
@@ -286,13 +295,25 @@ export const store = {
     return store.getState();
   },
 
-  // Bootstrap hydration entry point (introduced here, fully wired in
-  // 09-05): once reads are synchronous against the cache, the cache must
-  // be filled from the server before/at the moment an authenticated page
-  // renders. 09-01 only introduces the symbol so App.jsx wiring + later
-  // plans' collection fetches have a stable hook to extend; it
-  // intentionally fetches nothing yet beyond what 09-02..09-05 add.
+  // Bootstrap hydration entry point (introduced as a no-op stub in 09-01,
+  // completed here): App.jsx calls this on login / session-restore so
+  // every page renders server data with no manual refresh (T-09-H-401: a
+  // no-op without a token, since every apiFetch below would otherwise 401
+  // and trip the unauthorized handler mid-bootstrap for no reason).
   async hydrate() {
+    if (!getToken()) {
+      return;
+    }
+
+    await Promise.all([
+      store.loadKota(),
+      store.loadStok(),
+      store.loadPermintaan(),
+      store.loadKeputusan(),
+      store.loadRiwayatKeputusan(),
+      store.loadNotifikasi(),
+      store.loadActivityLog(),
+    ]);
     notify();
   },
 
@@ -497,6 +518,24 @@ export const store = {
     return clone(state.riwayatKeputusan);
   },
 
+  // Optional read-only loaders for the server-side ranking/KPI engine
+  // (distribusiService.js, Phase 8 LOGIC-01) — exposed for future use, NOT
+  // wired into AnalisisRanking/Laporan/Dashboard in this plan (see the
+  // `rekomendasi`/`kpi` cache-field comment above for the rationale).
+  async loadRekomendasi() {
+    const resp = await apiFetch("/rekomendasi-distribusi");
+    state.rekomendasi = resp;
+    notify();
+    return clone(state.rekomendasi);
+  },
+
+  async loadKpi() {
+    const resp = await apiFetch("/kpi");
+    state.kpi = resp;
+    notify();
+    return clone(state.kpi);
+  },
+
   // Server owns the notification + activity-log side effects for this
   // mutation (keputusanService.addKeputusan, LOGIC-03) — do NOT duplicate
   // pushNotifikasi/recordActivity here. POST /keputusan returns the single
@@ -578,54 +617,112 @@ export const store = {
     });
   },
 
+  // SYNCHRONOUS cache read (Phase 9 hydrated-cache pattern) — unchanged
+  // signature so Layout.jsx's snapshot.notifikasi read keeps working with
+  // zero page change. Populated by loadNotifikasi() below and by
+  // tandaiDibaca/tandaiSemuaDibaca's server response.
   getNotifikasi() {
     return clone(state.notifikasi);
   },
 
-  tambahNotifikasi(notif) {
-    const notifikasiBaru = pushNotifikasi(notif);
+  // Bootstrap loader (called from store.hydrate(); also self-loaded by
+  // Layout.jsx's mount effect since Layout is always mounted for
+  // authenticated pages).
+  async loadNotifikasi() {
+    const resp = await apiFetch("/notifikasi");
+    state.notifikasi = resp;
     notify();
-    return clone(notifikasiBaru);
+    return clone(state.notifikasi);
   },
 
-  tandaiDibaca(id) {
-    state.notifikasi = state.notifikasi.map((item) =>
-      item.id === id ? { ...item, dibaca: true } : item
+  // No POST /notifikasi route exists server-side (notifikasiRoutes.js) —
+  // notifications are an internal side effect of permintaan/keputusan
+  // mutations (LOGIC-03), never a client-fabricated entry. Kept as a loud
+  // shim so any missed caller fails instead of silently no-op'ing or
+  // writing to a cache the server will just overwrite on the next load.
+  tambahNotifikasi() {
+    throw new Error(
+      "store.tambahNotifikasi() tidak lagi tersedia — notifikasi dibuat oleh server sebagai efek samping mutasi, bukan oleh klien."
     );
-    notify();
-    return clone(state.notifikasi);
   },
 
-  tandaiSemuaDibaca() {
-    state.notifikasi = state.notifikasi.map((item) => ({
-      ...item,
-      dibaca: true,
-    }));
-    notify();
-    return clone(state.notifikasi);
+  // PUT /notifikasi/:id/baca returns the SINGLE updated row (confirmed
+  // against notifikasiService.tandaiDibaca's prisma.notifikasi.update(...)
+  // return — NOT a full list, unlike tandaiSemuaDibaca below which DOES
+  // return the full refreshed list via getNotifikasi()). Merge the single
+  // row into the existing cache rather than assigning resp to state.notifikasi.
+  async tandaiDibaca(id) {
+    return runMutation(async () => {
+      const resp = await apiFetch(`/notifikasi/${encodeURIComponent(id)}/baca`, {
+        method: "PUT",
+      });
+      state.notifikasi = state.notifikasi.map((item) => (item.id === id ? resp : item));
+      notify();
+      return clone(state.notifikasi);
+    });
   },
 
+  async tandaiSemuaDibaca() {
+    return runMutation(async () => {
+      const resp = await apiFetch("/notifikasi/baca-semua", {
+        method: "PUT",
+      });
+      state.notifikasi = resp;
+      notify();
+      return clone(state.notifikasi);
+    });
+  },
+
+  // SYNCHRONOUS cache read (Phase 9 hydrated-cache pattern) — unchanged
+  // signature so RiwayatAktivitas.jsx's snapshot.activityLog read keeps
+  // working with zero page change. Populated by loadActivityLog() below.
   getActivityLog() {
     return clone(state.activityLog);
   },
 
-  catatAktivitas(aktor, role, aksi) {
-    const activityBaru = pushActivity(aktor, role, aksi);
-    notify();
-    return clone(activityBaru);
+  // Bootstrap loader (called from store.hydrate() and RiwayatAktivitas.jsx's
+  // mount effect). GET /activity-log is Admin-only server-side
+  // (activityLogRoutes.js: requireRole("Admin")) — a non-Admin session
+  // (e.g. during the global hydrate() bootstrap) gets a 403, which this
+  // loader swallows quietly into an empty list rather than Toasting an
+  // error, since the non-Admin user was never going to see this page
+  // anyway (T-09-L-RBAC). Any OTHER error still goes through the normal
+  // error path.
+  async loadActivityLog() {
+    try {
+      const resp = await apiFetch("/activity-log");
+      state.activityLog = resp;
+      notify();
+      return clone(state.activityLog);
+    } catch (error) {
+      if (error.status === 403 || /tidak memiliki izin/i.test(error.message ?? "")) {
+        state.activityLog = [];
+        notify();
+        return clone(state.activityLog);
+      }
+      throw error;
+    }
   },
 
-  // Deprecated: v1.0's "reset demo data" reset the client-side seed
-  // collections back to their JSON defaults. The server is now the source
-  // of truth for all domain data (Phase 9), so there is no client-side seed
-  // to reset to — this shim fails loudly rather than silently no-op'ing.
-  // Out of scope for 09-01 (auth-only plan) to redesign Layout.jsx's reset
-  // affordance; tracked for a later domain plan to either wire a real
-  // server-side reset endpoint or remove the UI control.
-  reset() {
+  // No POST /activity-log route exists server-side (activityLogRoutes.js) —
+  // activity-log entries are an internal side effect of permintaan/
+  // keputusan/kota/stok mutations (LOGIC-03), never a client-fabricated
+  // entry. Kept as a loud shim so any missed caller fails instead of
+  // silently no-op'ing.
+  catatAktivitas() {
     throw new Error(
-      "store.reset() tidak lagi tersedia — data kini bersumber dari server, tidak ada seed klien untuk direset."
+      "store.catatAktivitas() tidak lagi tersedia — riwayat aktivitas dicatat oleh server sebagai efek samping mutasi, bukan oleh klien."
     );
+  },
+
+  // v1.0's "reset demo data" reset the client-side seed collections back to
+  // their JSON defaults. The server is now the source of truth for all
+  // domain data (Phase 9) — there is no client-side seed to reset to, so
+  // this is repurposed as a "reload from server" affordance: it simply
+  // re-runs the same hydrate() bootstrap, discarding nothing server-side
+  // and pulling the current authoritative state back into the cache.
+  async reset() {
+    await store.hydrate();
   },
 };
 

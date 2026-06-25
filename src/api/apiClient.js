@@ -113,6 +113,7 @@ async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
       }
 
       const error = new Error(parsedBody?.error ?? "Terjadi kesalahan pada server.");
+      error.status = response.status;
       if (parsedBody?.fields) {
         error.fields = parsedBody.fields;
       }
