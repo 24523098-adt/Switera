@@ -145,6 +145,42 @@ setUnauthorizedHandler(() => {
   notify();
 });
 
+// SYNC-01 multi-client polling subsystem (Phase 10). A single setInterval
+// re-runs hydrate() — the exact same Promise.all over every domain loader
+// used for the initial bootstrap — on a fixed cadence, so every subscribed
+// page re-renders with the server's authoritative state with no manual
+// refresh (T-10-POLL-LEAK / T-10-TICK-KILL mitigations live in pollTick/
+// stopPolling below).
+let pollIntervalId = null;
+
+// 4000ms: REQUIREMENTS.md SYNC-01 requires convergence "within a few
+// seconds" — 4s gives sub-5s visible convergence while keeping load trivial
+// for the 3-account school-demo scale (each tick is 7 small authenticated
+// GETs; at 4s that is well under 2 req/sec per client even with all 3 demo
+// accounts polling simultaneously — nowhere near a tight-loop/DoS pattern),
+// and is far cheaper than re-evaluating WebSocket push, which
+// REQUIREMENTS.md explicitly defers as SYNC-02 (T-10-POLL-DOS: accepted).
+const POLL_INTERVAL_MS = 4000;
+
+// Wraps hydrate() in try/catch so a single failed tick (network blip,
+// transient error) can never kill the interval (T-10-TICK-KILL) — the next
+// tick simply retries. hydrate() already no-ops without a token and already
+// calls notify() on success, so there is nothing else to do here.
+const pollTick = async () => {
+  try {
+    await store.hydrate();
+  } catch {
+    // Intentionally swallowed: a transient poll failure is invisible
+    // background work, not a user action — Toasting every network blip
+    // every 4s would be noise. The interval keeps running; the NEXT tick
+    // will retry. A 401 mid-tick is handled separately by apiClient's
+    // existing onUnauthorized handler (above), which clears userAktif and
+    // lets App.jsx's effect cleanup call stopPolling() — this catch must
+    // NOT clearInterval itself, or an ordinary network error would
+    // permanently kill sync instead of just retrying.
+  }
+};
+
 // Shared error-to-UX path for auth/domain mutators (FE-02): catches a
 // thrown apiFetch error, records it on the cache, surfaces a Toast, then
 // re-throws so the calling page's existing try/catch can still map
@@ -723,6 +759,27 @@ export const store = {
   // and pulling the current authoritative state back into the cache.
   async reset() {
     await store.hydrate();
+  },
+
+  // SYNC-01: starts the poll interval. Always calls stopPolling() first so
+  // a re-fired effect (e.g. React StrictMode double-invoke, or a defensive
+  // double-call) can never create a second live interval — at most one
+  // interval ever exists. Does NOT fire an immediate tick: App.jsx already
+  // calls store.hydrate() immediately before startPolling() on login/
+  // session-restore, so an immediate extra tick here would be a redundant
+  // duplicate hydrate on every login.
+  startPolling() {
+    store.stopPolling();
+    pollIntervalId = setInterval(pollTick, POLL_INTERVAL_MS);
+  },
+
+  // SYNC-01 / T-10-POLL-LEAK: stops the poll interval. Idempotent — safe to
+  // call when no interval is running (e.g. a second logout/401 in a row).
+  stopPolling() {
+    if (pollIntervalId !== null) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = null;
+    }
   },
 };
 
