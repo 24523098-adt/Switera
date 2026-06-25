@@ -835,11 +835,13 @@ function DashboardManajer({ permintaan, keputusan, userAktif, daftarKota, stokTb
 
   const rekomendasiKota = rekomendasiList[0];
 
-  const handleTetapkanDistribusi = () => {
+  const handleTetapkanDistribusi = async () => {
     if (!rekomendasiKota) {
       return;
     }
 
+    // SYNCHRONOUS cache read — stays unchanged (this handler reads the
+    // current in-memory state, not a fresh server fetch).
     const keputusanSaatIni = store.getKeputusan();
     const existingDecision = keputusanSaatIni.find(
       (item) =>
@@ -854,17 +856,21 @@ function DashboardManajer({ permintaan, keputusan, userAktif, daftarKota, stokTb
       return;
     }
 
-    store.addKeputusan({
-      kota_tujuan: rekomendasiKota.kota,
-      volume_tbs: rekomendasiKota.alokasi,
-      tanggal_keputusan: todayKey,
-      diputuskan_oleh: "Manajer Distribusi",
-      status: "menunggu",
-    });
+    try {
+      await store.addKeputusan({
+        kota_tujuan: rekomendasiKota.kota,
+        volume_tbs: rekomendasiKota.alokasi,
+        tanggal_keputusan: todayKey,
+        diputuskan_oleh: "Manajer Distribusi",
+        status: "menunggu",
+      });
 
-    setFeedback(
-      `Keputusan distribusi untuk ${rekomendasiKota.kota} berhasil ditambahkan (alokasi ${formatTonase(rekomendasiKota.alokasi)}).`
-    );
+      setFeedback(
+        `Keputusan distribusi untuk ${rekomendasiKota.kota} berhasil ditambahkan (alokasi ${formatTonase(rekomendasiKota.alokasi)}).`
+      );
+    } catch {
+      // runMutation already Toasted the server's error message.
+    }
   };
 
   return (
@@ -1220,7 +1226,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
     return nextErrors;
   };
 
-  const saveStatus = () => {
+  const saveStatus = async () => {
     if (!selectedKeputusan) {
       return;
     }
@@ -1238,9 +1244,17 @@ function DashboardLogistik({ keputusan, userAktif }) {
       updates.eta = eta;
     }
 
-    store.updateKeputusan(selectedKeputusan.id, updates);
-    setModalErrors({});
-    setSelectedKeputusan(null);
+    try {
+      await store.updateKeputusan(selectedKeputusan.id, updates);
+      // Success UI strictly after the await (LOGIC-02): on a 409 conflict
+      // the await throws before reaching here, so the modal never closes
+      // on a false success.
+      setModalErrors({});
+      setSelectedKeputusan(null);
+    } catch {
+      // runMutation already Toasted the server's conflict/error message;
+      // keep the modal open so the user sees it and can retry.
+    }
   };
 
   return (
@@ -1538,6 +1552,14 @@ function Dashboard({ onNavigate }) {
     });
 
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    store.loadKeputusan();
+    store.loadRiwayatKeputusan();
+    store.loadKota();
+    store.loadPermintaan();
+    store.loadStok();
   }, []);
 
   const { roleAktif, permintaan, keputusan, userAktif, daftarKota, stokTbs } = snapshot;

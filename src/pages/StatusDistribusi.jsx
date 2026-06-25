@@ -38,6 +38,11 @@ function StatusDistribusi({ onNavigate }) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    store.loadKeputusan();
+    store.loadRiwayatKeputusan();
+  }, []);
+
   const keputusanAktif = useMemo(
     () =>
       [...(snapshot.keputusan ?? [])].sort(
@@ -89,7 +94,7 @@ function StatusDistribusi({ onNavigate }) {
     return nextErrors;
   };
 
-  const saveStatus = () => {
+  const saveStatus = async () => {
     if (!selectedKeputusan) {
       return;
     }
@@ -107,9 +112,19 @@ function StatusDistribusi({ onNavigate }) {
       updates.eta = eta;
     }
 
-    store.updateKeputusan(selectedKeputusan.id, updates);
-    setModalErrors({});
-    setSelectedKeputusan(null);
+    try {
+      await store.updateKeputusan(selectedKeputusan.id, updates);
+      // Success UI strictly after the await (LOGIC-02): on a 409 conflict
+      // the await throws before reaching here, so the modal never closes
+      // on a false success — the catch below leaves it open instead.
+      setModalErrors({});
+      setSelectedKeputusan(null);
+    } catch {
+      // runMutation already Toasted the server's conflict/error message
+      // (e.g. the LOGIC-02 409 "Status keputusan sudah diperbarui oleh
+      // proses lain..."); keep the modal open so the user sees it and can
+      // retry against the now-current server state.
+    }
   };
 
   return (
