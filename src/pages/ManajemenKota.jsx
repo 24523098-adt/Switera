@@ -105,6 +105,11 @@ function ManajemenKota({ onNavigate }) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    store.loadKota();
+    store.loadStok();
+  }, []);
+
   const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
   const stokTbs = snapshot.stokTbs ?? 0;
 
@@ -152,7 +157,7 @@ function ManajemenKota({ onNavigate }) {
     setIsFormOpen(true);
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
     const nextErrors = validateForm(form);
     setFormErrors(nextErrors);
 
@@ -162,13 +167,13 @@ function ManajemenKota({ onNavigate }) {
 
     try {
       if (editTarget) {
-        store.updateKota(editTarget.nama, {
+        await store.updateKota(editTarget.nama, {
           nama: form.nama.trim(),
           kapasitas: form.kapasitas,
         });
         showToast({ type: "success", message: "Kota berhasil diperbarui." });
       } else {
-        store.tambahKota({ nama: form.nama.trim(), kapasitas: form.kapasitas });
+        await store.tambahKota({ nama: form.nama.trim(), kapasitas: form.kapasitas });
         showToast({ type: "success", message: "Kota berhasil ditambahkan." });
       }
 
@@ -181,8 +186,8 @@ function ManajemenKota({ onNavigate }) {
     }
   };
 
-  const requestDelete = (kota) => {
-    const { permintaanCount, keputusanCount } = store.getKotaReferenceCounts(kota.nama);
+  const requestDelete = async (kota) => {
+    const { permintaanCount, keputusanCount } = await store.getKotaReferenceCounts(kota.nama);
 
     if (permintaanCount > 0 || keputusanCount > 0) {
       setBlockedTarget({ ...kota, permintaanCount, keputusanCount });
@@ -191,12 +196,12 @@ function ManajemenKota({ onNavigate }) {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) {
       return;
     }
 
-    store.hapusKota(deleteTarget.nama);
+    await store.hapusKota(deleteTarget.nama);
     setDeleteTarget(null);
     showToast({ type: "success", message: "Kota berhasil dihapus." });
   };
@@ -207,7 +212,7 @@ function ManajemenKota({ onNavigate }) {
     setIsStockModalOpen(true);
   };
 
-  const submitStock = () => {
+  const submitStock = async () => {
     const numericValue = Number(stockValue);
 
     if (!stockValue || numericValue <= 0) {
@@ -215,7 +220,7 @@ function ManajemenKota({ onNavigate }) {
       return;
     }
 
-    store.setStokTbs(numericValue);
+    await store.setStokTbs(numericValue);
     setIsStockModalOpen(false);
     showToast({ type: "success", message: "Stok TBS berhasil diperbarui." });
   };
