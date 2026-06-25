@@ -300,6 +300,10 @@ export const store = {
     return clone(state.permintaan);
   },
 
+  // SYNCHRONOUS cache reads (Phase 9 hydrated-cache pattern) — unchanged
+  // signatures so ManajemenKota's snapshot.daftarKota / snapshot.stokTbs
+  // reads keep working with zero page change. Populated by loadKota() /
+  // loadStok() below and by each mutator's server response.
   getDaftarKota() {
     return clone(state.daftarKota);
   },
@@ -308,79 +312,75 @@ export const store = {
     return state.daftarKota.find((kota) => kota.nama === namaKota)?.kapasitas ?? null;
   },
 
-  getKotaReferenceCounts(nama) {
-    const permintaanCount = state.permintaan.filter((item) => item.kota === nama).length;
-    const keputusanCount = state.keputusan.filter((item) => item.kota_tujuan === nama).length;
-    return { permintaanCount, keputusanCount };
-  },
-
-  tambahKota({ nama, kapasitas }) {
-    if (state.daftarKota.some((kota) => kota.nama === nama)) {
-      throw new Error("Kota dengan nama tersebut sudah ada.");
-    }
-
-    state.daftarKota = [...state.daftarKota, { nama, kapasitas: Number(kapasitas) || 0 }];
-    recordActivity(`Menambahkan kota ${nama} ke daftar kota`);
+  // Bootstrap loaders (called on ManajemenKota mount; 09-05 will also call
+  // these from store.hydrate()).
+  async loadKota() {
+    const resp = await apiFetch("/kota");
+    state.daftarKota = resp;
     notify();
     return clone(state.daftarKota);
   },
 
-  updateKota(namaLama, { nama, kapasitas }) {
-    const namaBaru = nama.trim();
-
-    if (
-      namaBaru !== namaLama &&
-      state.daftarKota.some((kota) => kota.nama === namaBaru)
-    ) {
-      throw new Error("Kota dengan nama tersebut sudah ada.");
-    }
-
-    state.daftarKota = state.daftarKota.map((kota) =>
-      kota.nama === namaLama ? { nama: namaBaru, kapasitas: Number(kapasitas) || 0 } : kota
-    );
-
-    if (namaBaru !== namaLama) {
-      state.permintaan = state.permintaan.map((item) =>
-        item.kota === namaLama ? { ...item, kota: namaBaru } : item
-      );
-      state.keputusan = state.keputusan.map((item) =>
-        item.kota_tujuan === namaLama ? { ...item, kota_tujuan: namaBaru } : item
-      );
-      state.riwayatKeputusan = state.riwayatKeputusan.map((item) =>
-        item.kota_tujuan === namaLama ? { ...item, kota_tujuan: namaBaru } : item
-      );
-    }
-
-    recordActivity(`Memperbarui data kota ${namaLama}`);
+  async loadStok() {
+    const resp = await apiFetch("/stok-tbs");
+    state.stokTbs = resp.stokTbs;
     notify();
-    return clone(state.daftarKota);
+    return state.stokTbs;
   },
 
-  hapusKota(nama) {
-    const { permintaanCount, keputusanCount } = store.getKotaReferenceCounts(nama);
+  async getKotaReferenceCounts(nama) {
+    return apiFetch(`/kota/${encodeURIComponent(nama)}/references`);
+  },
 
-    if (permintaanCount > 0 || keputusanCount > 0) {
-      throw new Error(
-        `Kota ${nama} tidak bisa dihapus karena masih digunakan oleh ${permintaanCount} permintaan dan ${keputusanCount} keputusan distribusi.`
-      );
-    }
+  async tambahKota({ nama, kapasitas }) {
+    return runMutation(async () => {
+      const resp = await apiFetch("/kota", {
+        method: "POST",
+        body: { nama, kapasitas: Number(kapasitas) || 0 },
+      });
+      state.daftarKota = resp;
+      notify();
+      return clone(state.daftarKota);
+    });
+  },
 
-    state.daftarKota = state.daftarKota.filter((kota) => kota.nama !== nama);
-    recordActivity(`Menghapus kota ${nama} dari daftar kota`);
-    notify();
-    return clone(state.daftarKota);
+  async updateKota(namaLama, { nama, kapasitas }) {
+    return runMutation(async () => {
+      const resp = await apiFetch(`/kota/${encodeURIComponent(namaLama)}`, {
+        method: "PUT",
+        body: { nama: nama.trim(), kapasitas: Number(kapasitas) || 0 },
+      });
+      state.daftarKota = resp;
+      notify();
+      return clone(state.daftarKota);
+    });
+  },
+
+  async hapusKota(nama) {
+    return runMutation(async () => {
+      const resp = await apiFetch(`/kota/${encodeURIComponent(nama)}`, {
+        method: "DELETE",
+      });
+      state.daftarKota = resp;
+      notify();
+      return clone(state.daftarKota);
+    });
   },
 
   getStokTbs() {
     return state.stokTbs;
   },
 
-  setStokTbs(value) {
-    const numericValue = Number(value) || 0;
-    state.stokTbs = numericValue;
-    recordActivity(`Memperbarui stok TBS tersedia menjadi ${numericValue} ton`);
-    notify();
-    return state.stokTbs;
+  async setStokTbs(value) {
+    return runMutation(async () => {
+      const resp = await apiFetch("/stok-tbs", {
+        method: "PUT",
+        body: { stokTbs: Number(value) || 0 },
+      });
+      state.stokTbs = resp.stokTbs;
+      notify();
+      return state.stokTbs;
+    });
   },
 
   getRoleAktif() {
