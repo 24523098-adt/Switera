@@ -42,6 +42,8 @@ function toApi(row) {
     tanggal_keputusan: row.tanggalKeputusan,
     diputuskan_oleh: row.diputuskanOleh,
     status: row.status,
+    armada: row.armada,
+    eta: row.eta,
     waktu_menunggu: row.waktuMenunggu,
     waktu_dalam_pengiriman: row.waktuDalamPengiriman,
     waktu_selesai: row.waktuSelesai,
@@ -75,6 +77,12 @@ function toDb(entry) {
   }
   if (Object.prototype.hasOwnProperty.call(entry, "status")) {
     data.status = entry.status;
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, "armada")) {
+    data.armada = entry.armada;
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, "eta")) {
+    data.eta = entry.eta;
   }
   if (Object.prototype.hasOwnProperty.call(entry, "waktu_menunggu")) {
     data.waktuMenunggu = entry.waktu_menunggu ?? null;

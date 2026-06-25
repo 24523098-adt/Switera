@@ -30,4 +30,6 @@ export const keputusanUpdateSchema = z.object({
   tanggal_keputusan: z.string().min(1, "Tanggal keputusan wajib diisi.").optional(),
   diputuskan_oleh: z.string().min(1, "Diputuskan oleh wajib diisi.").optional(),
   status: z.enum(["menunggu", "dalam-pengiriman", "selesai", "dibatalkan"]).optional(),
+  armada: z.string().optional(),
+  eta: z.string().optional(),
 });
