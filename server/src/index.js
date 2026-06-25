@@ -7,6 +7,9 @@ import protectedRouter from "./routes/protectedRoutes.js";
 import kotaRouter from "./routes/kotaRoutes.js";
 import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
+import keputusanRouter from "./routes/keputusanRoutes.js";
+import requireAuth from "./middleware/requireAuth.js";
+import { getRiwayatKeputusan } from "./services/keputusanService.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const PORT = process.env.PORT || 4000;
@@ -31,6 +34,19 @@ app.use("/protected", protectedRouter);
 app.use("/kota", kotaRouter);
 app.use("/stok-tbs", stokRouter);
 app.use("/permintaan", permintaanRouter);
+app.use("/keputusan", keputusanRouter);
+
+// riwayat-keputusan (decision history) is its own top-level data domain per
+// the ROADMAP/REQUIREMENTS, not a sub-resource of /keputusan — mounted as a
+// dedicated route reusing the same getRiwayatKeputusan-backed handler.
+app.get("/riwayat-keputusan", requireAuth, async (req, res, next) => {
+  try {
+    const riwayat = await getRiwayatKeputusan();
+    return res.status(200).json(riwayat);
+  } catch (error) {
+    return next(error);
+  }
+});
 
 // keep last — central error handler. Wave 2/3 domain routers must mount
 // ABOVE this line; Express only treats a 4-arg middleware registered last
