@@ -1562,7 +1562,7 @@ function Landing({ onNavigate }) {
           <span>© 2026 Switera</span>
         </div>
         <p style={{ margin: 0, fontSize: "12px", color: "rgba(255,255,255,0.15)" }}>
-          Dibuat untuk tugas Pengembangan Sistem Informasi
+          
         </p>
       </footer>
 

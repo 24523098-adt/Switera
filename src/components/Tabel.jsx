@@ -159,7 +159,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
     padding: isCompact ? "6px 16px" : "12px 16px",
     borderBottom: isLastRow ? "none" : "1px solid var(--color-border)",
     color: "var(--color-text-primary)",
-    verticalAlign: "top",
+    verticalAlign: "middle",
     fontSize: "var(--text-sm)",
     transition: "background-color 80ms ease",
   });

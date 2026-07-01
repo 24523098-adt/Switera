@@ -60,7 +60,7 @@ function AksiTabelButtons({ onEdit, onDelete, isCurrentUser }) {
   const deleteRipple = useRipple();
 
   return (
-    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "space-between" }}>
       <button
         type="button"
         className="aksi-btn aksi-btn-edit"
@@ -316,7 +316,7 @@ function ManajemenAkun() {
     <>
       <PageHeader
         judul="Manajemen Akun"
-        deskripsi="Kelola akun pengguna sistem — tambah, edit nama atau role, dan hapus akun."
+        deskripsi="Kelola akun pengguna sistem, tambah, edit nama atau role, dan hapus akun."
         aksi={
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ width: "min(280px, 100%)", position: "relative" }}>
