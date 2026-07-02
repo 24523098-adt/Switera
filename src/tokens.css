@@ -1,43 +1,71 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --color-bg: #0d0d0d;
-  --color-surface: #161616;
-  --color-surface-2: #1c1c1c;
-  --color-surface-3: #242424;
-  --color-surface-hover: #2a2a2a;
-  --color-elevated: #111111;
-  --color-border: #2c2c2c;
-  --color-border-mid: #383838;
-  --color-border-strong: #484848;
-  --color-overlay: rgba(0, 0, 0, 0.6);
-  --color-elevated-glass: rgba(17, 17, 17, 0.72);
+  /* ===== Design System: Agro-Distribution Catalyst (light mode) ===== */
+  --color-bg: #f8f9ff;
+  --color-surface: #ffffff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container-high: #dce9ff;
 
-  --color-text-primary: #efefef;
-  --color-text-secondary: #a8a8a8;
-  --color-text-muted: #8a8a8a;
-  --color-text-disabled: #5a5a5a;
+  --color-primary: #006a43;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #008656;
+  --color-secondary: #00668a;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #40c2fd;
+  --color-tertiary: #994100;
+  --color-on-tertiary: #ffffff;
+  --color-error: #ba1a1a;
 
-  --color-primary: #2d6a4f;
-  --color-primary-hover: #40916c;
-  --color-primary-active: #1b4332;
-  --color-primary-subtle: rgba(45, 106, 79, 0.12);
-  --color-primary-glow: rgba(45, 106, 79, 0.25);
+  --color-text-primary: #0b1c30;
+  --color-text-secondary: #3e4941;
+  --color-text-muted: #6e7a71;
 
-  --color-accent: #f2a71b;
-  --color-accent-subtle: rgba(242, 167, 27, 0.12);
-  --color-danger: #e5484d;
-  --color-danger-subtle: rgba(229, 72, 77, 0.12);
-  --color-success: #30a46c;
-  --color-success-subtle: rgba(48, 164, 108, 0.12);
-  --color-warning: #f59e0b;
-  --color-warning-subtle: rgba(245, 158, 11, 0.12);
-  --color-info: #3b82f6;
-  --color-info-subtle: rgba(59, 130, 246, 0.12);
+  --color-border: #e5eeff;
+  --color-border-subtle: #f1f5f9;
 
-  --font-display: 'Inter', -apple-system, sans-serif;
+  --color-success-bg: #d1fae5;
+  --color-success-text: #006a43;
+  --color-info-bg: #dbeafe;
+  --color-info-text: #00668a;
+  --color-warning-bg: #ffedd5;
+  --color-warning-text: #994100;
+  --color-danger-bg: #fee2e2;
+  --color-danger-text: #ba1a1a;
+
+  /* ===== Alias kompatibilitas: nama token lama -> palet baru =====
+     Agar komponen/halaman yang belum dimigrasi tetap tampil di light mode;
+     dicabut bertahap saat tiap file dimigrasi ke design system baru. */
+  --color-surface-2: var(--color-surface-container-low);
+  --color-surface-3: var(--color-surface-container);
+  --color-surface-hover: var(--color-surface-container-low);
+  --color-elevated: var(--color-surface);
+  --color-elevated-glass: rgba(255, 255, 255, 0.72);
+  --color-overlay: rgba(11, 28, 48, 0.5);
+  --color-border-mid: var(--color-border);
+  --color-border-strong: #c9d6ee;
+  --color-text-disabled: #9aa6b2;
+  --color-primary-hover: var(--color-primary-container);
+  --color-primary-active: #005234;
+  --color-primary-subtle: rgba(0, 106, 67, 0.08);
+  --color-primary-glow: rgba(0, 134, 86, 0.3);
+  --color-accent: var(--color-tertiary);
+  --color-accent-subtle: var(--color-warning-bg);
+  --color-danger: var(--color-error);
+  --color-danger-subtle: var(--color-danger-bg);
+  --color-success: var(--color-success-text);
+  --color-success-subtle: var(--color-success-bg);
+  --color-info: var(--color-info-text);
+  --color-info-subtle: var(--color-info-bg);
+  --color-warning: var(--color-warning-text);
+  --color-warning-subtle: var(--color-warning-bg);
+
+  --font-heading: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-body: 'Inter', -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Alias font lama -> baru (mono kini memakai heading, sesuai spec metrik) */
+  --font-display: var(--font-heading);
+  --font-mono: var(--font-heading);
 
   --text-2xs: .6875rem;
   --text-xs: .75rem;
@@ -64,22 +92,23 @@
   --tracking-wider: 0.08em;
 
   --radius-xs: 4px;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .16);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, .2);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, .24);
-  --shadow-lg: 0 6px 20px rgba(0, 0, 0, .3);
-  --shadow-xl: 0 12px 32px rgba(0, 0, 0, .36);
-  /* Glow token dinetralkan jadi shadow halus (tanpa glow berwarna) — tampilan
-     enterprise yang bersih; nama token dipertahankan agar referensi tak putus. */
-  --shadow-glow-primary: 0 1px 3px rgba(0, 0, 0, .2);
-  --shadow-glow-accent: 0 1px 3px rgba(0, 0, 0, .2);
+  --shadow-sm: 0 1px 4px rgba(0, 106, 67, 0.06), 0 2px 8px rgba(0, 106, 67, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 106, 67, 0.10), 0 8px 24px rgba(0, 106, 67, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 106, 67, 0.12), 0 16px 48px rgba(0, 106, 67, 0.08);
+  --shadow-glow: 0 0 40px -10px rgba(0, 134, 86, 0.5);
+  --shadow-focus: 0 0 0 3px rgba(0, 106, 67, 0.2);
+  /* Alias shadow lama -> baru */
+  --shadow-xs: var(--shadow-sm);
+  --shadow-xl: var(--shadow-lg);
+  --shadow-glow-primary: var(--shadow-glow);
+  --shadow-glow-accent: var(--shadow-glow);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -95,11 +124,12 @@
   --ease-smooth: cubic-bezier(.4, 0, .2, 1);
   --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
   --ease-out: cubic-bezier(0, 0, .2, 1);
-  --transition-fast: 120ms var(--ease-out);
-  --transition-base: 150ms var(--ease-out);
-  --transition-slow: 220ms var(--ease-out);
-  --transition-input: 150ms var(--ease-out);
-  --transition-page: 200ms var(--ease-out);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 150ms ease-out;
+  --transition-base: 250ms ease-out;
+  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-input: 150ms ease-out;
+  --transition-page: 250ms ease-out;
 
   --z-dropdown: 100;
   --z-sticky: 200;
@@ -107,34 +137,7 @@
   --z-toast: 400;
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-
-  --color-bg: #f6f6f4;
-  --color-surface: #ffffff;
-  --color-surface-2: #f1f1ee;
-  --color-surface-3: #e7e7e2;
-  --color-surface-hover: #ececea;
-  --color-elevated: #ffffff;
-  --color-border: #e4e4df;
-  --color-border-mid: #d4d4cd;
-  --color-border-strong: #bcbcb3;
-  --color-overlay: rgba(0, 0, 0, 0.4);
-  --color-elevated-glass: rgba(255, 255, 255, 0.72);
-
-  --color-text-primary: #1b1b1b;
-  --color-text-secondary: #525252;
-  --color-text-muted: #6f6f6f;
-  --color-text-disabled: #a6a6a6;
-
-  --color-primary-subtle: rgba(45, 106, 79, 0.1);
-
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .06);
-  --shadow-sm: 0 2px 6px rgba(0, 0, 0, .08);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, .1);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, .12);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, .16);
-}
+/* Override tema dark/light dihapus — aplikasi kini light-only (Catalyst). */
 
 @keyframes fadeInUp {
   from {
