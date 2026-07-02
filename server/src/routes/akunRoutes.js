@@ -2,7 +2,7 @@ import express from "express";
 import requireAuth from "../middleware/requireAuth.js";
 import requireRole from "../middleware/requireRole.js";
 import { roleOptions } from "./roleOptions.js";
-import { getDaftarAkun, updateAkun, hapusAkun } from "../services/akunService.js";
+import { getDaftarAkun, updateAkun, hapusAkun, resetPasswordAkun } from "../services/akunService.js";
 
 const router = express.Router();
 
@@ -28,6 +28,25 @@ router.put("/:id", requireAuth, requireRole("Admin"), async (req, res, next) => 
     }
 
     const akun = await updateAkun(id, { nama, role });
+    return res.status(200).json(akun);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Reset kata sandi akun (Admin-only). Menggantikan alur "Lupa Password"
+// self-service yang butuh infra email — Admin menyetel kata sandi baru
+// langsung dari halaman Manajemen Akun.
+router.put("/:id/reset-password", requireAuth, requireRole("Admin"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body ?? {};
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: "Password minimal 6 karakter." });
+    }
+
+    const akun = await resetPasswordAkun(id, password, req.user.username, req.user.role);
     return res.status(200).json(akun);
   } catch (error) {
     return next(error);

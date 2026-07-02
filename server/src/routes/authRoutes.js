@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post("/login", async (req, res) => {
   try {
-    const { username, password, role } = req.body ?? {};
+    const { username, password, role, rememberMe } = req.body ?? {};
 
     if (!username || !password) {
       return res.status(400).json({ error: "Username dan password wajib diisi." });
@@ -24,7 +24,15 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Username atau password salah." });
     }
 
-    const token = signToken({ id: akun.id, username: akun.username, role: akun.role });
+    // "Ingat Saya": token berumur 30 hari saat opsi dicentang, jika tidak
+    // tetap 1 jam. Masa berlaku token inilah yang benar-benar menentukan lama
+    // sesi (localStorage sendiri tidak punya TTL, jadi menyimpan lebih lama di
+    // sana tanpa memperpanjang token tidak berefek).
+    const expiresIn = rememberMe ? "30d" : "1h";
+    const token = signToken(
+      { id: akun.id, username: akun.username, role: akun.role },
+      { expiresIn }
+    );
 
     return res.status(200).json({
       token,

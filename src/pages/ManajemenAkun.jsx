@@ -55,8 +55,19 @@ function IkonHapusKecil() {
   );
 }
 
-function AksiTabelButtons({ onEdit, onDelete, isCurrentUser }) {
+function IkonKunciKecil() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="9" cy="15" r="4" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 12L19 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M16 8L19 5L21 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AksiTabelButtons({ onEdit, onResetPassword, onDelete, isCurrentUser }) {
   const editRipple = useRipple();
+  const resetRipple = useRipple();
   const deleteRipple = useRipple();
 
   return (
@@ -70,6 +81,17 @@ function AksiTabelButtons({ onEdit, onDelete, isCurrentUser }) {
         <IkonEditKecil />
         Edit
         <RippleSpans ripples={editRipple.ripples} removeRipple={editRipple.removeRipple} />
+      </button>
+      <button
+        type="button"
+        className="aksi-btn"
+        onClick={onResetPassword}
+        onMouseDown={resetRipple.onMouseDown}
+        style={{ border: "1px solid var(--color-accent)", color: "var(--color-accent)" }}
+      >
+        <IkonKunciKecil />
+        Reset Sandi
+        <RippleSpans ripples={resetRipple.ripples} removeRipple={resetRipple.removeRipple} />
       </button>
       <button
         type="button"
@@ -134,6 +156,11 @@ function ManajemenAkun() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
   const [focusedField, setFocusedField] = useState("");
 
   useEffect(() => {
@@ -257,6 +284,33 @@ function ManajemenAkun() {
       // runMutation sudah tampilkan toast error
     } finally {
       setIsSavingEdit(false);
+    }
+  };
+
+  const openResetModal = (item) => {
+    setResetTarget(item);
+    setResetPassword("");
+    setResetError("");
+    setShowResetPassword(false);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetTarget) return;
+    if (!resetPassword || resetPassword.length < 6) {
+      setResetError("Password minimal 6 karakter.");
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      await store.resetPasswordAkun(resetTarget.id, resetPassword);
+      showToast({ type: "success", message: `Kata sandi akun "${resetTarget.nama}" berhasil direset.` });
+      setResetTarget(null);
+      setResetPassword("");
+    } catch {
+      // runMutation sudah tampilkan toast error
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -402,6 +456,7 @@ function ManajemenAkun() {
                 return (
                   <AksiTabelButtons
                     onEdit={() => openEditModal(item)}
+                    onResetPassword={() => openResetModal(item)}
                     onDelete={() => setDeleteTarget(item)}
                     isCurrentUser={item.id === currentUserId}
                   />
@@ -557,6 +612,66 @@ function ManajemenAkun() {
                   variant="bahaya"
                   onClick={confirmDelete}
                   disabled={isDeleting}
+                />
+              </div>
+            </div>
+          }
+        />
+      ) : null}
+
+      {resetTarget ? (
+        <Modal
+          judul="Reset Kata Sandi"
+          onTutup={() => setResetTarget(null)}
+          konten={
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <p style={{ margin: 0, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Setel kata sandi baru untuk akun{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>{resetTarget.nama}</strong>
+                {" "}({resetTarget.username}). Pengguna dapat langsung masuk dengan kata sandi baru ini.
+              </p>
+
+              <label style={labelStyle}>
+                <span style={fieldLabelTextStyle}>Kata Sandi Baru</span>
+                <input
+                  type={showResetPassword ? "text" : "password"}
+                  value={resetPassword}
+                  onChange={(e) => {
+                    setResetPassword(e.target.value);
+                    if (resetError) setResetError("");
+                  }}
+                  placeholder="Minimal 6 karakter"
+                  style={getFieldStyle("resetPassword")}
+                  {...getFieldHandlers("resetPassword")}
+                />
+                {resetError ? <p style={errorStyle}>{resetError}</p> : null}
+              </label>
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-text-secondary)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={showResetPassword}
+                  onChange={(e) => setShowResetPassword(e.target.checked)}
+                  style={{ accentColor: "var(--color-primary)" }}
+                />
+                Tampilkan kata sandi
+              </label>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", flexWrap: "wrap" }}>
+                <Tombol label="Batal" variant="sekunder" onClick={() => setResetTarget(null)} />
+                <Tombol
+                  label={isResetting ? "Menyimpan..." : "Reset Kata Sandi"}
+                  onClick={confirmResetPassword}
+                  disabled={isResetting}
                 />
               </div>
             </div>

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import prisma from "../db/prismaClient.js";
+import { catatAktivitas } from "./activityLogService.js";
 
 const BCRYPT_COST_FACTOR = 10;
 
@@ -123,6 +124,35 @@ export async function updateAkun(id, { nama, role }) {
       role: role ?? existing.role,
     },
   });
+
+  return stripPassword(akun);
+}
+
+/**
+ * Resets an account's password to a new bcrypt-hashed value (Admin-driven,
+ * see akunRoutes PUT /:id/reset-password). Mirrors registerAkun's hashing
+ * (cost factor 10) — the plaintext newPassword only ever exists as an argument
+ * and transiently inside bcrypt.hash, never persisted unhashed. Records an
+ * activity-log entry because a password reset is a security-sensitive action
+ * that should always be auditable (aktor/role supplied by the route from
+ * req.user). Returns the account without its password field.
+ */
+export async function resetPasswordAkun(id, newPassword, aktor, role) {
+  const existing = await prisma.akun.findUnique({ where: { id } });
+  if (!existing) {
+    const err = new Error("Akun tidak ditemukan.");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_COST_FACTOR);
+
+  const akun = await prisma.akun.update({
+    where: { id },
+    data: { password: hashedPassword },
+  });
+
+  await catatAktivitas(aktor, role, `Mereset kata sandi akun ${existing.username}`);
 
   return stripPassword(akun);
 }

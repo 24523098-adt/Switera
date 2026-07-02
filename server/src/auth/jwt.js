@@ -23,12 +23,15 @@ function getJwtSecret() {
 
 /**
  * Signs a JWT for the given payload (expects { id, username, role }).
- * Always uses HS256 and a 1-hour expiry.
+ * Always uses HS256. Expiry defaults to 1 hour but is configurable via the
+ * options argument so the login route can issue a longer-lived token when the
+ * user opts into "Ingat Saya" (see authRoutes.js) — the token's expiry, not
+ * where it is stored, is what actually governs how long the session lasts.
  */
-export function signToken(payload) {
+export function signToken(payload, { expiresIn = "1h" } = {}) {
   return jwt.sign(payload, getJwtSecret(), {
     algorithm: "HS256",
-    expiresIn: "1h",
+    expiresIn,
   });
 }
 

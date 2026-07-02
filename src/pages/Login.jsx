@@ -1,5 +1,6 @@
 import { useState } from "react";
 import store from "../store";
+import { showToast } from "../components/Toast";
 import useRipple, { RippleSpans } from "../hooks/useRipple";
 import IkonDaun from "../components/IkonDaun";
 import Tombol from "../components/Tombol";
@@ -61,7 +62,7 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
     }
 
     try {
-      await store.login(username, password, role);
+      await store.login(username, password, role, ingatSaya);
       onNavigate?.("/dashboard");
     } catch {
       // The server returns one generic 401 for unknown-user/wrong-password/
@@ -280,7 +281,13 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
             <a
               href="#"
               className="auth-forgot-link"
-              onClick={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.preventDefault();
+                showToast({
+                  type: "info",
+                  message: "Silakan hubungi Admin untuk mereset kata sandi Anda.",
+                });
+              }}
             >
               Lupa Password?
             </a>

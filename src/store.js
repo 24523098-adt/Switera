@@ -264,11 +264,11 @@ export const store = {
     return store.getUserAktif();
   },
 
-  async login(username, password, role) {
+  async login(username, password, role, rememberMe = false) {
     return runMutation(async () => {
       const resp = await apiFetch("/auth/login", {
         method: "POST",
-        body: { username, password, role },
+        body: { username, password, role, rememberMe },
         auth: false,
       });
       setToken(resp.token);
@@ -585,6 +585,20 @@ export const store = {
       state.daftarAkun = state.daftarAkun.filter((item) => item.id !== id);
       notify();
       return clone(state.daftarAkun);
+    });
+  },
+
+  async resetPasswordAkun(id, password) {
+    return runMutation(async () => {
+      const resp = await apiFetch(`/akun/${encodeURIComponent(id)}/reset-password`, {
+        method: "PUT",
+        body: { password },
+      });
+      // Server mengembalikan akun tanpa field password (nama/username/role tak
+      // berubah) — segarkan entri cache agar konsisten dengan respons server.
+      state.daftarAkun = state.daftarAkun.map((item) => (item.id === id ? resp : item));
+      notify();
+      return clone(resp);
     });
   },
 
