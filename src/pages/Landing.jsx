@@ -1,31 +1,20 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Login from "./Login";
 import Register from "./Register";
 import PetaGeografis from "../components/PetaGeografis";
 import IkonDaun from "../components/IkonDaun";
 import Tombol from "../components/Tombol";
 import Card from "../components/Card";
-import permintaanSeed from "../data/permintaan.json";
-import { aggregatePermintaanRanking } from "../utils/distribusi";
+import { apiFetch } from "../api/apiClient";
 
 // Landing renders BEFORE login (no JWT) — it must never call an authed API
 // endpoint (T-09-LAND-401: an unauthenticated visitor hitting an authed
 // route would 401 and risk a redirect-loop / broken marketing page). The
-// ranking/city map widgets below are demo-only and use STATIC data: the
-// existing seed JSON (matching v1.0's exact demo numbers) plus the v1.0
-// kotaSeed values inlined here directly, never store.getPermintaan()/
-// getDaftarKota() (which are empty caches pre-hydrate under the Phase 9
-// hydrated-cache model).
-const kotaDemoSeed = [
-  { nama: "Pekanbaru", kapasitas: 320 },
-  { nama: "Medan", kapasitas: 280 },
-  { nama: "Palembang", kapasitas: 220 },
-  { nama: "Jambi", kapasitas: 190 },
-  { nama: "Padang", kapasitas: 170 },
-  { nama: "Dumai", kapasitas: 150 },
-  { nama: "Bengkalis", kapasitas: 110 },
-  { nama: "Rokan Hilir", kapasitas: 140 },
-];
+// ranking/city map widgets below now ambil data nyata dari endpoint PUBLIK
+// `/public/landing-stats` (tanpa JWT), menggantikan data statis sebelumnya.
+// Fetch-nya token-less (auth: false) dan gagal dengan aman ke array kosong
+// jika backend tidak terjangkau — halaman marketing tidak boleh
+// crash/blank pra-login.
 
 const FITUR_LIST = [
   {
@@ -810,8 +799,29 @@ function Landing({ onNavigate }) {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
-  const rankingDemo = useMemo(() => aggregatePermintaanRanking(permintaanSeed), []);
-  const daftarKotaDemo = useMemo(() => kotaDemoSeed, []);
+  const [rankingDemo, setRankingDemo] = useState([]);
+  const [daftarKotaDemo, setDaftarKotaDemo] = useState([]);
+
+  useEffect(() => {
+    let aktif = true;
+
+    apiFetch("/public/landing-stats", { auth: false })
+      .then((data) => {
+        if (!aktif) {
+          return;
+        }
+        setRankingDemo(data?.ranking ?? []);
+        setDaftarKotaDemo(data?.daftarKota ?? []);
+      })
+      .catch(() => {
+        // Backend tidak terjangkau — biarkan state tetap array kosong,
+        // halaman marketing tetap render (peta kosong) tanpa crash/blank.
+      });
+
+    return () => {
+      aktif = false;
+    };
+  }, []);
 
   const openLogin = () => {
     setShowRegisterModal(false);
