@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-06-24)
 **v2.0 MILESTONE COMPLETE.** Phase: 10 of 10 (Multi-Client Sync & Cross-Role UAT) — FINAL phase, FINAL plan.
 Plan: Not started
 Status: **10-02-PLAN.md COMPLETE — v2.0 MILESTONE COMPLETE.** Built three multi-client verification scripts under `server/src/sync/` proving SYNC-01's success criteria hold with real concurrent client sessions (two independent `store.js` instances via Vite `ssrLoadModule` cache-busted imports) polling against the live backend: (1) `multiClientSync.verify.mjs` proves a mutation by one client session is observed by a second polling client session purely through its own real poll tick within one 4000ms interval, and that `stopPolling()` halts further sync; (2) `multiClientRbac.verify.mjs` re-proves the Phase 7 `POST /keputusan` 403 RBAC denial for Tim Logistik holds with BOTH sessions actively polling (Success Criterion 3), with an Admin positive control; (3) `multiClientRace.verify.mjs` re-proves the Phase 8 LOGIC-02 exactly-one-winner optimistic-lock guarantee through two REAL logged-in client sessions under active polling (Success Criterion 4), confirmed stable across 3 separate runs. All three scripts are self-cleaning/idempotent (re-run 2-3 times each with identical PASS output, zero orphaned rows). Two Rule-1 auto-fixes applied (a plan role/RBAC mismatch in Task 1, and a token cross-contamination hazard in the two-client bootstrap, both found and fixed before any script was committed — see 10-02-SUMMARY.md Deviations). Plan metadata commit skipped per the Phase 6-10 `commit_docs: false` standing constraint (SUMMARY.md/STATE.md written to disk only).
-Last activity: 2026-06-25 — Phase 10 complete
+Last activity: 2026-07-02 — Completed quick task 260702-p1v: Landing.jsx now pulls real ranking/city data from DB via public endpoint (all frontend dummy/static domain data removed)
 
 Progress: [██████████] 100% (ALL 10 milestone phases complete, all 18 plans done — v2.0 MILESTONE COMPLETE; see Performance Metrics for plan-level detail)
 
@@ -187,6 +187,7 @@ New from 09-05 (Phase 9's final plan — ALL resolved within this plan, no open 
 | 260624-ny8 | Buatkan README.md untuk repo Switera | 2026-06-24 | (pending) | [260624-ny8-buatkan-readme-md-untuk-repo-switera](./quick/260624-ny8-buatkan-readme-md-untuk-repo-switera/) |
 | 260625-cvb | Tambahkan kolom armada/eta ke model Keputusan+RiwayatKeputusan | 2026-06-25 | c3c1aaa | [260625-cvb-tambahkan-kolom-armada-dan-eta-ke-model-](./quick/260625-cvb-tambahkan-kolom-armada-dan-eta-ke-model-/) |
 | 260625-izb | Kembalikan validasi role pada login ke perilaku v1.0 | 2026-06-25 | c8e83d8 (4/4 tasks complete, checkpoint approved) | [260625-izb-kembalikan-validasi-role-pada-login-ke-p](./quick/260625-izb-kembalikan-validasi-role-pada-login-ke-p/) |
+| 260702-p1v | Hapus dummy/static data frontend; Landing ambil ranking/kota dari DB via endpoint publik GET /public/landing-stats | 2026-07-02 | f26fe8e | [260702-p1v-hapus-dummy-static-data-dari-frontend-sw](./quick/260702-p1v-hapus-dummy-static-data-dari-frontend-sw/) |
 
 ## Deferred Items
 
