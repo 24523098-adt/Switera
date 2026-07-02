@@ -28,6 +28,11 @@ const WAKTU_FIELD_BY_STATUS = {
   dibatalkan: "waktuDibatalkan",
 };
 
+// Id baris singleton stok TBS (lihat Stok model di schema.prisma) — dipakai
+// oleh penyesuaian stok C-1 di bawah (kurang saat keputusan dibuat/di-undo,
+// tambah saat dibatalkan).
+const STOK_SINGLETON_ID = "singleton";
+
 /**
  * Maps a Prisma Keputusan/RiwayatKeputusan row (camelCase) to the
  * src/store.js snake_case API shape the frontend expects: { id,
@@ -167,10 +172,42 @@ export async function addKeputusan(entry, aktor, role) {
     ...(waktuField ? { [waktuField]: new Date() } : {}),
   };
 
-  const [created] = await prisma.$transaction([
-    prisma.keputusan.create({ data: { id, ...baseData } }),
-    prisma.riwayatKeputusan.create({ data: { id, ...baseData } }),
-  ]);
+  // C-1: kurangi stok TBS secara atomik saat keputusan dibuat. Pengurangan
+  // bersyarat (updateMany dengan guard stokTbs >= volume) memastikan dua
+  // keputusan bersamaan tidak bisa sama-sama menghabiskan stok yang sama —
+  // pola optimistic-lock yang sama dengan LOGIC-02. Seluruhnya dibungkus satu
+  // interactive transaction bersama pembuatan keputusan+riwayat, sehingga stok
+  // hanya berkurang bila keputusan benar-benar tersimpan (dan sebaliknya).
+  const volume = Number(entry.volume_tbs) || 0;
+  let saldoSebelum = 0;
+  let saldoSesudah = 0;
+
+  const created = await prisma.$transaction(async (tx) => {
+    const pengurangan = await tx.stok.updateMany({
+      where: { id: STOK_SINGLETON_ID, stokTbs: { gte: volume } },
+      data: { stokTbs: { decrement: volume } },
+    });
+
+    if (pengurangan.count === 0) {
+      const stokRow = await tx.stok.findUnique({ where: { id: STOK_SINGLETON_ID } });
+      const tersedia = stokRow ? stokRow.stokTbs : 0;
+      throw Object.assign(
+        new Error(`Stok TBS tidak mencukupi. Tersedia ${tersedia} ton, dibutuhkan ${volume} ton.`),
+        { statusCode: 400 }
+      );
+    }
+
+    // C-2: baca saldo pasca-pengurangan di dalam transaksi agar nilai
+    // sebelum/sesudah yang dicatat konsisten dengan penulisan yang barusan
+    // terjadi (saldoSebelum direkonstruksi = saldoSesudah + volume).
+    const stokRow = await tx.stok.findUnique({ where: { id: STOK_SINGLETON_ID } });
+    saldoSesudah = stokRow ? stokRow.stokTbs : 0;
+    saldoSebelum = saldoSesudah + volume;
+
+    const createdRow = await tx.keputusan.create({ data: { id, ...baseData } });
+    await tx.riwayatKeputusan.create({ data: { id, ...baseData } });
+    return createdRow;
+  });
 
   await tambahNotifikasi({
     judul: "Keputusan distribusi baru",
@@ -178,6 +215,12 @@ export async function addKeputusan(entry, aktor, role) {
     tipe: "info",
   });
   await catatAktivitas(aktor, role, `Menyimpan keputusan distribusi kota ${entry.kota_tujuan}`);
+  // C-2: jejak audit pergerakan stok (keluar) akibat distribusi.
+  await catatAktivitas(
+    aktor,
+    role,
+    `Stok TBS berkurang ${volume} ton untuk distribusi ke ${entry.kota_tujuan} (saldo ${saldoSebelum} → ${saldoSesudah} ton)`
+  );
 
   return toApi(created);
 }
@@ -321,15 +364,35 @@ export async function removeKeputusan(id, aktor, role) {
     throw Object.assign(new Error("Keputusan tidak ditemukan."), { statusCode: 404 });
   }
 
-  await prisma.$transaction([
-    prisma.riwayatKeputusan.update({
+  // C-1: batal distribusi mengembalikan volume ke stok TBS (simetri dengan
+  // pengurangan di addKeputusan), agar pembatalan tidak menyisakan stok yang
+  // berkurang permanen. Interactive transaction dipakai (bukan array) supaya
+  // saldo pasca-increment bisa dibaca untuk jejak audit C-2.
+  const volumeDikembalikan = Number(existing.volumeTbs) || 0;
+  let saldoSebelum = 0;
+  let saldoSesudah = 0;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.riwayatKeputusan.update({
       where: { id },
       data: { status: "dibatalkan", waktuDibatalkan: new Date() },
-    }),
-    prisma.keputusan.delete({ where: { id } }),
-  ]);
+    });
+    await tx.keputusan.delete({ where: { id } });
+    const stokRow = await tx.stok.update({
+      where: { id: STOK_SINGLETON_ID },
+      data: { stokTbs: { increment: volumeDikembalikan } },
+    });
+    saldoSesudah = stokRow.stokTbs;
+    saldoSebelum = saldoSesudah - volumeDikembalikan;
+  });
 
   await catatAktivitas(aktor, role, `Membatalkan keputusan distribusi kota ${existing?.kotaTujuanNama ?? id}`);
+  // C-2: jejak audit pergerakan stok (masuk) akibat pembatalan distribusi.
+  await catatAktivitas(
+    aktor,
+    role,
+    `Stok TBS bertambah ${volumeDikembalikan} ton karena pembatalan distribusi ke ${existing.kotaTujuanNama} (saldo ${saldoSebelum} → ${saldoSesudah} ton)`
+  );
 
   return toApi(existing);
 }
@@ -342,12 +405,47 @@ export async function removeKeputusan(id, aktor, role) {
 export async function restoreKeputusan(item, aktor, role) {
   const data = toDb(item);
 
-  const [created] = await prisma.$transaction([
-    prisma.keputusan.create({ data: { id: item.id, ...data } }),
-    prisma.riwayatKeputusan.update({ where: { id: item.id }, data }),
-  ]);
+  // C-1: mengembalikan (undo) keputusan mengurangi stok lagi, dengan guard
+  // kecukupan yang sama seperti addKeputusan — bila stok sudah terpakai proses
+  // lain sejak pembatalan, undo ditolak alih-alih membuat stok negatif.
+  const volume = Number(item.volume_tbs) || 0;
+  let saldoSebelum = 0;
+  let saldoSesudah = 0;
+
+  const created = await prisma.$transaction(async (tx) => {
+    const pengurangan = await tx.stok.updateMany({
+      where: { id: STOK_SINGLETON_ID, stokTbs: { gte: volume } },
+      data: { stokTbs: { decrement: volume } },
+    });
+
+    if (pengurangan.count === 0) {
+      const stokRow = await tx.stok.findUnique({ where: { id: STOK_SINGLETON_ID } });
+      const tersedia = stokRow ? stokRow.stokTbs : 0;
+      throw Object.assign(
+        new Error(
+          `Stok TBS tidak mencukupi untuk mengembalikan keputusan. Tersedia ${tersedia} ton, dibutuhkan ${volume} ton.`
+        ),
+        { statusCode: 400 }
+      );
+    }
+
+    // C-2: saldo pasca-pengurangan untuk jejak audit (saldoSebelum = saldoSesudah + volume).
+    const stokRow = await tx.stok.findUnique({ where: { id: STOK_SINGLETON_ID } });
+    saldoSesudah = stokRow ? stokRow.stokTbs : 0;
+    saldoSebelum = saldoSesudah + volume;
+
+    const createdRow = await tx.keputusan.create({ data: { id: item.id, ...data } });
+    await tx.riwayatKeputusan.update({ where: { id: item.id }, data });
+    return createdRow;
+  });
 
   await catatAktivitas(aktor, role, `Mengembalikan keputusan distribusi kota ${item.kota_tujuan}`);
+  // C-2: jejak audit pergerakan stok (keluar) akibat undo/restore keputusan.
+  await catatAktivitas(
+    aktor,
+    role,
+    `Stok TBS berkurang ${volume} ton karena pengembalian distribusi ke ${item.kota_tujuan} (saldo ${saldoSebelum} → ${saldoSesudah} ton)`
+  );
 
   return toApi(created);
 }
