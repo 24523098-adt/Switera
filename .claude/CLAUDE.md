@@ -239,7 +239,7 @@ No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skill
 
 ## Workflow
 
-GSD is not used on this project anymore (explicit standing instruction from the user, given after the v2.0 backend migration). Work directly: read files, edit/write code with normal tools, verify by running the app, and commit when asked — without routing through `/gsd-*` commands or spawning GSD subagents. `.planning/` still holds historical phase artifacts from v1.0/v2.0 for reference, but it is not being maintained going forward.
+GSD is used again on this project (explicit standing instruction from the user, 2026-07-02 — reversing the earlier "stop using GSD" directive). Route work through `/gsd-*` skills and GSD subagents as designed. The user still prefers efficient execution, so favor lighter GSD entry points (`/gsd-quick`, `/gsd-fast`, `--interactive` execution) over heavy multi-agent pipelines unless a task genuinely warrants full discuss→plan→execute. `.planning/` is the maintained workflow directory again.
 <!-- GSD:workflow-end -->
 
 <!-- GSD:profile-start -->
