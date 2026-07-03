@@ -29,6 +29,7 @@ import { formatDate, formatTonase } from "../utils/format";
 const roleOptions = ["Manajer Distribusi", "Tim Logistik"];
 
 const periodeOptions = [
+  ["semua", "Semua"],
   ["minggu-ini", "Minggu ini"],
   ["bulan-ini", "Bulan ini"],
 ];
@@ -310,7 +311,10 @@ function GrafikStatusPengiriman({ counts }) {
 
 function Laporan({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
-  const [periode, setPeriode] = useState("minggu-ini");
+  // Default "semua" agar laporan langsung terisi — filter minggu/bulan yang
+  // ketat sebelumnya membuat keputusan bertanggal lama tersaring habis dan
+  // halaman tampak kosong (laporan Tim Logistik "tidak ada laporan masuk").
+  const [periode, setPeriode] = useState("semua");
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -335,12 +339,16 @@ function Laporan({ onNavigate }) {
 
   const isTimLogistik = roleAktif === "Tim Logistik";
 
-  const range = useMemo(() => getPeriodRange(periode), [periode]);
+  // range null = "semua periode" (tanpa penyaringan tanggal).
+  const range = useMemo(
+    () => (periode === "semua" ? null : getPeriodRange(periode)),
+    [periode]
+  );
 
   const filteredRiwayat = useMemo(
     () =>
       [...(snapshot.riwayatKeputusan ?? [])]
-        .filter((item) => isDateInRange(item.tanggal_keputusan, range))
+        .filter((item) => !range || isDateInRange(item.tanggal_keputusan, range))
         .sort(
           (first, second) =>
             parseDate(second.tanggal_keputusan) - parseDate(first.tanggal_keputusan)
@@ -350,8 +358,8 @@ function Laporan({ onNavigate }) {
 
   const filteredPermintaan = useMemo(
     () =>
-      (snapshot.permintaan ?? []).filter((item) =>
-        isDateInRange(item.tanggal_permintaan, range)
+      (snapshot.permintaan ?? []).filter(
+        (item) => !range || isDateInRange(item.tanggal_permintaan, range)
       ),
     [range, snapshot.permintaan]
   );
@@ -359,7 +367,7 @@ function Laporan({ onNavigate }) {
   const filteredKeputusan = useMemo(
     () =>
       [...(snapshot.keputusan ?? [])]
-        .filter((item) => isDateInRange(item.tanggal_keputusan, range))
+        .filter((item) => !range || isDateInRange(item.tanggal_keputusan, range))
         .sort(
           (first, second) =>
             parseDate(second.tanggal_keputusan) - parseDate(first.tanggal_keputusan)
