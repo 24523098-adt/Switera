@@ -34,6 +34,20 @@
   --color-danger-bg: #fee2e2;
   --color-danger-text: #ba1a1a;
 
+  /* Token surface/on-surface/outline lengkap (dari DESIGN.md Catalyst) */
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface-variant: #d3e4fe;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #3e4941;
+  --color-outline: #6e7a71;
+  --color-outline-variant: #bdcabf;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #f6fff6;
+  --color-tertiary-container: #c05400;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
   /* ===== Alias kompatibilitas: nama token lama -> palet baru =====
      Agar komponen/halaman yang belum dimigrasi tetap tampil di light mode;
      dicabut bertahap saat tiap file dimigrasi ke design system baru. */
@@ -138,6 +152,23 @@
 }
 
 /* Override tema dark/light dihapus — aplikasi kini light-only (Catalyst). */
+
+/* ===== Material Symbols Outlined — kelas dasar (font-family wajib) ===== */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}
 
 @keyframes fadeInUp {
   from {
@@ -325,6 +356,9 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
   .app-main {
     margin-left: 0 !important;
   }
+  .app-header {
+    left: 0 !important;
+  }
   .app-header-search {
     display: none !important;
   }
@@ -385,24 +419,28 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
   gap: var(--space-3);
   width: 100%;
   text-align: left;
-  padding: 9px 12px;
+  padding: 10px 16px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-right: 4px solid transparent;
+  border-radius: var(--radius-md);
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-variant);
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition: transform var(--transition-slow), background-color var(--transition-fast), color var(--transition-fast);
 }
 .app-sidebar-menu-item:hover {
-  background-color: var(--color-surface-hover);
-  color: var(--color-text-primary);
+  background-color: rgba(0, 106, 67, 0.05);
+  color: var(--color-primary);
+  transform: scale(1.02);
 }
 .app-sidebar-menu-item.is-active {
-  background-color: var(--color-primary-subtle);
+  background-color: rgba(0, 106, 67, 0.10);
   color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  border-right-color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
 }
 
 /* ===== Buttons (Tombol) ===== */
