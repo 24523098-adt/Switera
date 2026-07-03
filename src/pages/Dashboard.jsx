@@ -1347,39 +1347,115 @@ function DashboardLogistik({ keputusan, userAktif }) {
           <EmptyState pesan="Belum ada keputusan distribusi yang dapat ditindaklanjuti." />
         )}
 
-        <Card>
-          <SectionHeader>Status Distribusi</SectionHeader>
-          {statusRows.length > 0 ? (
-            <Tabel
-              kolom={[
-                { key: "kotaTujuan", label: "Kota Tujuan" },
-                { key: "volume", label: "Volume", numeric: true },
-                { key: "armada", label: "Armada / ETA" },
-                { key: "status", label: "Status" },
-                { key: "progres", label: "Progres" },
-                { key: "tanggal", label: "Tanggal" },
-              ]}
-              data={statusRows}
-              aksi={(baris) => {
-                const item = sortedKeputusan.find((keputusanItem) => keputusanItem.id === baris.id);
-                return (
-                  <Tombol
-                    label={
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                        <IkonEditKecil /> Perbarui Status
-                      </span>
-                    }
-                    variant="sekunder"
-                    onClick={() => openStatusModal(item)}
-                    style={{ padding: "5px 10px", fontSize: "var(--text-xs)" }}
-                  />
-                );
-              }}
-            />
-          ) : (
+        {statusRows.length > 0 ? (
+          /* Mini kanban 3 kolom ala Stitch dashboard_logistik. */
+          <div
+            className="app-grid-3"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(200px, 1fr))",
+              gap: "var(--space-4)",
+              alignItems: "start",
+            }}
+          >
+            {statusUrutan.map((statusKey) => {
+              const kolomWarna = {
+                menunggu: { dot: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+                "dalam-pengiriman": { dot: "var(--color-info-text)", bg: "var(--color-info-bg)" },
+                selesai: { dot: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+              }[statusKey];
+              const labelKolom = { menunggu: "Menunggu", "dalam-pengiriman": "Dalam Pengiriman", selesai: "Selesai" }[statusKey];
+              const itemsKolom = sortedKeputusan.filter((item) => item.status === statusKey);
+
+              return (
+                <div
+                  key={statusKey}
+                  style={{
+                    backgroundColor: "var(--color-surface-container-low)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-xl)",
+                    padding: "var(--space-3)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-3)",
+                    minHeight: "160px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 6px" }}>
+                    <span
+                      className={statusKey !== "selesai" ? "animate-pulse-dot" : undefined}
+                      style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: kolomWarna.dot }}
+                    />
+                    <span style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-surface)" }}>
+                      {labelKolom}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: "var(--text-2xs)", fontWeight: "var(--font-weight-bold)", backgroundColor: kolomWarna.bg, color: kolomWarna.dot, borderRadius: "var(--radius-full)", padding: "2px 8px" }}>
+                      {itemsKolom.length}
+                    </span>
+                  </div>
+
+                  {itemsKolom.length === 0 ? (
+                    <p style={{ margin: 0, padding: "12px 8px", textAlign: "center", fontSize: "var(--text-xs)", color: "var(--color-text-disabled)" }}>
+                      Tidak ada kiriman.
+                    </p>
+                  ) : (
+                    itemsKolom.map((item) => (
+                      <div
+                        key={item.id}
+                        className="app-card app-card-hoverable"
+                        style={{
+                          backgroundColor: "var(--color-surface)",
+                          borderRadius: "var(--radius-lg)",
+                          padding: "var(--space-4)",
+                          boxShadow: "var(--shadow-sm)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                          <strong style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-sm)", color: "var(--color-on-surface)" }}>
+                            {item.kota_tujuan}
+                          </strong>
+                          <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>
+                            {formatTonase(item.volume_tbs)}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)" }}>
+                          {item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "Armada belum ditetapkan"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openStatusModal(item)}
+                          style={{
+                            marginTop: "2px",
+                            alignSelf: "flex-start",
+                            border: "1px solid var(--color-border)",
+                            borderRadius: "var(--radius-md)",
+                            backgroundColor: "transparent",
+                            color: "var(--color-primary)",
+                            fontFamily: "var(--font-body)",
+                            fontSize: "var(--text-xs)",
+                            fontWeight: "var(--font-weight-semibold)",
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                            transition: "background-color var(--transition-fast)",
+                          }}
+                        >
+                          Perbarui Status
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Card>
             <EmptyState pesan="Belum ada data status distribusi untuk ditampilkan." />
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
 
       {selectedKeputusan ? (

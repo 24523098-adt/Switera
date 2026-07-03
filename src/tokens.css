@@ -805,6 +805,23 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
   transform: translateY(-1px);
 }
 
+/* ===== Landing: responsif (hero/fitur/nav) ===== */
+@media (max-width: 900px) {
+  .landing-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-hero-mockup {
+    display: none !important;
+  }
+  .landing-nav-links {
+    display: none !important;
+  }
+  .landing-fitur-row {
+    grid-template-columns: 1fr !important;
+    direction: ltr !important;
+  }
+}
+
 /* ===== Leaflet map theming ===== */
 .leaflet-container {
   background-color: var(--color-surface-2) !important;
