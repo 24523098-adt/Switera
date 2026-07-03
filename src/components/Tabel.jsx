@@ -152,12 +152,12 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
     textTransform: "uppercase",
     letterSpacing: "var(--tracking-wider)",
     userSelect: "none",
-    backgroundColor: "var(--color-surface-2)",
+    backgroundColor: "var(--color-bg)",
   };
 
   const getCellStyle = (isLastRow) => ({
     padding: isCompact ? "6px 16px" : "12px 16px",
-    borderBottom: isLastRow ? "none" : "1px solid var(--color-border)",
+    borderBottom: isLastRow ? "none" : "1px solid var(--color-border-subtle)",
     color: "var(--color-text-primary)",
     verticalAlign: "middle",
     fontSize: "var(--text-sm)",
@@ -193,9 +193,9 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
       style={{
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: "var(--radius-xl)",
         overflow: "hidden",
-        animation: "fadeInUp 300ms var(--ease-smooth) both",
+        animation: "fadeInUp 250ms var(--ease-spring) both",
       }}
     >
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "4px", padding: "6px 8px", borderBottom: "1px solid var(--color-border)" }}>
@@ -268,7 +268,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
               const isLastRow = index === pagedData.length - 1;
               const customBackground = getRowStyle?.(baris, index)?.backgroundColor;
               const rowBackground = isRowHovered
-                ? "var(--color-surface-hover)"
+                ? "rgba(0, 106, 67, 0.04)"
                 : customBackground ?? "transparent";
               const cellStyle = getCellStyle(isLastRow);
 

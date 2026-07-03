@@ -22,7 +22,7 @@ function Card({ children, style, hoverable = false, accent, shimmer = false, cla
       style={{
         backgroundColor: "var(--color-surface)",
         borderTop: accent ? `2px solid ${accentColors[accent] ?? accentColors.primary}` : undefined,
-        borderRadius: "var(--radius-lg)",
+        borderRadius: "var(--radius-xl)",
         padding: "var(--space-6)",
         ...style,
       }}

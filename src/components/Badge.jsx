@@ -28,29 +28,33 @@ function Badge({ status }) {
     label: status,
   };
 
+  // Status "aktif" (menunggu proses / dalam perjalanan) diberi pulse dot.
+  const isActiveStatus = status === "menunggu" || status === "dalam-pengiriman";
+
   return (
     <span
       style={{
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "5px",
-        padding: "3px 8px",
-        borderRadius: "var(--radius-xs)",
+        gap: "6px",
+        padding: "4px 12px",
+        borderRadius: "var(--radius-full)",
         backgroundColor: config.backgroundColor,
         color: config.color,
         fontFamily: "var(--font-body)",
         fontSize: "var(--text-2xs)",
         fontWeight: "var(--font-weight-semibold)",
-        textTransform: "uppercase",
-        letterSpacing: "var(--tracking-wider)",
+        letterSpacing: "var(--tracking-wide)",
+        whiteSpace: "nowrap",
       }}
     >
       <span
         aria-hidden="true"
+        className={isActiveStatus ? "animate-pulse-dot" : undefined}
         style={{
-          width: "5px",
-          height: "5px",
+          width: "6px",
+          height: "6px",
           borderRadius: "var(--radius-full)",
           backgroundColor: config.color,
           flexShrink: 0,
