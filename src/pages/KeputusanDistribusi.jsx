@@ -3,11 +3,106 @@ import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
+import SectionHeader from "../components/SectionHeader";
 import Tombol from "../components/Tombol";
 import { showToast } from "../components/Toast";
 import store from "../store";
 import { computeRekomendasiDistribusi, getLocalDateKey, parseDate } from "../utils/distribusi";
 import { formatTonase } from "../utils/format";
+
+// AI-2: card rekomendasi keputusan naratif — pola yang sama dengan
+// RingkasanAI di Laporan.jsx (state lokal, komponen shared).
+function RekomendasiAI() {
+  const [rekomendasi, setRekomendasi] = useState("");
+  const [rekomendasiError, setRekomendasiError] = useState("");
+  const [isMemintaRekomendasi, setIsMemintaRekomendasi] = useState(false);
+
+  const handleMintaRekomendasi = async () => {
+    setIsMemintaRekomendasi(true);
+    setRekomendasiError("");
+    try {
+      const hasil = await store.buatRekomendasiKeputusanAi();
+      setRekomendasi(hasil?.rekomendasi ?? "");
+    } catch (error) {
+      setRekomendasiError(error.message || "Gagal meminta rekomendasi. Coba lagi.");
+    } finally {
+      setIsMemintaRekomendasi(false);
+    }
+  };
+
+  return (
+    <Card style={{ animationDelay: "40ms" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "var(--space-3)",
+          flexWrap: "wrap",
+        }}
+      >
+        <SectionHeader>
+          <span
+            className="material-symbols-outlined"
+            aria-hidden="true"
+            style={{ fontSize: "16px", verticalAlign: "-3px", marginRight: "6px" }}
+          >
+            auto_awesome
+          </span>
+          Rekomendasi AI
+        </SectionHeader>
+        <Tombol
+          label={rekomendasi ? "Minta Ulang" : "Minta Rekomendasi AI"}
+          variant="sekunder"
+          onClick={handleMintaRekomendasi}
+          isLoading={isMemintaRekomendasi}
+        />
+      </div>
+
+      {rekomendasiError ? (
+        <p
+          style={{
+            margin: 0,
+            color: "var(--color-danger)",
+            fontSize: "var(--text-sm)",
+            lineHeight: 1.6,
+          }}
+        >
+          {rekomendasiError}
+        </p>
+      ) : rekomendasi ? (
+        <div style={{ animation: "fadeInUp 300ms var(--ease-smooth) both" }}>
+          {rekomendasi.split(/\n+/).map((baris, index) => (
+            <p
+              key={index}
+              style={{
+                margin: index === 0 ? 0 : "0.6rem 0 0",
+                color: "var(--color-text-secondary)",
+                fontSize: "var(--text-sm)",
+                lineHeight: 1.7,
+              }}
+            >
+              {baris}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p
+          style={{
+            margin: 0,
+            color: "var(--color-text-muted)",
+            fontSize: "var(--text-sm)",
+            lineHeight: 1.6,
+          }}
+        >
+          {isMemintaRekomendasi
+            ? "AI sedang menganalisis stok, permintaan, dan keputusan aktif…"
+            : "Minta saran AI: kota mana yang layak diprioritaskan, volumenya, dan risikonya — berdasarkan skor dan alokasi di halaman ini."}
+        </p>
+      )}
+    </Card>
+  );
+}
 
 function KeputusanDistribusi({ onNavigate }) {
   const [snapshot, setSnapshot] = useState(store.getState());
@@ -263,6 +358,8 @@ function KeputusanDistribusi({ onNavigate }) {
               </div>
             </div>
           </Card>
+
+          <RekomendasiAI />
 
           {isCustomSelection ? (
             <Card

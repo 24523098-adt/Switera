@@ -644,6 +644,15 @@ export const store = {
     });
   },
 
+  // AI-2: rekomendasi keputusan AI halaman Keputusan Distribusi — pola
+  // stateless yang sama dengan buatRingkasanLaporan.
+  async buatRekomendasiKeputusanAi() {
+    return apiFetch("/keputusan/rekomendasi-ai", {
+      method: "POST",
+      body: {},
+    });
+  },
+
   // Server owns the notification + activity-log side effects for this
   // mutation (keputusanService.addKeputusan, LOGIC-03) — do NOT duplicate
   // pushNotifikasi/recordActivity here. POST /keputusan returns the single
