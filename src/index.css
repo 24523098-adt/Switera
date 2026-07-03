@@ -3,11 +3,14 @@ html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font-body);font-size:var(--text-base);
 line-height:var(--leading-normal);background:var(--color-bg);
 color:var(--color-text-primary);min-height:100vh}
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:var(--color-surface)}
-::-webkit-scrollbar-thumb{background:var(--color-border-strong);
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--color-surface-container-low)}
+::-webkit-scrollbar-thumb{background:var(--color-primary-container);
 border-radius:var(--radius-full)}
-::-webkit-scrollbar-thumb:hover{background:var(--color-text-muted)}
+::-webkit-scrollbar-thumb:hover{background:var(--color-primary)}
+.text-gradient{background:linear-gradient(to right,#006a43,#008656);
+-webkit-background-clip:text;background-clip:text;
+-webkit-text-fill-color:transparent}
 ::selection{background:var(--color-primary-subtle);
 color:var(--color-text-primary)}
 :focus-visible{outline:2px solid var(--color-primary);
