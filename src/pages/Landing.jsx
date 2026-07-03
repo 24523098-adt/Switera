@@ -295,6 +295,7 @@ function Landing({ onNavigate }) {
   return (
     <div style={{ backgroundColor: "var(--color-bg)", color: "var(--color-on-background)", minHeight: "100vh", overflowX: "hidden" }}>
       {/* ===== 1. Navbar ===== */}
+      {/* Navbar glass ala ultimate_1/2 — padding menyusut saat scroll. */}
       <nav
         style={{
           position: "fixed",
@@ -302,21 +303,19 @@ function Landing({ onNavigate }) {
           left: 0,
           right: 0,
           zIndex: "var(--z-toast)",
-          height: "72px",
-          backgroundColor: scrolled ? "rgba(248,249,255,0.88)" : "rgba(248,249,255,0.6)",
+          backgroundColor: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          borderBottom: scrolled ? "1px solid var(--color-border)" : "1px solid transparent",
+          borderBottom: "1px solid rgba(255,255,255,0.3)",
           boxShadow: scrolled ? "var(--shadow-sm)" : "none",
-          transition:
-            "background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base)",
+          padding: scrolled ? "8px 0" : "16px 0",
+          transition: "padding var(--transition-base), box-shadow var(--transition-base)",
         }}
       >
         <div
           style={{
             maxWidth: "1440px",
             margin: "0 auto",
-            height: "100%",
             padding: "0 var(--space-8)",
             display: "flex",
             alignItems: "center",
@@ -344,20 +343,29 @@ function Landing({ onNavigate }) {
 
           <div className="landing-nav-links" style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
             <button type="button" style={navLinkStyle} onClick={() => scrollToId("fitur")}>Fitur</button>
-            <button type="button" style={navLinkStyle} onClick={() => scrollToId("peta")}>Peta</button>
             <button type="button" style={navLinkStyle} onClick={() => scrollToId("cara-kerja")}>Cara Kerja</button>
-            <button type="button" style={navLinkStyle} onClick={() => scrollToId("faq")}>FAQ</button>
+            <button type="button" style={navLinkStyle} onClick={() => scrollToId("peta")}>Peta</button>
+            <button type="button" style={navLinkStyle} onClick={() => scrollToId("demo")}>Demo</button>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
             <button
               type="button"
               onClick={goLogin}
-              style={{ ...navLinkStyle, color: "var(--color-primary)", padding: "8px 16px", borderRadius: "var(--radius-md)" }}
+              style={{ ...navLinkStyle, color: "var(--color-on-surface)", padding: "8px 16px", borderRadius: "var(--radius-md)" }}
             >
               Masuk
             </button>
-            <button type="button" onClick={goRegister} style={{ ...btnPrimer, padding: "10px 20px" }}>
+            <button
+              type="button"
+              onClick={goRegister}
+              style={{
+                ...btnPrimer,
+                padding: "10px 24px",
+                borderRadius: "var(--radius-full)",
+                boxShadow: "0 1px 8px rgba(0,106,67,0.2)",
+              }}
+            >
               Daftar
             </button>
           </div>
@@ -377,8 +385,8 @@ function Landing({ onNavigate }) {
           alignItems: "center",
         }}
       >
-        <div style={{ position: "absolute", top: "80px", left: "40px", width: "288px", height: "288px", background: "rgba(0,134,86,0.10)", borderRadius: "50%", filter: "blur(64px)" }} />
-        <div style={{ position: "absolute", bottom: "40px", right: "40px", width: "384px", height: "384px", background: "rgba(64,194,253,0.10)", borderRadius: "50%", filter: "blur(64px)" }} />
+        <div style={{ position: "absolute", top: "80px", right: 0, width: "384px", height: "384px", background: "rgba(0,134,86,0.10)", borderRadius: "50%", filter: "blur(64px)", opacity: 0.6 }} />
+        <div style={{ position: "absolute", bottom: 0, left: "40px", width: "288px", height: "288px", background: "rgba(196,231,255,0.3)", borderRadius: "50%", filter: "blur(64px)", opacity: 0.6 }} />
 
         <div
           className="landing-hero-grid"
@@ -408,22 +416,56 @@ function Landing({ onNavigate }) {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <span className="animate-pulse-dot" style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--color-primary)" }} />
-              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)" }}>
-                Platform Distribusi Tandan Buah Segar (TBS) Kelapa Sawit
+              {/* Ping dot dua lapis ala Tailwind animate-ping. */}
+              <span style={{ position: "relative", display: "flex", width: "12px", height: "12px" }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "50%",
+                    backgroundColor: "var(--color-primary)",
+                    opacity: 0.75,
+                    animation: "pingDot 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
+                  }}
+                />
+                <span style={{ position: "relative", width: "12px", height: "12px", borderRadius: "50%", backgroundColor: "var(--color-primary)" }} />
+              </span>
+              <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-medium)", color: "var(--color-on-surface-variant)" }}>
+                Platform Distribusi Tandan Buah Segar (TBS) Terpercaya
               </span>
             </div>
 
-            <h1 style={{ ...headingStyle, fontSize: "clamp(2.4rem, 5vw, 3.5rem)", lineHeight: 1.1, letterSpacing: "-0.02em" }}>
-              Distribusi TBS Lebih Cepat, Tepat, dan <span className="text-gradient">Menguntungkan</span>
+            <h1 style={{ ...headingStyle, fontSize: "clamp(2.5rem, 5vw, 3.5rem)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.02em" }}>
+              Kelola Distribusi TBS Lebih Cerdas dengan Data{" "}
+              <span
+                style={{
+                  background: "linear-gradient(to right, #006a43, #70dba2)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Real-Time
+              </span>
             </h1>
 
             <p style={{ ...sectionSubStyle, fontSize: "var(--text-lg)", maxWidth: "36rem" }}>
-              Sistem informasi manajemen distribusi kelapa sawit berbasis data untuk tim distribusi yang modern dan efisien.
+              Tingkatkan efisiensi logistik kelapa sawit Anda. Pantau ranking, alokasi armada, dan status
+              pengiriman secara akurat dalam satu dashboard terintegrasi.
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px", marginTop: "8px" }}>
-              <button type="button" onClick={goRegister} style={{ ...btnPrimer, padding: "16px 28px", fontSize: "var(--text-base)", boxShadow: "var(--shadow-md)" }}>
+              <button
+                type="button"
+                onClick={goRegister}
+                style={{
+                  ...btnPrimer,
+                  padding: "16px 32px",
+                  fontSize: "var(--text-base)",
+                  borderRadius: "var(--radius-xl)",
+                  boxShadow: "0 4px 16px rgba(0,106,67,0.25)",
+                }}
+              >
                 Mulai Sekarang
                 <Ikon name="arrow_forward" size={20} />
               </button>
@@ -434,11 +476,11 @@ function Landing({ onNavigate }) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "8px",
-                  padding: "16px 28px",
-                  borderRadius: "var(--radius-lg)",
-                  border: "1px solid var(--color-outline-variant)",
-                  backgroundColor: "transparent",
-                  color: "var(--color-primary)",
+                  padding: "16px 32px",
+                  borderRadius: "var(--radius-xl)",
+                  border: "2px solid var(--color-outline-variant)",
+                  backgroundColor: "var(--color-surface-container-lowest)",
+                  color: "var(--color-on-surface)",
                   fontFamily: "var(--font-body)",
                   fontWeight: "var(--font-weight-semibold)",
                   fontSize: "var(--text-base)",
@@ -446,8 +488,8 @@ function Landing({ onNavigate }) {
                   transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
                 }}
               >
-                <Ikon name="play_circle" size={20} />
-                Lihat Demo
+                <Ikon name="play_circle" size={20} fill />
+                Tonton Demo
               </button>
             </div>
 
@@ -479,7 +521,7 @@ function Landing({ onNavigate }) {
                     borderRadius: "50%",
                     border: "2px solid var(--color-surface-container-lowest)",
                     backgroundColor: "var(--color-surface-container-high)",
-                    color: "var(--color-on-surface-variant)",
+                    color: "var(--color-on-surface)",
                     display: "grid",
                     placeItems: "center",
                     marginLeft: "-12px",
@@ -487,66 +529,96 @@ function Landing({ onNavigate }) {
                     fontWeight: "var(--font-weight-bold)",
                   }}
                 >
-                  50+
+                  +5k
                 </span>
               </div>
               <div style={{ fontSize: "var(--text-sm)", color: "var(--color-on-surface-variant)" }}>
-                Dipercaya <strong style={{ color: "var(--color-on-background)" }}>50+</strong> tim distribusi sawit
+                Dipercaya oleh ribuan profesional logistik.
               </div>
             </div>
           </div>
 
-          {/* Mockup dashboard */}
+          {/* Mockup dashboard mengambang ala ultimate_1/2. */}
           <div className="landing-hero-mockup" style={{ position: "relative" }}>
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,106,67,0.20)", filter: "blur(80px)", borderRadius: "50%", transform: "scale(0.9) translateY(40px)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "rgba(140,248,189,0.20)", filter: "blur(80px)", borderRadius: "50%", transform: "translateY(-40px) scale(1.1)" }} />
             <div
               style={{
                 position: "relative",
                 backgroundColor: "var(--color-surface-container-lowest)",
                 borderRadius: "var(--radius-2xl)",
                 boxShadow: "var(--shadow-xl)",
-                border: "1px solid var(--color-outline-variant)",
-                padding: "16px",
+                border: "1px solid var(--color-surface-container-high)",
+                padding: "24px",
                 display: "flex",
                 flexDirection: "column",
                 gap: "16px",
                 zIndex: 1,
+                animation: "heroFloat 6s ease-in-out infinite",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--color-surface-container-high)", paddingBottom: "16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <span style={{ width: "32px", height: "32px", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-surface-container)", display: "grid", placeItems: "center", color: "var(--color-primary)" }}>
-                    <Ikon name="bar_chart" size={18} />
+                  <span style={{ width: "32px", height: "32px", borderRadius: "var(--radius-sm)", backgroundColor: "rgba(0,134,86,0.1)", display: "grid", placeItems: "center", color: "var(--color-primary)" }}>
+                    <Ikon name="trending_up" size={20} />
                   </span>
                   <div>
-                    <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-on-surface-variant)" }}>Total Distribusi</div>
-                    <div style={{ fontSize: "var(--text-sm)", color: "var(--color-on-background)" }}>Hari ini</div>
+                    <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-surface)" }}>Ranking Distribusi</div>
+                    <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-on-surface-variant)" }}>Live Update</div>
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>1.240 Ton</div>
-                  <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-primary-container)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
-                    <Ikon name="trending_up" size={14} /> +12%
-                  </div>
-                </div>
+                <span style={{ backgroundColor: "rgba(0,134,86,0.2)", color: "var(--color-primary)", padding: "4px 12px", borderRadius: "var(--radius-full)", fontSize: "var(--text-2xs)", fontWeight: "var(--font-weight-bold)" }}>
+                  Selesai
+                </span>
               </div>
 
-              <div style={{ height: "140px", backgroundColor: "var(--color-surface-container-low)", borderRadius: "var(--radius-lg)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px", gap: "8px" }}>
-                {[30, 50, 80, 40, 60].map((h, i) => (
-                  <div key={i} style={{ width: "16%", height: `${h}%`, borderRadius: "4px 4px 0 0", backgroundColor: i === 2 ? "var(--color-primary)" : "var(--color-surface-container-high)" }} />
-                ))}
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {[{ k: "Dumai", v: "450 Ton" }, { k: "Pekanbaru", v: "380 Ton" }].map((row) => (
-                  <div key={row.k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-surface-container-low)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <Ikon name="location_on" size={16} style={{ color: "var(--color-secondary)" }} />
-                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-background)" }}>{row.k}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {[
+                  { k: "Pekanbaru - Riau", v: "120 Ton", warna: "var(--color-primary)" },
+                  { k: "Medan - Sumut", v: "85 Ton", warna: "var(--color-secondary)" },
+                ].map((row) => (
+                  <div key={row.k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px", borderRadius: "var(--radius-lg)", backgroundColor: "var(--color-surface-container-low)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <Ikon name="location_on" size={18} style={{ color: "var(--color-outline)" }} />
+                      <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-medium)", color: "var(--color-on-surface)" }}>{row.k}</span>
                     </div>
-                    <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>{row.v}</span>
+                    <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: row.warna }}>{row.v}</span>
                   </div>
                 ))}
+
+                {/* Grafik area SVG ala ultimate. */}
+                <div style={{ height: "96px", backgroundColor: "var(--color-surface-container)", borderRadius: "var(--radius-lg)", position: "relative", overflow: "hidden", marginTop: "8px" }}>
+                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden="true">
+                    <path d="M0,100 L20,60 L40,80 L60,40 L80,50 L100,20 L100,100 Z" fill="#eaf1ff" />
+                    <path d="M0,100 L20,60 L40,80 L60,40 L80,50 L100,20" fill="none" stroke="#006a43" strokeWidth="2" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Chip status melayang. */}
+            <div
+              style={{
+                position: "absolute",
+                right: "-24px",
+                top: "40px",
+                backgroundColor: "var(--color-surface-container-lowest)",
+                padding: "12px",
+                borderRadius: "var(--radius-xl)",
+                boxShadow: "var(--shadow-lg)",
+                border: "1px solid var(--color-surface-container)",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                zIndex: 2,
+                animation: "heroFloat 6s ease-in-out 1s infinite",
+              }}
+            >
+              <span style={{ width: "40px", height: "40px", borderRadius: "var(--radius-full)", backgroundColor: "rgba(64,194,253,0.2)", display: "grid", placeItems: "center", color: "var(--color-secondary)" }}>
+                <Ikon name="check_circle" size={22} />
+              </span>
+              <div>
+                <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-on-surface-variant)" }}>Status</div>
+                <div style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>Terkonfirmasi</div>
               </div>
             </div>
           </div>
