@@ -1,374 +1,27 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Login from "./Login";
 import Register from "./Register";
-import PetaGeografis from "../components/PetaGeografis";
-import IkonDaun from "../components/IkonDaun";
-import Tombol from "../components/Tombol";
-import Card from "../components/Card";
-import { apiFetch } from "../api/apiClient";
 
-// Landing renders BEFORE login (no JWT) — it must never call an authed API
-// endpoint (T-09-LAND-401: an unauthenticated visitor hitting an authed
-// route would 401 and risk a redirect-loop / broken marketing page). The
-// ranking/city map widgets below now ambil data nyata dari endpoint PUBLIK
-// `/public/landing-stats` (tanpa JWT), menggantikan data statis sebelumnya.
-// Fetch-nya token-less (auth: false) dan gagal dengan aman ke array kosong
-// jika backend tidak terjangkau — halaman marketing tidak boleh
-// crash/blank pra-login.
-
-const FITUR_LIST = [
-  {
-    type: "ranking",
-    judul: "Ranking Kota Otomatis",
-    deskripsi:
-      "Sistem menghitung dan mengurutkan kota berdasarkan total permintaan secara otomatis.",
-    poin: [
-      "Ranking dihitung otomatis dari data permintaan",
-      "Urutan kota diperbarui setiap ada data baru",
-      "Tidak perlu hitung manual satu per satu",
-    ],
-  },
-  {
-    type: "rekomendasi",
-    judul: "Rekomendasi Distribusi",
-    deskripsi:
-      "Saran kota tujuan distribusi berdasarkan data, bukan tebakan manual.",
-    poin: [
-      "Saran kota tujuan berbasis data, bukan tebakan",
-      "Mempercepat pengambilan keputusan distribusi",
-      "Mengurangi risiko salah kirim",
-    ],
-  },
-  {
-    type: "dashboard",
-    judul: "Dashboard Terpusat",
-    deskripsi:
-      "Semua data permintaan dan distribusi terkumpul dalam satu tempat.",
-    poin: [
-      "Semua data permintaan dalam satu tampilan",
-      "Status distribusi terlihat tanpa pindah halaman",
-      "Memudahkan pemantauan harian",
-    ],
-  },
-  {
-    type: "multirole",
-    judul: "Manajemen Multi-Role",
-    deskripsi:
-      "Akses berbeda untuk Admin, Manajer Distribusi, dan Tim Logistik.",
-    poin: [
-      "Akses Admin, Manajer, dan Tim Logistik terpisah",
-      "Setiap role hanya melihat yang relevan",
-      "Mengurangi risiko kesalahan akses data",
-    ],
-  },
-  {
-    type: "laporan",
-    judul: "Laporan & Riwayat",
-    deskripsi: "Pantau histori keputusan distribusi kapan saja diperlukan.",
-    poin: [
-      "Riwayat keputusan tersimpan otomatis",
-      "Bisa diakses kapan saja diperlukan",
-      "Memudahkan evaluasi distribusi sebelumnya",
-    ],
-  },
-  {
-    type: "realtime",
-    judul: "Update Real-Time",
-    deskripsi:
-      "Perubahan status distribusi langsung terlihat oleh seluruh tim.",
-    poin: [
-      "Status distribusi terupdate langsung",
-      "Seluruh tim melihat perubahan yang sama",
-      "Tidak ada informasi yang tertinggal",
-    ],
-  },
-];
-
-const TESTIMONIAL_CHIPS = [
-  { initial: "BS", avatarBg: "#2563eb", label: "Budi S. — Admin" },
-  { initial: "RW", avatarBg: "var(--color-primary)", label: "Rina W. — Logistik" },
-  { initial: "HW", avatarBg: "#d97706", label: "Hendra W. — Manajer" },
-];
-
-const LANGKAH_LIST = [
-  {
-    nomor: 1,
-    judul: "Input Data Permintaan",
-    deskripsi: "Admin menginput data permintaan TBS per kota.",
-  },
-  {
-    nomor: 2,
-    judul: "Analisis & Ranking",
-    deskripsi:
-      "Sistem menganalisis data dan membuat ranking kota secara otomatis.",
-  },
-  {
-    nomor: 3,
-    judul: "Keputusan & Distribusi",
-    deskripsi:
-      "Manajer mengambil keputusan, Tim Logistik menjalankan distribusi.",
-  },
-];
-
-const STATISTIK_LIST = [
-  { nilai: "8", label: "Kota Terpantau", icon: "kota" },
-  { nilai: "20+", label: "Data Permintaan", icon: "data" },
-  { nilai: "<1 Detik", label: "Analisis Ranking", icon: "kecepatan" },
-  { nilai: "3 Role", label: "Akses Terstruktur", icon: "role" },
-];
-
-const FAQ_LIST = [
-  {
-    pertanyaan: "Apakah Switera bisa digunakan oleh banyak role sekaligus?",
-    jawaban:
-      "Ya. Switera mendukung tiga role: Admin, Manajer Distribusi, dan Tim Logistik. Setiap role memiliki akses dan tampilan menu yang berbeda sesuai tanggung jawabnya.",
-  },
-  {
-    pertanyaan: "Bagaimana sistem menentukan rekomendasi kota tujuan?",
-    jawaban:
-      "Sistem menghitung skor gabungan dari total permintaan dan kapasitas kota, lalu menyarankan kota dengan skor tertinggi sebagai tujuan distribusi yang paling efisien.",
-  },
-  {
-    pertanyaan: "Apakah data yang sudah diinput bisa diubah kembali?",
-    jawaban:
-      "Bisa. Admin dapat mengedit atau menghapus data permintaan kapan saja melalui halaman Manajemen Data, dan perubahannya langsung tercermin di seluruh halaman terkait.",
-  },
-  {
-    pertanyaan: "Apakah riwayat keputusan distribusi tersimpan secara permanen?",
-    jawaban:
-      "Ya. Seluruh keputusan distribusi, termasuk yang dibatalkan, tetap tercatat pada halaman Laporan untuk keperluan audit dan evaluasi di kemudian hari.",
-  },
-];
-
-function IkonArrowRight({ size = 14 }) {
+// Ikon Material Symbols (kelas dasar didefinisikan di tokens.css).
+function Ikon({ name, size = 20, fill = false, style }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 12H19M19 12L13 6M19 12L13 18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <span
+      className="material-symbols-outlined"
+      aria-hidden="true"
+      style={{
+        fontSize: `${size}px`,
+        lineHeight: 1,
+        fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' ${size}`,
+        ...style,
+      }}
+    >
+      {name}
+    </span>
   );
 }
 
-function IkonCentang({ size = 16 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 12.5L9.5 17L19 7.5"
-        stroke="var(--color-primary)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function FiturIcon({ type, size = 20 }) {
-  const stroke = "var(--color-primary)";
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    "aria-hidden": true,
-  };
-
-  switch (type) {
-    case "ranking":
-      return (
-        <svg {...common}>
-          <path d="M5 19H19" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M8 16V11" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M12 16V7" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M16 16V13" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      );
-    case "rekomendasi":
-      return (
-        <svg {...common}>
-          <path
-            d="M12 3L14.5 8.5L20.5 9.3L16 13.3L17.2 19.3L12 16.3L6.8 19.3L8 13.3L3.5 9.3L9.5 8.5L12 3Z"
-            stroke={stroke}
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    case "dashboard":
-      return (
-        <svg {...common}>
-          <path d="M4 4H10V10H4V4Z" stroke={stroke} strokeWidth="2" />
-          <path d="M14 4H20V10H14V4Z" stroke={stroke} strokeWidth="2" />
-          <path d="M4 14H10V20H4V14Z" stroke={stroke} strokeWidth="2" />
-          <path d="M14 14H20V20H14V14Z" stroke={stroke} strokeWidth="2" />
-        </svg>
-      );
-    case "multirole":
-      return (
-        <svg {...common}>
-          <circle cx="9" cy="8" r="3" stroke={stroke} strokeWidth="2" />
-          <path
-            d="M3.5 19C4.8 15.8 6.8 14 9 14C11.2 14 13.2 15.8 14.5 19"
-            stroke={stroke}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <circle cx="17" cy="7" r="2.3" stroke={stroke} strokeWidth="1.8" />
-          <path
-            d="M14.8 13.2C15.8 12.6 16.9 12.4 17.5 12.4C19 12.4 20.3 13.7 21 16"
-            stroke={stroke}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-    case "laporan":
-      return (
-        <svg {...common}>
-          <path
-            d="M7 4H14L18 8V20H7V4Z"
-            stroke={stroke}
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-          <path d="M14 4V8H18" stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
-          <path d="M9 12H15" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M9 16H15" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      );
-    case "realtime":
-    default:
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" stroke={stroke} strokeWidth="2" />
-          <path
-            d="M12 7V12L15.5 14"
-            stroke={stroke}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-  }
-}
-
-function StatIcon({ type }) {
-  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", "aria-hidden": true };
-  const stroke = "var(--color-primary)";
-
-  switch (type) {
-    case "kota":
-      return (
-        <svg {...common}>
-          <path
-            d="M12 21C12 21 19 14.5 19 9.5C19 5.35786 15.6421 2 12 2C8.35786 2 5 5.35786 5 9.5C5 14.5 12 21 12 21Z"
-            stroke={stroke}
-            strokeWidth="1.8"
-            strokeLinejoin="round"
-          />
-          <circle cx="12" cy="9.5" r="2.5" stroke={stroke} strokeWidth="1.8" />
-        </svg>
-      );
-    case "data":
-      return (
-        <svg {...common}>
-          <ellipse cx="12" cy="6" rx="7" ry="3" stroke={stroke} strokeWidth="1.8" />
-          <path d="M5 6V18C5 19.6569 8.13401 21 12 21C15.866 21 19 19.6569 19 18V6" stroke={stroke} strokeWidth="1.8" />
-        </svg>
-      );
-    case "kecepatan":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" stroke={stroke} strokeWidth="1.8" />
-          <path d="M12 7V12L15.5 14" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case "role":
-    default:
-      return (
-        <svg {...common}>
-          <circle cx="9" cy="8" r="3" stroke={stroke} strokeWidth="1.8" />
-          <path
-            d="M3.5 19C4.8 15.8 6.8 14 9 14C11.2 14 13.2 15.8 14.5 19"
-            stroke={stroke}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-          <circle cx="17" cy="7" r="2.3" stroke={stroke} strokeWidth="1.6" />
-        </svg>
-      );
-  }
-}
-
-function FaqItem({ pertanyaan, jawaban, isOpen, onToggle }) {
-  return (
-    <div style={{ borderBottom: "1px solid var(--color-border)" }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "16px",
-          background: "transparent",
-          border: "none",
-          padding: "20px 4px",
-          textAlign: "left",
-          cursor: "pointer",
-          color: "#fff",
-          fontFamily: "var(--font-display)",
-          fontSize: "16px",
-          fontWeight: "var(--font-weight-semibold)",
-        }}
-      >
-        {pertanyaan}
-        <span
-          aria-hidden="true"
-          style={{
-            flexShrink: 0,
-            display: "inline-flex",
-            transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
-            transition: "transform var(--transition-base)",
-            color: "var(--color-primary)",
-            fontSize: "20px",
-            lineHeight: 1,
-          }}
-        >
-          +
-        </span>
-      </button>
-      <div
-        style={{
-          maxHeight: isOpen ? "200px" : "0px",
-          overflow: "hidden",
-          transition: "max-height var(--transition-base)",
-        }}
-      >
-        <p
-          style={{
-            margin: "0 4px 20px",
-            color: "rgba(255,255,255,0.45)",
-            fontSize: "14px",
-            lineHeight: "1.7",
-          }}
-        >
-          {jawaban}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Reveal({ children, delay = 0, style, className }) {
+// Scroll reveal — menambahkan kelas .visible saat elemen masuk viewport.
+function Reveal({ children, delay = 0, style }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
 
@@ -381,10 +34,12 @@ function Reveal({ children, delay = 0, style, className }) {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.unobserve(entry.target);
+          }
+        });
       },
       { threshold: 0.1 }
     );
@@ -396,432 +51,66 @@ function Reveal({ children, delay = 0, style, className }) {
   return (
     <div
       ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(24px)",
-        transition: `opacity 600ms var(--ease-out) ${delay}ms, transform 600ms var(--ease-out) ${delay}ms`,
-        ...style,
-      }}
+      className={`reveal${visible ? " visible" : ""}`}
+      style={{ transitionDelay: `${delay}ms`, ...style }}
     >
       {children}
     </div>
   );
 }
 
-function HeroGlow({ flip = false }) {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage: `radial-gradient(ellipse 70% 40% at 50% ${flip ? "100%" : "0%"}, rgba(45,106,79,0.05) 0%, transparent 70%)`,
-        pointerEvents: "none",
-      }}
-    />
-  );
-}
+const FITUR = [
+  {
+    ikon: "trending_up",
+    judul: "Ranking Kota Otomatis",
+    deskripsi:
+      "Sistem menghitung dan mengurutkan kota tujuan berdasarkan total permintaan secara otomatis — tanpa hitung manual.",
+  },
+  {
+    ikon: "recommend",
+    judul: "Rekomendasi Distribusi",
+    deskripsi:
+      "Saran kota tujuan dan alokasi TBS berbasis data dan ketersediaan stok, bukan tebakan.",
+  },
+  {
+    ikon: "dashboard",
+    judul: "Dashboard Terpusat",
+    deskripsi:
+      "Semua data permintaan, keputusan, dan status pengiriman dalam satu tampilan yang selalu ter-update.",
+  },
+  {
+    ikon: "groups",
+    judul: "Multi-Peran",
+    deskripsi:
+      "Admin, Manajer Distribusi, dan Tim Logistik dengan akses dan alur kerja yang sesuai perannya.",
+  },
+];
 
-function MockupDashboard() {
-  const metrics = [
-    { label: "Total Kota", value: "8", accent: "var(--color-primary)" },
-    { label: "Permintaan", value: "245 ton", accent: "var(--color-accent)" },
-    { label: "Status Aktif", value: "12", accent: "var(--color-info)" },
-  ];
-  const tableRowAccents = ["var(--color-accent)", "var(--color-primary)", null, null];
-  const sidebarItems = [
-    { active: true, width: "80%" },
-    { active: false, width: "65%" },
-    { active: false, width: "70%" },
-  ];
-
-  return (
-    <div
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border-mid)",
-        borderBottom: "none",
-        borderRadius: "14px 14px 0 0",
-        boxShadow: "0 -4px 60px rgba(45,106,79,0.08), 0 0 0 1px rgba(255,255,255,0.04)",
-        overflow: "hidden",
-        width: "100%",
-        maxWidth: "880px",
-        margin: "0 auto",
-        boxSizing: "border-box",
-        textAlign: "left",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "var(--color-surface-2)",
-          borderBottom: "1px solid var(--color-border)",
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#ff5f56" }} />
-        <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#ffbd2e" }} />
-        <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#27c93f" }} />
-        <span style={{ marginLeft: "12px", fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
-          Switera — Dashboard
-        </span>
-      </div>
-
-      <div style={{ display: "flex", height: "280px", overflow: "hidden" }}>
-        <div
-          style={{
-            width: "160px",
-            flexShrink: 0,
-            backgroundColor: "var(--color-surface-2)",
-            borderRight: "1px solid var(--color-border)",
-            padding: "16px 12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          {sidebarItems.map((item, index) => (
-            <div
-              key={index}
-              style={{
-                height: "24px",
-                borderRadius: "5px",
-                width: item.width,
-                backgroundColor: item.active ? "rgba(45,106,79,0.2)" : "var(--color-surface-3)",
-                borderLeft: item.active ? "2px solid var(--color-primary)" : "none",
-              }}
-            />
-          ))}
-        </div>
-
-        <div style={{ flex: 1, padding: "20px", backgroundColor: "var(--color-bg)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "16px" }}>
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                style={{
-                  height: "64px",
-                  backgroundColor: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border-mid)",
-                  borderTop: `2px solid ${metric.accent}`,
-                  borderRadius: "8px",
-                  padding: "10px 12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-              >
-                <span style={{ width: 28, height: 28, borderRadius: "6px", backgroundColor: "var(--color-surface-3)", flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ height: "7px", width: "60%", backgroundColor: "var(--color-surface-3)", borderRadius: "3px" }} />
-                  <div style={{ height: "12px", width: "40%", marginTop: "6px", backgroundColor: "var(--color-surface-3)", borderRadius: "3px" }} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ height: "28px", backgroundColor: "var(--color-surface-2)", borderRadius: "6px", marginBottom: "6px" }} />
-          {tableRowAccents.map((accent, index) => (
-            <div
-              key={index}
-              style={{
-                height: "32px",
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                borderLeft: accent ? `2px solid ${accent}` : "1px solid var(--color-border)",
-                borderRadius: "6px",
-                marginBottom: "4px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "0 12px",
-              }}
-            >
-              {["20%", "40%", "15%"].map((width, blockIndex) => (
-                <div key={blockIndex} style={{ width, height: "7px", backgroundColor: "var(--color-surface-3)", borderRadius: "3px" }} />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div
-        aria-hidden="true"
-        style={{
-          position: "relative",
-          height: "0",
-        }}
-      />
-    </div>
-  );
-}
-
-function VisualCardShell({ children, icon }) {
-  return (
-    <Card
-      style={{
-        border: "1px solid var(--color-border-mid)",
-        borderRadius: "14px",
-        padding: "28px",
-        boxShadow: "var(--shadow-xl)",
-        aspectRatio: "4 / 3",
-        position: "relative",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "8px",
-          backgroundColor: "var(--color-surface-2)",
-          border: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "20px",
-          flexShrink: 0,
-        }}
-      >
-        <FiturIcon type={icon} size={18} />
-      </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {children}
-      </div>
-    </Card>
-  );
-}
-
-function FiturVisual({ type }) {
-  if (type === "ranking") {
-    const rows = [
-      { rank: "#1", city: "Pekanbaru", pct: 90, ton: "287 ton", highlight: true },
-      { rank: "#2", city: "Medan", pct: 70, ton: "220 ton" },
-      { rank: "#3", city: "Palembang", pct: 55, ton: "178 ton" },
-    ];
-    return (
-      <VisualCardShell icon="ranking">
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {rows.map((row) => (
-            <div
-              key={row.city}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "8px 10px",
-                borderRadius: "8px",
-                backgroundColor: row.highlight ? "var(--color-accent-subtle)" : "transparent",
-              }}
-            >
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", width: "32px", flexShrink: 0 }}>{row.rank}</span>
-              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", width: "76px", flexShrink: 0 }}>{row.city}</span>
-              <span style={{ flex: 1, height: "6px", borderRadius: "var(--radius-full)", backgroundColor: "var(--color-surface-3)", overflow: "hidden" }}>
-                <span style={{ display: "block", height: "100%", width: `${row.pct}%`, backgroundColor: "var(--color-primary)", borderRadius: "var(--radius-full)" }} />
-              </span>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", width: "52px", textAlign: "right", flexShrink: 0 }}>{row.ton}</span>
-            </div>
-          ))}
-        </div>
-      </VisualCardShell>
-    );
-  }
-
-  if (type === "rekomendasi") {
-    const stats = [
-      { label: "PERMINTAAN", value: "287 ton" },
-      { label: "KAPASITAS", value: "94%" },
-    ];
-    return (
-      <VisualCardShell icon="rekomendasi">
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "16px", height: "100%" }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "11px",
-              fontWeight: "var(--font-weight-semibold)",
-              color: "var(--color-primary)",
-              backgroundColor: "rgba(45,106,79,0.15)",
-              border: "1px solid rgba(45,106,79,0.25)",
-              borderRadius: "var(--radius-full)",
-              padding: "4px 10px",
-              width: "fit-content",
-            }}
-          >
-            Rekomendasi Sistem
-          </span>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: "var(--font-weight-bold)", fontSize: "2rem", letterSpacing: "-0.03em", color: "#fff" }}>
-            Pekanbaru
-          </span>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", width: "100%" }}>
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  padding: "12px",
-                }}
-              >
-                <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.3)", marginBottom: "4px" }}>
-                  {stat.label}
-                </div>
-                <div style={{ fontSize: "18px", fontWeight: "var(--font-weight-bold)", fontFamily: "var(--font-mono)", color: "#fff" }}>
-                  {stat.value}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "10px",
-              backgroundColor: "var(--color-primary)",
-              color: "#fff",
-              borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: "var(--font-weight-semibold)",
-              textAlign: "center",
-              marginTop: "auto",
-            }}
-          >
-            Tetapkan Tujuan →
-          </div>
-        </div>
-      </VisualCardShell>
-    );
-  }
-
-  if (type === "dashboard") {
-    return (
-      <VisualCardShell icon="dashboard">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                padding: "12px",
-              }}
-            >
-              <span style={{ display: "block", width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "var(--color-surface-3)", marginBottom: "10px" }} />
-              <span style={{ display: "block", height: "7px", width: "70%", backgroundColor: "var(--color-surface-3)", borderRadius: "3px" }} />
-              <span style={{ display: "block", height: "14px", width: "45%", marginTop: "8px", backgroundColor: "var(--color-border-mid)", borderRadius: "3px" }} />
-            </div>
-          ))}
-        </div>
-      </VisualCardShell>
-    );
-  }
-
-  if (type === "multirole") {
-    const roles = [
-      { label: "Admin", color: "var(--color-primary)" },
-      { label: "Manajer Distribusi", color: "var(--color-accent)" },
-      { label: "Tim Logistik", color: "var(--color-info)" },
-    ];
-    return (
-      <VisualCardShell icon="multirole">
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {roles.map((role) => (
-            <div
-              key={role.label}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "8px",
-                padding: "10px 14px",
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: role.color, flexShrink: 0 }} />
-              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)" }}>{role.label}</span>
-            </div>
-          ))}
-        </div>
-      </VisualCardShell>
-    );
-  }
-
-  if (type === "laporan") {
-    return (
-      <VisualCardShell icon="laporan">
-        <svg viewBox="0 0 220 90" width="100%" height="120" fill="none" aria-hidden="true">
-          <polyline
-            points="0,65 30,48 60,55 90,25 120,38 150,12 180,28 220,18"
-            stroke="var(--color-primary)"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-          <polyline
-            points="0,65 30,48 60,55 90,25 120,38 150,12 180,28 220,18 220,90 0,90"
-            fill="var(--color-primary-subtle)"
-            stroke="none"
-          />
-        </svg>
-      </VisualCardShell>
-    );
-  }
-
-  return (
-    <VisualCardShell icon="realtime">
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {[0, 1, 2].map((index) => (
-          <div key={index} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "var(--color-success)", flexShrink: 0 }} />
-            <span style={{ flex: 1, height: "8px", width: `${70 - index * 12}%`, backgroundColor: "var(--color-surface-3)", borderRadius: "3px" }} />
-            <span style={{ width: "28px", height: "8px", backgroundColor: "var(--color-border-mid)", borderRadius: "3px", flexShrink: 0 }} />
-          </div>
-        ))}
-      </div>
-    </VisualCardShell>
-  );
-}
+const CARA_KERJA = [
+  {
+    nomor: "1",
+    ikon: "edit_note",
+    judul: "Input Permintaan",
+    deskripsi: "Catat permintaan TBS tiap kota beserta jumlah dan tanggalnya.",
+  },
+  {
+    nomor: "2",
+    ikon: "insights",
+    judul: "Hitung & Rekomendasi",
+    deskripsi: "Sistem menyusun ranking kota dan merekomendasikan alokasi distribusi.",
+  },
+  {
+    nomor: "3",
+    ikon: "local_shipping",
+    judul: "Putuskan & Lacak",
+    deskripsi: "Setujui keputusan distribusi lalu pantau status pengiriman sampai selesai.",
+  },
+];
 
 function Landing({ onNavigate }) {
   const [scrolled, setScrolled] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [openFaqIndex, setOpenFaqIndex] = useState(0);
-
-  const [rankingDemo, setRankingDemo] = useState([]);
-  const [daftarKotaDemo, setDaftarKotaDemo] = useState([]);
-
-  useEffect(() => {
-    let aktif = true;
-
-    apiFetch("/public/landing-stats", { auth: false })
-      .then((data) => {
-        if (!aktif) {
-          return;
-        }
-        setRankingDemo(data?.ranking ?? []);
-        setDaftarKotaDemo(data?.daftarKota ?? []);
-      })
-      .catch(() => {
-        // Backend tidak terjangkau — biarkan state tetap array kosong,
-        // halaman marketing tetap render (peta kosong) tanpa crash/blank.
-      });
-
-    return () => {
-      aktif = false;
-    };
-  }, []);
 
   const openLogin = () => {
     setShowRegisterModal(false);
@@ -839,747 +128,483 @@ function Landing({ onNavigate }) {
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
-    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const sectionLabelStyle = {
-    margin: "0 0 var(--space-3)",
-    fontSize: "var(--text-2xs)",
+  const navLinkStyle = {
+    color: "var(--color-on-surface-variant)",
+    textDecoration: "none",
+    fontSize: "var(--text-sm)",
     fontWeight: "var(--font-weight-semibold)",
-    color: "var(--color-primary)",
-    textAlign: "center",
-    textTransform: "uppercase",
-    letterSpacing: "var(--tracking-wider)",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "var(--font-body)",
+    padding: 0,
+    transition: "color var(--transition-fast)",
   };
 
-  const sectionHeadingStyle = {
-    margin: 0,
-    fontFamily: "var(--font-display)",
-    fontSize: "clamp(2rem, 4vw, 3rem)",
-    fontWeight: "var(--font-weight-bold)",
-    letterSpacing: "-0.03em",
-    textAlign: "center",
-    color: "#fff",
-  };
-
-  const sectionSubtextStyle = {
-    margin: "12px 0 0",
-    color: "rgba(255,255,255,0.4)",
-    lineHeight: "var(--leading-loose)",
-    fontSize: "var(--text-md)",
-    textAlign: "center",
+  const btnPrimer = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "var(--color-primary)",
+    color: "var(--color-on-primary)",
+    border: "none",
+    borderRadius: "var(--radius-lg)",
+    fontFamily: "var(--font-body)",
+    fontWeight: "var(--font-weight-semibold)",
+    fontSize: "var(--text-sm)",
+    cursor: "pointer",
+    boxShadow: "var(--shadow-sm)",
+    transition: "transform var(--transition-slow), background-color var(--transition-slow), box-shadow var(--transition-slow)",
   };
 
   return (
-    <div
-      className="landing-page"
-      style={{
-        fontFamily: "var(--font-body)",
-        color: "var(--color-text-primary)",
-        backgroundColor: "var(--color-bg)",
-      }}
-    >
-      <style>
-        {`
-          @keyframes landingFadeInUp {
-            from { opacity: 0; transform: translateY(var(--from-y, 20px)); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-
-          .landing-hero-mockup {
-            position: relative;
-          }
-
-          .landing-hero-mockup::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 140px;
-            background: linear-gradient(to bottom, transparent, var(--color-bg));
-            pointer-events: none;
-            z-index: 2;
-          }
-
-          .landing-feature-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 80px;
-            align-items: center;
-            padding: 100px 0;
-            border-bottom: 1px solid var(--color-border);
-          }
-
-          .landing-feature-row:last-of-type {
-            border-bottom: none;
-          }
-
-          .landing-feature-row.is-reverse .landing-feature-visual {
-            order: -1;
-          }
-
-          .landing-nav-links {
-            display: flex;
-          }
-
-          @media (max-width: 860px) {
-            .landing-feature-row {
-              grid-template-columns: 1fr;
-              gap: 32px;
-              padding: 64px 0;
-            }
-
-            .landing-feature-row.is-reverse .landing-feature-visual {
-              order: 0;
-            }
-          }
-
-          @media (max-width: 720px) {
-            .landing-nav-links {
-              display: none;
-            }
-
-            .landing-cara-kerja-connector {
-              display: none;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .landing-page section,
-            .landing-page header {
-              padding-left: 20px !important;
-              padding-right: 20px !important;
-            }
-          }
-        `}
-      </style>
-
-      <header
+    <div style={{ backgroundColor: "var(--color-bg)", color: "var(--color-on-background)", minHeight: "100vh", overflowX: "hidden" }}>
+      {/* ===== Navbar ===== */}
+      <nav
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: "var(--z-sticky)",
-          height: "60px",
-          padding: "0 48px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: scrolled ? "rgba(8,8,8,0.92)" : "rgba(8,8,8,0)",
-          backdropFilter: scrolled ? "blur(16px)" : "none",
+          zIndex: "var(--z-toast)",
+          height: "72px",
+          backgroundColor: scrolled ? "rgba(248,249,255,0.85)" : "rgba(248,249,255,0.6)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
           borderBottom: scrolled ? "1px solid var(--color-border)" : "1px solid transparent",
-          transition: "background-color 300ms ease, border-color 300ms ease",
+          boxShadow: scrolled ? "var(--shadow-sm)" : "none",
+          transition: "background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
-          <IkonDaun size={18} />
-          <span
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: "var(--font-weight-semibold)",
-              fontSize: "15px",
-              letterSpacing: "-0.02em",
-              color: "#fff",
-            }}
-          >
-            Switera
-          </span>
+        <div
+          style={{
+            maxWidth: "1440px",
+            margin: "0 auto",
+            height: "100%",
+            padding: "0 var(--space-8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "var(--radius-lg)",
+                backgroundColor: "var(--color-primary-container)",
+                color: "var(--color-on-primary-container)",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Ikon name="eco" size={24} fill />
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "var(--text-xl)",
+                fontWeight: "var(--font-weight-bold)",
+                color: "var(--color-primary)",
+              }}
+            >
+              Switera
+            </span>
+          </div>
+
+          <div className="landing-nav-links" style={{ display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
+            <button type="button" style={navLinkStyle} onClick={() => scrollToId("fitur")}>Fitur</button>
+            <button type="button" style={navLinkStyle} onClick={() => scrollToId("cara-kerja")}>Cara Kerja</button>
+            <button type="button" style={navLinkStyle} onClick={() => scrollToId("cta")}>Tentang</button>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+            <button
+              type="button"
+              onClick={openLogin}
+              style={{
+                ...navLinkStyle,
+                color: "var(--color-primary)",
+                padding: "8px 16px",
+                borderRadius: "var(--radius-md)",
+              }}
+            >
+              Masuk
+            </button>
+            <button type="button" onClick={openRegister} style={{ ...btnPrimer, padding: "10px 20px" }}>
+              Daftar Gratis
+            </button>
+          </div>
         </div>
+      </nav>
 
-        <nav className="landing-nav-links" style={{ alignItems: "center", gap: "32px", flexShrink: 0 }}>
-          <a
-            href="#fitur"
-            onClick={(event) => {
-              event.preventDefault();
-              scrollToId("fitur");
-            }}
-            className="landing-nav-link"
-          >
-            Fitur
-          </a>
-          <a
-            href="#cara-kerja"
-            onClick={(event) => {
-              event.preventDefault();
-              scrollToId("cara-kerja");
-            }}
-            className="landing-nav-link"
-          >
-            Cara Kerja
-          </a>
-          <a
-            href="#peta"
-            onClick={(event) => {
-              event.preventDefault();
-              scrollToId("peta");
-            }}
-            className="landing-nav-link"
-          >
-            Peta
-          </a>
-          <a
-            href="#faq"
-            onClick={(event) => {
-              event.preventDefault();
-              scrollToId("faq");
-            }}
-            className="landing-nav-link"
-          >
-            FAQ
-          </a>
-        </nav>
-
-        <div style={{ display: "flex", gap: "var(--space-2)", flexShrink: 0, flex: 1, justifyContent: "flex-end" }}>
-          <Tombol
-            variant="sekunder"
-            label="Masuk"
-            onClick={openLogin}
-            style={{ padding: "7px 16px", fontSize: "var(--text-xs)" }}
-          />
-          <Tombol
-            variant="primer"
-            label="Daftar"
-            onClick={openRegister}
-            style={{ padding: "7px 16px", fontSize: "var(--text-xs)" }}
-          />
-        </div>
-      </header>
-
+      {/* ===== Hero ===== */}
       <section
         style={{
           position: "relative",
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #f0fdf4 0%, #f8f9ff 100%)",
+          paddingTop: "128px",
+          paddingBottom: "80px",
           overflow: "hidden",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          padding: "120px 48px 0",
-          backgroundColor: "var(--color-bg)",
         }}
       >
-        <HeroGlow />
+        {/* Decorative blobs */}
+        <div style={{ position: "absolute", top: "80px", left: "40px", width: "288px", height: "288px", background: "rgba(0,134,86,0.10)", borderRadius: "50%", filter: "blur(64px)" }} />
+        <div style={{ position: "absolute", bottom: "40px", right: "40px", width: "384px", height: "384px", background: "rgba(64,194,253,0.10)", borderRadius: "50%", filter: "blur(64px)" }} />
 
-        <div style={{ position: "relative", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              backgroundColor: "rgba(45,106,79,0.1)",
-              border: "1px solid rgba(45,106,79,0.2)",
-              borderRadius: "100px",
-              padding: "4px 12px 4px 6px",
-              fontSize: "11px",
-              color: "var(--color-primary)",
-              marginBottom: "20px",
-              animation: "fadeIn 600ms 100ms var(--ease-out) both",
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--color-primary)", animation: "pulse 2s infinite" }} />
-            Platform Distribusi Tandan Buah Segar (TBS) Kelapa Sawit
-          </span>
-
-          <h1
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              margin: "0 auto 16px",
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(1.9rem, 8vw, 5rem)",
-              fontWeight: "var(--font-weight-bold)",
-              letterSpacing: "-0.04em",
-              lineHeight: "1.08",
-              color: "#fff",
-              maxWidth: "800px",
-              "--from-y": "20px",
-              animation: "landingFadeInUp 700ms 200ms both",
-            }}
-          >
-            Distribusi TBS yang Lebih Cepat dan{" "}
-            <span
+        <div
+          style={{
+            maxWidth: "1440px",
+            margin: "0 auto",
+            padding: "0 var(--space-8)",
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)",
+            gap: "48px",
+            alignItems: "center",
+            position: "relative",
+            zIndex: 1,
+          }}
+          className="landing-hero-grid"
+        >
+          {/* Left */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "24px" }}>
+            <div
               style={{
-                fontStyle: "italic",
-                color: "var(--color-primary-hover)",
-                display: "inline-block",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                borderRadius: "var(--radius-full)",
+                backgroundColor: "var(--color-surface-container-lowest)",
+                border: "1px solid var(--color-outline-variant)",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
-              Akurat
-            </span>
-          </h1>
+              <span className="animate-pulse-dot" style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--color-primary)" }} />
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)" }}>
+                Platform Distribusi TBS Kelapa Sawit
+              </span>
+            </div>
 
-          <p
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              fontSize: "17px",
-              color: "rgba(255,255,255,0.45)",
-              maxWidth: "480px",
-              margin: "0 auto 28px",
-              lineHeight: "1.65",
-              fontWeight: "var(--font-weight-normal)",
-              "--from-y": "16px",
-              animation: "landingFadeInUp 700ms 350ms both",
-            }}
-          >
-            Sistem informasi berbasis data untuk membantu manajer distribusi
-            menentukan kota tujuan TBS kelapa sawit dengan tepat dan cepat.
-          </p>
+            <h1
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "clamp(2.4rem, 5vw, 3.5rem)",
+                fontWeight: "var(--font-weight-bold)",
+                lineHeight: 1.1,
+                letterSpacing: "-0.02em",
+                color: "var(--color-on-background)",
+                margin: 0,
+              }}
+            >
+              Distribusi TBS Lebih Cepat, Tepat, dan{" "}
+              <span
+                style={{
+                  background: "linear-gradient(to right, #006a43, #008656)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                Menguntungkan
+              </span>
+            </h1>
 
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: "48px",
-              animation: "fadeIn 600ms 500ms var(--ease-out) both",
-            }}
-          >
-            <Tombol
-              variant="primer"
-              label="Mulai Sekarang"
-              onClick={openRegister}
-              style={{ padding: "10px 22px", fontSize: "14px", borderRadius: "8px" }}
-            />
-            <Tombol
-              variant="sekunder"
-              onClick={() => scrollToId("fitur")}
-              style={{ padding: "10px 16px", fontSize: "14px", fontWeight: 400 }}
-              label={
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--space-1)" }}>
-                  Lihat Demo <IkonArrowRight size={13} />
+            <p style={{ fontSize: "var(--text-lg)", color: "var(--color-on-surface-variant)", maxWidth: "36rem", lineHeight: 1.6, margin: 0 }}>
+              Sistem informasi manajemen distribusi kelapa sawit berbasis data untuk tim distribusi yang modern dan efisien.
+            </p>
+
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px", marginTop: "8px" }}>
+              <button type="button" onClick={openLogin} className="landing-cta-primer" style={{ ...btnPrimer, padding: "16px 28px", fontSize: "var(--text-base)", boxShadow: "var(--shadow-md)" }}>
+                Mulai Sekarang
+                <Ikon name="arrow_forward" size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToId("cara-kerja")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "16px 28px",
+                  borderRadius: "var(--radius-lg)",
+                  border: "1px solid var(--color-outline-variant)",
+                  backgroundColor: "transparent",
+                  color: "var(--color-primary)",
+                  fontFamily: "var(--font-body)",
+                  fontWeight: "var(--font-weight-semibold)",
+                  fontSize: "var(--text-base)",
+                  cursor: "pointer",
+                  transition: "background-color var(--transition-fast), border-color var(--transition-fast)",
+                }}
+              >
+                <Ikon name="play_circle" size={20} />
+                Lihat Demo
+              </button>
+            </div>
+
+            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "16px" }}>
+              <div style={{ display: "flex" }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    aria-hidden="true"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      border: "2px solid var(--color-surface-container-lowest)",
+                      backgroundColor: "var(--color-surface-container)",
+                      color: "var(--color-primary)",
+                      display: "grid",
+                      placeItems: "center",
+                      marginLeft: i === 0 ? 0 : "-12px",
+                    }}
+                  >
+                    <Ikon name="person" size={20} fill />
+                  </span>
+                ))}
+                <span
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    border: "2px solid var(--color-surface-container-lowest)",
+                    backgroundColor: "var(--color-surface-container-high)",
+                    color: "var(--color-on-surface-variant)",
+                    display: "grid",
+                    placeItems: "center",
+                    marginLeft: "-12px",
+                    fontSize: "var(--text-xs)",
+                    fontWeight: "var(--font-weight-bold)",
+                  }}
+                >
+                  50+
                 </span>
-              }
-            />
+              </div>
+              <div style={{ fontSize: "var(--text-sm)", color: "var(--color-on-surface-variant)" }}>
+                Dipercaya <strong style={{ color: "var(--color-on-background)" }}>50+</strong> tim distribusi sawit
+              </div>
+            </div>
           </div>
 
-          <div
-            className="landing-hero-mockup"
-            style={{
-              maxWidth: "880px",
-              width: "100%",
-              marginTop: 0,
-              marginBottom: 0,
-              "--from-y": "32px",
-              animation: "landingFadeInUp 800ms 600ms both",
-            }}
-          >
-            <MockupDashboard />
+          {/* Right — Dashboard mockup */}
+          <div className="landing-hero-mockup" style={{ position: "relative" }}>
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,106,67,0.20)", filter: "blur(80px)", borderRadius: "50%", transform: "scale(0.9) translateY(40px)" }} />
+            <div
+              style={{
+                position: "relative",
+                backgroundColor: "var(--color-surface-container-lowest)",
+                borderRadius: "var(--radius-2xl)",
+                boxShadow: "var(--shadow-xl)",
+                border: "1px solid var(--color-outline-variant)",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                zIndex: 1,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--color-border)", paddingBottom: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <span style={{ width: "32px", height: "32px", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-surface-container)", display: "grid", placeItems: "center", color: "var(--color-primary)" }}>
+                    <Ikon name="bar_chart" size={18} />
+                  </span>
+                  <div>
+                    <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-on-surface-variant)" }}>Total Distribusi</div>
+                    <div style={{ fontSize: "var(--text-sm)", color: "var(--color-on-background)" }}>Hari ini</div>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>1.240 Ton</div>
+                  <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-primary-container)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "2px" }}>
+                    <Ikon name="trending_up" size={14} /> +12%
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: "140px", backgroundColor: "var(--color-surface-container-low)", borderRadius: "var(--radius-lg)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px", gap: "8px" }}>
+                {[30, 50, 80, 40, 60].map((h, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: "16%",
+                      height: `${h}%`,
+                      borderRadius: "4px 4px 0 0",
+                      backgroundColor: i === 2 ? "var(--color-primary)" : "var(--color-surface-container-high)",
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {[{ k: "Dumai", v: "450 Ton" }, { k: "Pekanbaru", v: "380 Ton" }].map((row) => (
+                  <div key={row.k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-surface-container-low)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Ikon name="location_on" size={16} style={{ color: "var(--color-secondary)" }} />
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-background)" }}>{row.k}</span>
+                    </div>
+                    <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>{row.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section
-        style={{
-          padding: "48px",
-          borderTop: "1px solid var(--color-border)",
-          borderBottom: "1px solid var(--color-border)",
-          textAlign: "center",
-          backgroundColor: "var(--color-bg)",
-        }}
-      >
+      {/* ===== Fitur ===== */}
+      <section id="fitur" style={{ maxWidth: "1440px", margin: "0 auto", padding: "80px var(--space-8)" }}>
         <Reveal>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "64px", flexWrap: "wrap" }}>
-            {STATISTIK_LIST.map((stat, index) => (
-              <div key={stat.label} style={{ display: "flex", alignItems: "center", gap: "64px" }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ display: "flex", justifyContent: "center", marginBottom: "8px" }}>
-                    <StatIcon type={stat.icon} />
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontWeight: 800,
-                      fontSize: "2.2rem",
-                      letterSpacing: "-0.04em",
-                      color: "#fff",
-                    }}
-                  >
-                    {stat.nilai}
-                  </div>
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontFamily: "var(--font-body)",
-                      fontWeight: "var(--font-weight-normal)",
-                      color: "rgba(255,255,255,0.3)",
-                      fontSize: "12px",
-                    }}
-                  >
-                    {stat.label}
-                  </div>
-                </div>
-                {index < STATISTIK_LIST.length - 1 ? (
-                  <div aria-hidden="true" style={{ width: "1px", height: "40px", backgroundColor: "var(--color-border)" }} />
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      <section id="fitur" style={{ padding: "120px 48px 0", backgroundColor: "var(--color-bg)" }}>
-        <Reveal>
-          <div style={{ maxWidth: "640px", margin: "0 auto 0" }}>
-            <p style={sectionLabelStyle}>Fitur Unggulan</p>
-            <h2 style={sectionHeadingStyle}>Fitur Utama</h2>
-            <p style={sectionSubtextStyle}>
-              Semua yang dibutuhkan untuk mengelola distribusi TBS dari satu
-              platform.
+          <div style={{ textAlign: "center", maxWidth: "40rem", margin: "0 auto 48px" }}>
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.75rem, 3vw, 2rem)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-background)", margin: "0 0 12px", letterSpacing: "-0.01em" }}>
+              Semua yang dibutuhkan untuk mengelola distribusi
+            </h2>
+            <p style={{ fontSize: "var(--text-md)", color: "var(--color-on-surface-variant)", margin: 0 }}>
+              Dari input permintaan hingga pelacakan pengiriman, dalam satu platform.
             </p>
           </div>
         </Reveal>
 
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          {FITUR_LIST.map((fitur, index) => (
-            <div key={fitur.judul} className={`landing-feature-row${index % 2 === 1 ? " is-reverse" : ""}`}>
-              <Reveal>
-                <div>
-                  <p
-                    style={{
-                      margin: "0 0 14px",
-                      fontSize: "11px",
-                      fontWeight: "var(--font-weight-bold)",
-                      color: "var(--color-primary)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    FITUR {String(index + 1).padStart(2, "0")}
-                  </p>
-                  <h3
-                    style={{
-                      margin: "0 0 14px",
-                      fontFamily: "var(--font-display)",
-                      fontSize: "clamp(1.6rem, 2.5vw, 2rem)",
-                      fontWeight: "var(--font-weight-bold)",
-                      letterSpacing: "-0.03em",
-                      lineHeight: "1.2",
-                      color: "#fff",
-                    }}
-                  >
-                    {fitur.judul}
-                  </h3>
-                  <p
-                    style={{
-                      margin: "0 0 28px",
-                      fontSize: "15px",
-                      lineHeight: "1.7",
-                      color: "rgba(255,255,255,0.45)",
-                      maxWidth: "380px",
-                    }}
-                  >
-                    {fitur.deskripsi}
-                  </p>
-                  <ul
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                      listStyle: "none",
-                      padding: 0,
-                      margin: 0,
-                    }}
-                  >
-                    {fitur.poin.map((item) => (
-                      <li
-                        key={item}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "10px",
-                          fontSize: "14px",
-                          color: "rgba(255,255,255,0.55)",
-                          lineHeight: "1.5",
-                        }}
-                      >
-                        <span style={{ flexShrink: 0, marginTop: "2px" }}>
-                          <IkonCentang size={16} />
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Reveal>
-
-              <Reveal delay={100} className="landing-feature-visual">
-                <FiturVisual type={fitur.type} />
-              </Reveal>
-            </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "var(--space-6)" }} className="app-grid-4">
+          {FITUR.map((item, i) => (
+            <Reveal key={item.judul} delay={i * 80}>
+              <div
+                className="app-card app-card-hoverable"
+                style={{
+                  backgroundColor: "var(--color-surface-container-lowest)",
+                  borderRadius: "var(--radius-xl)",
+                  border: "1px solid var(--color-border)",
+                  boxShadow: "var(--shadow-sm)",
+                  padding: "var(--space-6)",
+                  height: "100%",
+                }}
+              >
+                <span style={{ width: "48px", height: "48px", borderRadius: "var(--radius-lg)", backgroundColor: "var(--color-surface-container)", color: "var(--color-primary)", display: "grid", placeItems: "center", marginBottom: "16px" }}>
+                  <Ikon name={item.ikon} size={24} fill />
+                </span>
+                <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-background)", margin: "0 0 8px" }}>
+                  {item.judul}
+                </h3>
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--color-on-surface-variant)", lineHeight: 1.6, margin: 0 }}>
+                  {item.deskripsi}
+                </p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
-      <section
-        id="cara-kerja"
-        style={{
-          padding: "120px 48px",
-          backgroundColor: "var(--color-surface)",
-          borderTop: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      {/* ===== Cara Kerja ===== */}
+      <section id="cara-kerja" style={{ backgroundColor: "var(--color-surface-container-low)", padding: "80px 0" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto", padding: "0 var(--space-8)" }}>
           <Reveal>
-            <div style={{ maxWidth: "640px", margin: "0 auto 80px" }}>
-              <p style={sectionLabelStyle}>Cara Kerja</p>
-              <h2 style={sectionHeadingStyle}>Cara Kerja</h2>
-              <p style={sectionSubtextStyle}>
-                Tiga langkah sederhana dari data hingga distribusi berjalan.
+            <div style={{ textAlign: "center", maxWidth: "40rem", margin: "0 auto 48px" }}>
+              <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.75rem, 3vw, 2rem)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-background)", margin: "0 0 12px", letterSpacing: "-0.01em" }}>
+                Cara Kerja
+              </h2>
+              <p style={{ fontSize: "var(--text-md)", color: "var(--color-on-surface-variant)", margin: 0 }}>
+                Tiga langkah sederhana dari data ke keputusan distribusi.
               </p>
             </div>
           </Reveal>
 
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap" }}>
-            {LANGKAH_LIST.map((langkah, index) => (
-              <Fragment key={langkah.nomor}>
-                <Reveal
-                  delay={index * 80}
-                  style={{ flex: "0 1 220px", maxWidth: "220px", textAlign: "center" }}
-                >
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      backgroundColor: "var(--color-surface-2)",
-                      border: "1px solid var(--color-border-mid)",
-                      color: "var(--color-primary)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: "var(--font-mono)",
-                      fontWeight: "var(--font-weight-bold)",
-                      fontSize: "16px",
-                      margin: "0 auto 24px",
-                    }}
-                  >
-                    {langkah.nomor}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "var(--space-6)" }} className="app-grid-3">
+            {CARA_KERJA.map((step, i) => (
+              <Reveal key={step.nomor} delay={i * 100}>
+                <div style={{ backgroundColor: "var(--color-surface-container-lowest)", borderRadius: "var(--radius-xl)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "var(--space-6)", height: "100%" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                    <span style={{ width: "40px", height: "40px", borderRadius: "var(--radius-full)", backgroundColor: "var(--color-primary)", color: "var(--color-on-primary)", display: "grid", placeItems: "center", fontFamily: "var(--font-heading)", fontWeight: "var(--font-weight-bold)" }}>
+                      {step.nomor}
+                    </span>
+                    <Ikon name={step.ikon} size={24} style={{ color: "var(--color-primary)" }} fill />
                   </div>
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: "16px",
-                      fontWeight: "var(--font-weight-semibold)",
-                      color: "#fff",
-                      marginBottom: "10px",
-                    }}
-                  >
-                    {langkah.judul}
+                  <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-background)", margin: "0 0 8px" }}>
+                    {step.judul}
                   </h3>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: "rgba(255,255,255,0.4)",
-                      fontSize: "14px",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {langkah.deskripsi}
+                  <p style={{ fontSize: "var(--text-sm)", color: "var(--color-on-surface-variant)", lineHeight: 1.6, margin: 0 }}>
+                    {step.deskripsi}
                   </p>
-                </Reveal>
-
-                {index < LANGKAH_LIST.length - 1 ? (
-                  <div
-                    aria-hidden="true"
-                    className="landing-cara-kerja-connector"
-                    style={{
-                      flex: "1 1 40px",
-                      minWidth: "24px",
-                      maxWidth: "100px",
-                      height: 0,
-                      marginTop: "24px",
-                      borderTop: "1px solid var(--color-border-mid)",
-                      alignSelf: "flex-start",
-                    }}
-                  />
-                ) : null}
-              </Fragment>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      <section
-        id="peta"
-        style={{
-          padding: "120px 48px",
-          backgroundColor: "var(--color-bg)",
-          borderTop: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <Reveal>
-            <div style={{ maxWidth: "640px", margin: "0 auto 56px" }}>
-              <p style={sectionLabelStyle}>Jangkauan Distribusi</p>
-              <h2 style={sectionHeadingStyle}>Peta Distribusi TBS</h2>
-              <p style={sectionSubtextStyle}>
-                Visualisasi geografis kota-kota yang dipantau Switera beserta volume
-                permintaan saat ini.
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <Card
-              style={{
-                border: "1px solid var(--color-border-mid)",
-                borderRadius: "14px",
-                overflow: "hidden",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-                padding: 0,
-              }}
-            >
-              <PetaGeografis ranking={rankingDemo} daftarKota={daftarKotaDemo} />
-            </Card>
-          </Reveal>
-        </div>
-      </section>
-
-      <section
-        id="faq"
-        style={{
-          padding: "120px 48px",
-          backgroundColor: "var(--color-surface)",
-          borderTop: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
-          <Reveal>
-            <div style={{ maxWidth: "640px", margin: "0 auto 48px" }}>
-              <p style={sectionLabelStyle}>FAQ</p>
-              <h2 style={sectionHeadingStyle}>Pertanyaan Umum</h2>
-              <p style={sectionSubtextStyle}>
-                Jawaban singkat untuk pertanyaan yang paling sering diajukan.
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <div>
-              {FAQ_LIST.map((faq, index) => (
-                <FaqItem
-                  key={faq.pertanyaan}
-                  pertanyaan={faq.pertanyaan}
-                  jawaban={faq.jawaban}
-                  isOpen={openFaqIndex === index}
-                  onToggle={() =>
-                    setOpenFaqIndex((current) => (current === index ? -1 : index))
-                  }
-                />
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          padding: "80px 48px",
-          backgroundColor: "var(--color-bg)",
-          borderTop: "1px solid var(--color-border)",
-          textAlign: "center",
-        }}
-      >
-        <HeroGlow flip />
-        <Reveal style={{ position: "relative" }}>
-          <div style={{ maxWidth: "640px", margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "10px", marginBottom: "40px" }}>
-              {TESTIMONIAL_CHIPS.map((chip) => (
-                <span
-                  key={chip.label}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "100px",
-                    padding: "6px 14px 6px 8px",
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.5)",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: "50%",
-                      backgroundColor: chip.avatarBg,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "10px",
-                      fontWeight: "var(--font-weight-bold)",
-                      color: "#fff",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {chip.initial}
-                  </span>
-                  {chip.label}
-                </span>
-              ))}
-            </div>
-            <h2
-              style={{
-                margin: "0 0 16px",
-                fontFamily: "var(--font-display)",
-                fontSize: "clamp(2rem, 4vw, 3.2rem)",
-                fontWeight: "var(--font-weight-bold)",
-                letterSpacing: "-0.04em",
-                color: "#fff",
-              }}
-            >
-              Siap Mengoptimalkan Distribusi TBS Anda?
+      {/* ===== CTA ===== */}
+      <section id="cta" style={{ padding: "80px var(--space-8)" }}>
+        <Reveal>
+          <div
+            style={{
+              maxWidth: "1100px",
+              margin: "0 auto",
+              backgroundColor: "var(--color-primary)",
+              borderRadius: "var(--radius-2xl)",
+              padding: "clamp(40px, 6vw, 72px)",
+              textAlign: "center",
+              boxShadow: "var(--shadow-lg)",
+            }}
+          >
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.75rem, 3vw, 2.25rem)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-primary)", margin: "0 0 12px", letterSpacing: "-0.01em" }}>
+              Siap mengoptimalkan distribusi TBS Anda?
             </h2>
-            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.3)", margin: "12px 0 32px" }}>
-              Bergabung dan mulai optimalkan distribusi TBS hari ini.
+            <p style={{ fontSize: "var(--text-md)", color: "rgba(255,255,255,0.85)", margin: "0 0 28px" }}>
+              Mulai kelola distribusi kelapa sawit dengan lebih cepat, tepat, dan terukur.
             </p>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <Tombol
-                variant="primer"
-                label="Daftar Sekarang"
-                onClick={openRegister}
-                style={{ padding: "12px 28px", fontSize: "14px" }}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={openRegister}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "var(--color-surface-container-lowest)",
+                color: "var(--color-primary)",
+                border: "none",
+                borderRadius: "var(--radius-lg)",
+                padding: "16px 32px",
+                fontFamily: "var(--font-body)",
+                fontWeight: "var(--font-weight-bold)",
+                fontSize: "var(--text-base)",
+                cursor: "pointer",
+                boxShadow: "var(--shadow-md)",
+              }}
+            >
+              Daftar Sekarang
+              <Ikon name="arrow_forward" size={20} />
+            </button>
           </div>
         </Reveal>
       </section>
 
-      <footer
-        style={{
-          padding: "32px 48px",
-          backgroundColor: "var(--color-surface)",
-          borderTop: "1px solid var(--color-border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "var(--space-3)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "rgba(255,255,255,0.25)" }}>
-          <IkonDaun size={16} />
-          <span>© 2026 Switera</span>
+      {/* ===== Footer ===== */}
+      <footer style={{ borderTop: "1px solid var(--color-border)", backgroundColor: "var(--color-surface-container-lowest)" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto", padding: "40px var(--space-8)", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ width: "36px", height: "36px", borderRadius: "var(--radius-lg)", backgroundColor: "var(--color-primary-container)", color: "var(--color-on-primary-container)", display: "grid", placeItems: "center" }}>
+              <Ikon name="eco" size={20} fill />
+            </span>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>Switera</span>
+          </div>
+          <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)" }}>
+            © Switera 2026 — Platform Manajemen Distribusi TBS Kelapa Sawit.
+          </p>
         </div>
-        <p style={{ margin: 0, fontSize: "12px", color: "rgba(255,255,255,0.15)" }}>
-          
-        </p>
       </footer>
 
       {showLoginModal ? (
         <Login onNavigate={onNavigate} onClose={() => setShowLoginModal(false)} onSwitchToRegister={openRegister} />
       ) : null}
-
       {showRegisterModal ? (
         <Register onNavigate={onNavigate} onClose={() => setShowRegisterModal(false)} onSwitchToLogin={openLogin} />
       ) : null}
