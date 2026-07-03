@@ -11,6 +11,7 @@ import {
   removeKeputusan,
   restoreKeputusan,
 } from "../services/keputusanService.js";
+import { buatRekomendasiKeputusan } from "../services/rekomendasiAiService.js";
 
 const router = express.Router();
 
@@ -33,6 +34,24 @@ router.get("/", requireAuth, async (req, res, next) => {
 // ever changes a decision's `status` field, which maps to the PUT /:id
 // route below — hence Tim Logistik is allow-listed on PUT only, not on
 // POST/DELETE/restore.
+
+// AI-2: rekomendasi keputusan naratif (Gemini). Role sama dengan POST / —
+// hanya pembuat keputusan yang memakai saran ini. Tanpa body, jadi tanpa
+// validate(). Didefinisikan sebelum route ber-parameter agar tidak pernah
+// tertukar dengan pola /:id.
+router.post(
+  "/rekomendasi-ai",
+  requireAuth,
+  requireRole("Admin", "Manajer Distribusi"),
+  async (req, res, next) => {
+    try {
+      const hasil = await buatRekomendasiKeputusan();
+      return res.status(200).json(hasil);
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 router.post(
   "/",
