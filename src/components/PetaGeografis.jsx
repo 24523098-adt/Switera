@@ -63,9 +63,9 @@ function PetaGeografis({ ranking, daftarKota }) {
       const radius = 8 + (item.totalPermintaan / maxPermintaan) * 16;
       const marker = L.circleMarker(koordinat, {
         radius,
-        color: "#2d6a4f",
+        color: "#006a43",
         weight: 2,
-        fillColor: "#2d6a4f",
+        fillColor: "#006a43",
         fillOpacity: 0.45,
       }).addTo(map);
 

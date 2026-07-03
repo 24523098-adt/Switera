@@ -1,12 +1,13 @@
+// Palet Catalyst (light): primary hijau, secondary biru, tertiary oranye.
 export const CHART_PALETTE = [
-  "#2d6a4f",
-  "#40916c",
-  "#f2a71b",
-  "#3b82f6",
-  "#e5484d",
-  "#30a46c",
-  "#f59e0b",
-  "#8b5cf6",
+  "#006a43",
+  "#008656",
+  "#994100",
+  "#00668a",
+  "#ba1a1a",
+  "#40c2fd",
+  "#c05400",
+  "#70dba2",
 ];
 
 export function withOpacity(hex, alpha) {
@@ -20,24 +21,24 @@ export function withOpacity(hex, alpha) {
 
 export const chartLegendDefaults = {
   labels: {
-    color: "#9b9b9b",
+    color: "#3e4941",
     font: { size: 11, family: "Inter" },
   },
 };
 
 export const chartTooltipDefaults = {
-  backgroundColor: "#161616",
-  borderColor: "#2a2a2a",
+  backgroundColor: "#0b1c30",
+  borderColor: "#213145",
   borderWidth: 1,
-  titleColor: "#f0f0f0",
-  bodyColor: "#9b9b9b",
+  titleColor: "#ffffff",
+  bodyColor: "#eaf1ff",
   padding: 10,
   cornerRadius: 8,
 };
 
-export const chartGridDefaults = { color: "rgba(255,255,255,0.04)" };
+export const chartGridDefaults = { color: "rgba(11, 28, 48, 0.06)" };
 
-export const chartTickDefaults = { color: "#5a5a5a", font: { size: 11 } };
+export const chartTickDefaults = { color: "#6e7a71", font: { size: 11 } };
 
 export const chartDatasetDefaults = {
   borderWidth: 2,
