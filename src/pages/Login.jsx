@@ -2,7 +2,6 @@ import { useState } from "react";
 import store from "../store";
 import { showToast } from "../components/Toast";
 import useRipple, { RippleSpans } from "../hooks/useRipple";
-import IkonDaun from "../components/IkonDaun";
 import Tombol from "../components/Tombol";
 import {
   ErrorText,
@@ -23,6 +22,7 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
   const [ingatSaya, setIngatSaya] = useState(false);
   const [focusedField, setFocusedField] = useState("");
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const linkRipple = useRipple();
 
   const getInputStyle = (field) => ({
@@ -61,6 +61,7 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await store.login(username, password, role, ingatSaya);
       onNavigate?.("/dashboard");
@@ -70,6 +71,8 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
       // password field. Client-side credential inspection is gone by
       // design; store.login already fired the error Toast.
       setErrors({ password: "Username atau password salah." });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -130,13 +133,13 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
           onSubmit={handleSubmit}
           style={{
             position: "relative",
-            width: "min(420px, 90vw)",
+            width: "min(440px, 90vw)",
             boxSizing: "border-box",
-            backgroundColor: "rgba(13,13,13,0.75)",
+            backgroundColor: "rgba(255,255,255,0.94)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "1px solid rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            borderTop: "6px solid var(--color-primary)",
             borderRadius: "var(--radius-xl)",
             boxShadow: "var(--shadow-xl)",
             padding: "var(--space-10)",
@@ -154,13 +157,31 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
                 marginBottom: "var(--space-5)",
               }}
             >
-              <IkonDaun size={24} />
+              <span
+                aria-hidden="true"
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-lg)",
+                  backgroundColor: "var(--color-primary-container)",
+                  color: "var(--color-on-primary-container)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: "22px", lineHeight: 1, fontVariationSettings: "'FILL' 1" }}
+                >
+                  eco
+                </span>
+              </span>
               <span
                 style={{
-                  fontFamily: "var(--font-display)",
+                  fontFamily: "var(--font-heading)",
                   fontWeight: "var(--font-weight-bold)",
                   fontSize: "var(--text-lg)",
-                  color: "var(--color-text-primary)",
+                  color: "var(--color-primary)",
                 }}
               >
                 Switera
@@ -293,7 +314,13 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
             </a>
           </div>
 
-          <Tombol type="submit" label="Masuk" variant="primer" style={{ width: "100%" }} />
+          <Tombol
+            type="submit"
+            label={isSubmitting ? "Memproses..." : "Masuk"}
+            variant="primer"
+            disabled={isSubmitting}
+            style={{ width: "100%" }}
+          />
 
           <p
             style={{

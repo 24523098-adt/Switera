@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import store from "../store";
 import useRipple, { RippleSpans } from "../hooks/useRipple";
-import IkonDaun from "../components/IkonDaun";
 import Tombol from "../components/Tombol";
 import {
   ErrorText,
@@ -25,6 +24,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
   const [focusedField, setFocusedField] = useState("");
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const linkRipple = useRipple();
 
   const goToLogin = () => {
@@ -99,6 +99,7 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await store.register({
         nama: nama.trim(),
@@ -112,6 +113,8 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
       if (error.message.includes("sudah digunakan")) {
         setErrors({ username: error.message });
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,13 +167,13 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
           onSubmit={handleSubmit}
           style={{
             position: "relative",
-            width: "min(420px, 90vw)",
+            width: "min(440px, 90vw)",
             boxSizing: "border-box",
-            backgroundColor: "rgba(13,13,13,0.75)",
+            backgroundColor: "rgba(255,255,255,0.94)",
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "1px solid rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            borderTop: "6px solid var(--color-primary)",
             borderRadius: "var(--radius-xl)",
             boxShadow: "var(--shadow-xl)",
             padding: "var(--space-10)",
@@ -188,13 +191,31 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
                 marginBottom: "var(--space-5)",
               }}
             >
-              <IkonDaun size={24} />
+              <span
+                aria-hidden="true"
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-lg)",
+                  backgroundColor: "var(--color-primary-container)",
+                  color: "var(--color-on-primary-container)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: "22px", lineHeight: 1, fontVariationSettings: "'FILL' 1" }}
+                >
+                  eco
+                </span>
+              </span>
               <span
                 style={{
-                  fontFamily: "var(--font-display)",
+                  fontFamily: "var(--font-heading)",
                   fontWeight: "var(--font-weight-bold)",
                   fontSize: "var(--text-lg)",
-                  color: "var(--color-text-primary)",
+                  color: "var(--color-primary)",
                 }}
               >
                 Switera
@@ -334,9 +355,9 @@ function Register({ onNavigate, onClose, onSwitchToLogin }) {
 
           <Tombol
             type="submit"
-            label="Daftar Sekarang"
+            label={isSubmitting ? "Memproses..." : "Daftar Sekarang"}
             variant="primer"
-            disabled={Boolean(successMessage)}
+            disabled={isSubmitting || Boolean(successMessage)}
             style={{ width: "100%", marginTop: "var(--space-6)" }}
           />
 

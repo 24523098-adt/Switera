@@ -3,24 +3,22 @@ import useRipple, { RippleSpans } from "../../hooks/useRipple";
 export const roleOptions = ["Admin", "Manajer Distribusi", "Tim Logistik"];
 
 export const fieldLabelStyle = {
-  fontSize: "var(--text-xs)",
+  fontSize: "var(--text-sm)",
   fontWeight: "var(--font-weight-semibold)",
-  color: "var(--color-text-secondary)",
-  letterSpacing: "var(--tracking-wide)",
-  textTransform: "uppercase",
+  color: "var(--color-on-surface)",
   marginBottom: "6px",
 };
 
 export const inputBaseStyle = {
   width: "100%",
   boxSizing: "border-box",
-  border: "1px solid var(--color-border-mid)",
-  borderRadius: "var(--radius-sm)",
-  backgroundColor: "var(--color-surface-2)",
-  color: "var(--color-text-primary)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "var(--radius-lg)",
+  backgroundColor: "var(--color-surface)",
+  color: "var(--color-on-surface)",
   fontFamily: "var(--font-body)",
   fontSize: "var(--text-sm)",
-  padding: "10px 44px 10px 14px",
+  padding: "12px 44px 12px 16px",
   outline: "none",
   WebkitAppearance: "none",
   transition: "border-color var(--transition-input), box-shadow var(--transition-input)",
@@ -70,21 +68,40 @@ export function TombolClose({ onClick }) {
   );
 }
 
+// Pill tabs peran dengan sliding indicator — indikator hijau bergeser halus
+// mengikuti peran terpilih (design system Catalyst).
 export function RolePills({ selectedRole, onSelectRole }) {
   const { ripples, onMouseDown, removeRipple } = useRipple();
+  const activeIndex = Math.max(0, roleOptions.indexOf(selectedRole));
 
   return (
     <div
       style={{
+        position: "relative",
         display: "flex",
-        gap: "4px",
-        backgroundColor: "var(--color-surface-2)",
+        gap: "0",
+        backgroundColor: "var(--color-surface-container-low)",
         border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-md)",
+        borderRadius: "var(--radius-full)",
         padding: "4px",
         marginBottom: "var(--space-6)",
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: "4px",
+          bottom: "4px",
+          left: "4px",
+          width: `calc((100% - 8px) / ${roleOptions.length})`,
+          borderRadius: "var(--radius-full)",
+          backgroundColor: "var(--color-primary)",
+          boxShadow: "var(--shadow-sm)",
+          transform: `translateX(${activeIndex * 100}%)`,
+          transition: "transform 250ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      />
       {roleOptions.map((role) => {
         const active = role === selectedRole;
 
@@ -95,6 +112,7 @@ export function RolePills({ selectedRole, onSelectRole }) {
             className={`role-pill${active ? " is-active" : ""}`}
             onClick={() => onSelectRole(role)}
             onMouseDown={(event) => onMouseDown(event, role)}
+            style={{ position: "relative", zIndex: 1 }}
           >
             {role}
             <RippleSpans ripples={ripples} removeRipple={removeRipple} groupId={role} />
@@ -111,10 +129,10 @@ export function FieldIcon({ children, onClick, clickable }) {
       onClick={onClick}
       style={{
         position: "absolute",
-        right: "12px",
+        right: "14px",
         top: "50%",
         transform: "translateY(-50%)",
-        color: "var(--color-text-muted)",
+        color: "var(--color-outline)",
         width: "16px",
         height: "16px",
         display: "inline-flex",
@@ -139,7 +157,7 @@ export function ErrorText({ children }) {
         display: "flex",
         alignItems: "center",
         gap: "4px",
-        color: "var(--color-danger)",
+        color: "var(--color-error)",
         fontSize: "var(--text-xs)",
         animation: "fadeInDown 150ms var(--ease-out) both",
       }}
