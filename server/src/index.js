@@ -9,6 +9,7 @@ import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
 import keputusanRouter from "./routes/keputusanRoutes.js";
 import distribusiRouter from "./routes/distribusiRoutes.js";
+import ringkasanRouter from "./routes/ringkasanRoutes.js";
 import notifikasiRouter from "./routes/notifikasiRoutes.js";
 import activityLogRouter from "./routes/activityLogRoutes.js";
 import publicRouter from "./routes/publicRoutes.js";
@@ -52,6 +53,11 @@ app.use("/public", publicRouter);
 // endpoint names exactly (Express 5 supports a router mounted at root with
 // full paths defined inside it).
 app.use(distribusiRouter);
+
+// ringkasanRouter juga mendefinisikan full path-nya sendiri
+// (/laporan/ringkasan) — pola mount tanpa prefix yang sama dengan
+// distribusiRouter di atas.
+app.use(ringkasanRouter);
 
 // riwayat-keputusan (decision history) is its own top-level data domain per
 // the ROADMAP/REQUIREMENTS, not a sub-resource of /keputusan — mounted as a
