@@ -64,7 +64,13 @@ export function IkonAlertCircle() {
 
 export function TombolClose({ onClick }) {
   return (
-    <button type="button" className="auth-close-btn" onClick={onClick} aria-label="Tutup">
+    <button
+      type="button"
+      className="auth-close-btn"
+      onClick={onClick}
+      aria-label="Kembali ke beranda"
+      title="Kembali ke beranda"
+    >
       ×
     </button>
   );

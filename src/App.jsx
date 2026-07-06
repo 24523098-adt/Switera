@@ -172,9 +172,9 @@ function App() {
     content = <Landing onNavigate={navigateTo} />;
   } else if (!snapshot.userAktif) {
     if (route === "/register") {
-      content = <Register onNavigate={navigateTo} />;
+      content = <Register onNavigate={navigateTo} onClose={() => navigateTo("/")} />;
     } else if (route === "/login") {
-      content = <Login onNavigate={navigateTo} />;
+      content = <Login onNavigate={navigateTo} onClose={() => navigateTo("/")} />;
     } else {
       content = <Landing onNavigate={navigateTo} />;
     }
