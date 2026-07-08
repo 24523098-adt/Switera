@@ -496,7 +496,20 @@ function GrafikMiniPerKota({ rankingKota }) {
   );
 }
 
-function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
+// Pilih ikon feed dari kata kunci teks aksi activity log backend
+// (catatAktivitas: "Menambahkan data permintaan kota ...", "Menyimpan
+// keputusan distribusi ...", "Stok TBS berkurang ...", dst).
+function ikonUntukAksi(aksi) {
+  const teks = aksi ?? "";
+  if (/stok/i.test(teks)) return <IkonDatabase />;
+  if (/keputusan|status|distribusi/i.test(teks)) return <IkonTruck />;
+  if (/permintaan/i.test(teks)) return <IkonPlusCircle />;
+  if (/kota/i.test(teks)) return <IkonMapPin />;
+  if (/kata sandi|akun/i.test(teks)) return <IkonCheckCircle />;
+  return <IkonClock />;
+}
+
+function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, onNavigate }) {
   const totalPermintaan = permintaan.length;
   const allDates = permintaan.map((item) => item.tanggal_input).filter(Boolean);
   const latestDate = allDates.sort((first, second) => parseDate(second) - parseDate(first))[0];
@@ -515,28 +528,21 @@ function DashboardAdmin({ permintaan, keputusan, userAktif, onNavigate }) {
   }, [permintaan]);
   const { ripples, onMouseDown, removeRipple } = useRipple();
 
+  // Feed jejak audit sebenarnya dari tabel ActivityLog backend (bukan lagi
+  // rekonstruksi dari permintaan/keputusan) — sumber yang sama dengan halaman
+  // Riwayat Aktivitas, jadi setiap aksi penting (kota, stok, status, dll) ikut
+  // tampil, bukan cuma dua jenis.
   const aktivitasTerbaru = useMemo(() => {
-    const dariPermintaan = permintaan
-      .filter((item) => item.tanggal_input)
-      .map((item) => ({
-        id: `p-${item.id}`,
-        teks: `Permintaan baru: ${item.kota}`,
-        waktu: item.tanggal_input,
-        ikon: <IkonPlusCircle />,
-      }));
-    const dariKeputusan = keputusan
-      .filter((item) => item.tanggal_keputusan)
-      .map((item) => ({
-        id: `k-${item.id}`,
-        teks: `Keputusan distribusi: ${item.kota_tujuan}`,
-        waktu: item.tanggal_keputusan,
-        ikon: <IkonTrendUp />,
-      }));
-
-    return [...dariPermintaan, ...dariKeputusan]
+    return [...(activityLog ?? [])]
       .sort((first, second) => parseDate(second.waktu) - parseDate(first.waktu))
-      .slice(0, 4);
-  }, [permintaan, keputusan]);
+      .slice(0, 4)
+      .map((item) => ({
+        id: item.id,
+        teks: item.aksi,
+        waktu: item.waktu,
+        ikon: ikonUntukAksi(item.aksi),
+      }));
+  }, [activityLog]);
 
   return (
     <>
@@ -1621,15 +1627,17 @@ function Dashboard({ onNavigate }) {
     store.loadStok();
     store.loadKpi();
     store.loadRekomendasi();
+    store.loadActivityLog();
   }, []);
 
-  const { roleAktif, permintaan, keputusan, userAktif, daftarKota, stokTbs, kpi, rekomendasi } = snapshot;
+  const { roleAktif, permintaan, keputusan, activityLog, userAktif, daftarKota, stokTbs, kpi, rekomendasi } = snapshot;
 
   const contentByRole = {
     Admin: (
       <DashboardAdmin
         permintaan={permintaan}
         keputusan={keputusan}
+        activityLog={activityLog}
         userAktif={userAktif}
         onNavigate={onNavigate}
       />
