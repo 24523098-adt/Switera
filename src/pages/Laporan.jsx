@@ -7,7 +7,9 @@ import PageHeader from "../components/PageHeader";
 import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
+import { showToast } from "../components/Toast";
 import { SkeletonChart } from "../components/Skeleton";
+import useLiveChart from "../hooks/useLiveChart";
 import store from "../store";
 import {
   CHART_PALETTE,
@@ -19,11 +21,13 @@ import {
   withOpacity,
 } from "../utils/chartDefaults";
 import {
+  getLocalDateKey,
   getPeriodRange,
   isDateInRange,
   parseDate,
 } from "../utils/distribusi";
-import { downloadCsv } from "../utils/csv";
+
+const HARI_MS = 24 * 60 * 60 * 1000;
 import { formatDate, formatTonase } from "../utils/format";
 
 const roleOptions = ["Manajer Distribusi", "Tim Logistik"];
@@ -84,104 +88,76 @@ function PeriodePills({ value, onChange }) {
 }
 
 function GrafikTrenPermintaan({ datasets, labels }) {
-  const canvasRef = useRef(null);
-  const [chartError, setChartError] = useState("");
-  const [isChartReady, setIsChartReady] = useState(false);
+  const sig = useMemo(
+    () => JSON.stringify({ labels, ds: datasets.map((d) => [d.label, d.data]) }),
+    [labels, datasets]
+  );
 
-  useEffect(() => {
-    if (
-      !canvasRef.current ||
-      labels.length === 0 ||
-      datasets.length === 0 ||
-      typeof window === "undefined"
-    ) {
-      return undefined;
-    }
+  const buildData = () => ({
+    labels,
+    datasets: datasets.map((dataset, index) => {
+      const color = CHART_PALETTE[index % CHART_PALETTE.length];
+      return {
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: color,
+        backgroundColor: withOpacity(color, 0.7),
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      };
+    }),
+  });
 
-    setIsChartReady(false);
-    let chartInstance;
-    let isActive = true;
-
-    import("chart.js/auto")
-      .then((module) => {
-        if (!isActive || !canvasRef.current) {
-          return;
-        }
-
-        const Chart = module.default;
-        const ctx = canvasRef.current.getContext("2d");
-
-        chartInstance = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels,
-            datasets: datasets.map((dataset, index) => {
-              const color = CHART_PALETTE[index % CHART_PALETTE.length];
-              return {
-                label: dataset.label,
-                data: dataset.data,
-                borderColor: color,
-                backgroundColor: withOpacity(color, 0.7),
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 3,
-                pointHoverRadius: 5,
-              };
-            }),
+  const { canvasRef, error: chartError, isReady: isChartReady } = useLiveChart({
+    sig,
+    canDraw: labels.length > 0 && datasets.length > 0,
+    buildConfig: () => ({
+      type: "line",
+      data: buildData(),
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnimationDefaults,
+        plugins: {
+          legend: {
+            position: "bottom",
+            ...chartLegendDefaults,
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: chartAnimationDefaults,
-            plugins: {
-              legend: {
-                position: "bottom",
-                ...chartLegendDefaults,
-              },
-              tooltip: {
-                ...chartTooltipDefaults,
-                callbacks: {
-                  label(context) {
-                    return `${context.dataset.label}: ${formatTonase(context.parsed.y)}`;
-                  },
-                },
-              },
-            },
-            scales: {
-              x: {
-                grid: { display: false },
-                ticks: { ...chartTickDefaults },
-              },
-              y: {
-                beginAtZero: true,
-                grid: { ...chartGridDefaults },
-                ticks: {
-                  ...chartTickDefaults,
-                  callback(value) {
-                    return formatTonase(value);
-                  },
-                },
+          tooltip: {
+            ...chartTooltipDefaults,
+            callbacks: {
+              label(context) {
+                return `${context.dataset.label}: ${formatTonase(context.parsed.y)}`;
               },
             },
           },
-        });
-
-        setChartError("");
-        setIsChartReady(true);
-      })
-      .catch(() => {
-        if (isActive) {
-          setChartError("Grafik tidak dapat dimuat karena Chart.js belum tersedia.");
-        }
-      });
-
-    return () => {
-      isActive = false;
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
-    };
-  }, [datasets, labels]);
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { ...chartTickDefaults },
+          },
+          y: {
+            beginAtZero: true,
+            grid: { ...chartGridDefaults },
+            ticks: {
+              ...chartTickDefaults,
+              callback(value) {
+                return formatTonase(value);
+              },
+            },
+          },
+        },
+      },
+    }),
+    applyData: (chart) => {
+      const next = buildData();
+      chart.data.labels = next.labels;
+      chart.data.datasets = next.datasets;
+    },
+  });
 
   return (
     <Card style={{ minHeight: "420px", animationDelay: "60ms" }}>
@@ -207,84 +183,60 @@ function GrafikTrenPermintaan({ datasets, labels }) {
 }
 
 function GrafikStatusPengiriman({ counts }) {
-  const canvasRef = useRef(null);
-  const [chartError, setChartError] = useState("");
-  const [isChartReady, setIsChartReady] = useState(false);
-
   const total = counts.menunggu + counts["dalam-pengiriman"] + counts.selesai;
+  const sig = useMemo(
+    () => JSON.stringify([counts.menunggu, counts["dalam-pengiriman"], counts.selesai]),
+    [counts]
+  );
 
-  useEffect(() => {
-    if (!canvasRef.current || total === 0 || typeof window === "undefined") {
-      return undefined;
-    }
+  const buildData = () => ({
+    labels: [
+      statusLabels.menunggu,
+      statusLabels["dalam-pengiriman"],
+      statusLabels.selesai,
+    ],
+    datasets: [
+      {
+        data: [counts.menunggu, counts["dalam-pengiriman"], counts.selesai],
+        backgroundColor: [
+          withOpacity(CHART_PALETTE[0], 0.7),
+          withOpacity(CHART_PALETTE[1], 0.7),
+          withOpacity(CHART_PALETTE[2], 0.7),
+        ],
+        borderColor: [CHART_PALETTE[0], CHART_PALETTE[1], CHART_PALETTE[2]],
+        borderWidth: 2,
+      },
+    ],
+  });
 
-    setIsChartReady(false);
-    let chartInstance;
-    let isActive = true;
-
-    import("chart.js/auto")
-      .then((module) => {
-        if (!isActive || !canvasRef.current) {
-          return;
-        }
-
-        const Chart = module.default;
-        const ctx = canvasRef.current.getContext("2d");
-
-        chartInstance = new Chart(ctx, {
-          type: "doughnut",
-          data: {
-            labels: [
-              statusLabels.menunggu,
-              statusLabels["dalam-pengiriman"],
-              statusLabels.selesai,
-            ],
-            datasets: [
-              {
-                data: [counts.menunggu, counts["dalam-pengiriman"], counts.selesai],
-                backgroundColor: [
-                  withOpacity(CHART_PALETTE[0], 0.7),
-                  withOpacity(CHART_PALETTE[1], 0.7),
-                  withOpacity(CHART_PALETTE[2], 0.7),
-                ],
-                borderColor: [CHART_PALETTE[0], CHART_PALETTE[1], CHART_PALETTE[2]],
-                borderWidth: 2,
-              },
-            ],
+  const { canvasRef, error: chartError, isReady: isChartReady } = useLiveChart({
+    sig,
+    canDraw: total > 0,
+    buildConfig: () => ({
+      type: "doughnut",
+      data: buildData(),
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnimationDefaults,
+        plugins: {
+          legend: {
+            position: "bottom",
+            ...chartLegendDefaults,
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: chartAnimationDefaults,
-            plugins: {
-              legend: {
-                position: "bottom",
-                ...chartLegendDefaults,
-              },
-              tooltip: {
-                ...chartTooltipDefaults,
-              },
-            },
-            cutout: "60%",
+          tooltip: {
+            ...chartTooltipDefaults,
           },
-        });
-
-        setChartError("");
-        setIsChartReady(true);
-      })
-      .catch(() => {
-        if (isActive) {
-          setChartError("Grafik tidak dapat dimuat karena Chart.js belum tersedia.");
-        }
-      });
-
-    return () => {
-      isActive = false;
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
-    };
-  }, [counts, total]);
+        },
+        cutout: "60%",
+      },
+    }),
+    applyData: (chart) => {
+      const next = buildData();
+      chart.data.labels = next.labels;
+      chart.data.datasets = next.datasets;
+    },
+  });
 
   return (
     <Card style={{ minHeight: "420px", animationDelay: "60ms" }}>
@@ -430,7 +382,11 @@ function Laporan({ onNavigate }) {
     store.loadKeputusan();
     store.loadRiwayatKeputusan();
     store.loadPermintaan();
+    store.loadKota();
   }, []);
+
+  const [anomaliKota, setAnomaliKota] = useState("");
+  const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
 
   const roleAktif = roleOptions.includes(snapshot.roleAktif)
     ? snapshot.roleAktif
@@ -531,52 +487,266 @@ function Laporan({ onNavigate }) {
     };
   }, [filteredPermintaan]);
 
+  // Periode sebelumnya untuk perbandingan (minggu lalu / bulan lalu).
+  const rangeSebelumnya = useMemo(() => {
+    if (!range) return null;
+    if (periode === "minggu-ini") {
+      return { start: new Date(range.start.getTime() - 7 * HARI_MS), end: new Date(range.end.getTime() - 7 * HARI_MS) };
+    }
+    // bulan-ini
+    const start = new Date(range.start.getFullYear(), range.start.getMonth() - 1, 1);
+    const end = new Date(range.start.getFullYear(), range.start.getMonth(), 0);
+    return { start, end };
+  }, [range, periode]);
+
+  // Ringkasan eksekutif: angka kunci periode + perbandingan + kesimpulan.
+  const eksekutif = useMemo(() => {
+    const sumberIni = isTimLogistik ? filteredKeputusan : filteredRiwayat;
+    const volumeIni = sumberIni.reduce((total, item) => total + (Number(item.volume_tbs) || 0), 0);
+    const jumlahIni = sumberIni.length;
+
+    let volumeLalu = null;
+    if (rangeSebelumnya) {
+      const src = isTimLogistik ? snapshot.keputusan ?? [] : snapshot.riwayatKeputusan ?? [];
+      volumeLalu = src
+        .filter((item) => isDateInRange(item.tanggal_keputusan, rangeSebelumnya))
+        .reduce((total, item) => total + (Number(item.volume_tbs) || 0), 0);
+    }
+    const delta = volumeLalu !== null && volumeLalu > 0 ? Math.round(((volumeIni - volumeLalu) / volumeLalu) * 100) : null;
+
+    let kesimpulan;
+    if (delta !== null) {
+      kesimpulan = `Periode ini total distribusi ${volumeIni} ton dari ${jumlahIni} keputusan, ${delta >= 0 ? "naik" : "turun"} ${Math.abs(delta)} persen dari periode sebelumnya (${volumeLalu} ton).`;
+    } else {
+      kesimpulan = `Total distribusi periode ini ${volumeIni} ton dari ${jumlahIni} keputusan.`;
+    }
+    return { volumeIni, jumlahIni, volumeLalu, delta, kesimpulan };
+  }, [isTimLogistik, filteredKeputusan, filteredRiwayat, rangeSebelumnya, snapshot.keputusan, snapshot.riwayatKeputusan]);
+
+  // Tab Efisiensi (Manajer): tingkat pemenuhan, rata-rata waktu, % pembatalan.
+  const efisiensi = useMemo(() => {
+    const total = filteredRiwayat.length;
+    const selesai = filteredRiwayat.filter((item) => item.status === "selesai");
+    const dibatalkan = filteredRiwayat.filter((item) => item.status === "dibatalkan").length;
+    const durasi = selesai
+      .map((item) => (item.waktu_menunggu && item.waktu_selesai ? (new Date(item.waktu_selesai) - new Date(item.waktu_menunggu)) / HARI_MS : null))
+      .filter((nilai) => nilai !== null && nilai >= 0);
+    return {
+      tingkatPemenuhan: total > 0 ? Math.round((selesai.length / total) * 100) : 0,
+      persenPembatalan: total > 0 ? Math.round((dibatalkan / total) * 100) : 0,
+      rataWaktu: durasi.length > 0 ? Math.round((durasi.reduce((a, b) => a + b, 0) / durasi.length) * 10) / 10 : null,
+    };
+  }, [filteredRiwayat]);
+
+  // Tab Anomali (Manajer): permintaan melebihi kapasitas + ETA terlewat.
+  const anomaliList = useMemo(() => {
+    const list = [];
+    const kapMap = new Map(daftarKota.map((kota) => [kota.nama, Number(kota.kapasitas) || 0]));
+    filteredPermintaan.forEach((item) => {
+      const kap = kapMap.get(item.kota) ?? 0;
+      if (kap > 0 && (Number(item.jumlah_permintaan) || 0) > kap) {
+        list.push({ tanggal: item.tanggal_permintaan, kota: item.kota, jenis: "Permintaan melebihi kapasitas", detail: `${item.jumlah_permintaan} ton > kapasitas ${kap} ton` });
+      }
+    });
+    const hariIni = parseDate(getLocalDateKey());
+    filteredKeputusan.forEach((item) => {
+      if (item.status === "dalam-pengiriman" && item.eta && parseDate(item.eta) < hariIni) {
+        list.push({ tanggal: item.tanggal_keputusan, kota: item.kota_tujuan, jenis: "ETA terlewat", detail: `ETA ${formatDate(item.eta)}` });
+      }
+    });
+    return list
+      .filter((item) => !anomaliKota || item.kota === anomaliKota)
+      .sort((a, b) => parseDate(b.tanggal) - parseDate(a.tanggal));
+  }, [filteredPermintaan, filteredKeputusan, daftarKota, anomaliKota]);
+
+  // Tab Kota (Manajer): perbandingan kinerja per kota.
+  const kotaPerforma = useMemo(() => {
+    const map = new Map();
+    filteredPermintaan.forEach((item) => {
+      const entry = map.get(item.kota) ?? { permintaan: 0, alokasi: 0, selesai: 0 };
+      entry.permintaan += Number(item.jumlah_permintaan) || 0;
+      map.set(item.kota, entry);
+    });
+    filteredKeputusan.forEach((item) => {
+      const entry = map.get(item.kota_tujuan) ?? { permintaan: 0, alokasi: 0, selesai: 0 };
+      entry.alokasi += Number(item.volume_tbs) || 0;
+      if (item.status === "selesai") entry.selesai += 1;
+      map.set(item.kota_tujuan, entry);
+    });
+    return [...map.entries()]
+      .map(([kota, entry]) => ({ kota, ...entry, pemenuhan: entry.permintaan > 0 ? Math.round((entry.alokasi / entry.permintaan) * 100) : 0 }))
+      .sort((a, b) => b.permintaan - a.permintaan);
+  }, [filteredPermintaan, filteredKeputusan]);
+
   const noData = isTimLogistik
     ? filteredKeputusan.length === 0 &&
       statusCounts.menunggu + statusCounts["dalam-pengiriman"] + statusCounts.selesai === 0
     : filteredRiwayat.length === 0 && chartConfig.labels.length === 0;
 
-  const handleExportCsv = () => {
-    if (isTimLogistik) {
-      const rows = filteredKeputusan.map((item) => ({
-        tanggal: item.tanggal_keputusan,
-        kota_tujuan: item.kota_tujuan,
-        volume_tbs: item.volume_tbs,
-        armada: item.armada ?? "",
-        eta: item.eta ?? "",
-        status: item.status,
-      }));
+  // Membangun dokumen laporan formal (siap cetak / simpan sebagai PDF lewat
+  // dialog cetak browser) bergaya surat resmi perusahaan: kop, judul, ringkasan
+  // eksekutif, tabel rincian, blok tanda tangan, dan kaki dokumen. Tanpa
+  // library tambahan.
+  const buildLaporanHtml = () => {
+    const esc = (v) =>
+      String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const now = new Date();
+    const tglPanjang = new Intl.DateTimeFormat("id-ID", { dateStyle: "full" }).format(now);
+    const jam = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(now);
+    // Nomor surat otomatis: NNN/LAP-DIST/SWITERA/<bulan romawi>/<tahun>, dengan
+    // NNN dari nomor hari dalam tahun agar terlihat berurutan dan unik per hari.
+    const bulanRomawi = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][now.getMonth()];
+    const awalTahun = new Date(now.getFullYear(), 0, 0);
+    const nomorUrut = String(Math.ceil((now - awalTahun) / (24 * 60 * 60 * 1000))).padStart(3, "0");
+    const nomorSurat = `${nomorUrut}/LAP-DIST/SWITERA/${bulanRomawi}/${now.getFullYear()}`;
+    const periodeLabel = (periodeOptions.find(([key]) => key === periode) || [null, "Semua"])[1];
+    const judul = isTimLogistik ? "LAPORAN STATUS DISTRIBUSI" : "LAPORAN DISTRIBUSI TBS";
+    const nama = snapshot.userAktif?.nama ?? "Pengguna";
+    const perbandingan =
+      eksekutif.delta !== null
+        ? `${eksekutif.delta >= 0 ? "naik " : "turun "}${Math.abs(eksekutif.delta)}% dibanding periode sebelumnya (${eksekutif.volumeLalu} ton)`
+        : "Tidak tersedia untuk periode ini";
 
-      downloadCsv(`laporan-status-${periode}.csv`, rows);
-      return;
+    const sumberUtama = isTimLogistik ? filteredKeputusan : filteredRiwayat;
+    const barisUtama = sumberUtama
+      .map((item, i) =>
+        isTimLogistik
+          ? `<tr><td class="num">${i + 1}</td><td>${esc(formatDate(item.tanggal_keputusan))}</td><td>${esc(item.kota_tujuan)}</td><td class="num">${esc(item.volume_tbs)}</td><td>${esc(item.armada ? item.armada + (item.eta ? ` / ETA ${formatDate(item.eta)}` : "") : "-")}</td><td>${esc(statusLabels[item.status] ?? item.status)}</td></tr>`
+          : `<tr><td class="num">${i + 1}</td><td>${esc(formatDate(item.tanggal_keputusan))}</td><td>${esc(item.kota_tujuan)}</td><td class="num">${esc(item.volume_tbs)}</td><td>${esc(item.diputuskan_oleh)}</td><td>${esc(statusLabels[item.status] ?? item.status)}</td></tr>`
+      )
+      .join("");
+
+    const kolomUtama = isTimLogistik
+      ? '<th class="num">No</th><th>Tanggal</th><th>Kota Tujuan</th><th class="num">Volume (ton)</th><th>Armada / ETA</th><th>Status</th>'
+      : '<th class="num">No</th><th>Tanggal</th><th>Kota Tujuan</th><th class="num">Volume (ton)</th><th>Diputuskan Oleh</th><th>Status</th>';
+
+    // Bagian khusus Manajer: efisiensi + kinerja per kota.
+    let bagianManajer = "";
+    if (!isTimLogistik) {
+      const barisKota = kotaPerforma
+        .map(
+          (k, i) =>
+            `<tr><td class="num">${i + 1}</td><td>${esc(k.kota)}</td><td class="num">${k.permintaan}</td><td class="num">${k.alokasi}</td><td class="num">${k.pemenuhan}%</td><td class="num">${k.selesai}</td></tr>`
+        )
+        .join("");
+      bagianManajer = `
+        <div class="section-title">II. Indikator Efisiensi</div>
+        <table>
+          <tbody>
+            <tr><th>Tingkat Pemenuhan</th><td class="num">${efisiensi.tingkatPemenuhan}%</td></tr>
+            <tr><th>Rata-rata Waktu Penyelesaian</th><td class="num">${efisiensi.rataWaktu !== null ? `${efisiensi.rataWaktu} hari` : "Belum ada data"}</td></tr>
+            <tr><th>Persentase Pembatalan</th><td class="num">${efisiensi.persenPembatalan}%</td></tr>
+          </tbody>
+        </table>
+        <div class="section-title">III. Rincian Riwayat Keputusan</div>
+        <table><thead><tr>${kolomUtama}</tr></thead><tbody>${barisUtama || '<tr><td colspan="6" style="text-align:center">Tidak ada data.</td></tr>'}</tbody></table>
+        <div class="section-title">IV. Kinerja per Kota</div>
+        <table><thead><tr><th class="num">No</th><th>Kota</th><th class="num">Permintaan (ton)</th><th class="num">Dialokasikan (ton)</th><th class="num">Pemenuhan</th><th class="num">Selesai</th></tr></thead><tbody>${barisKota || '<tr><td colspan="6" style="text-align:center">Tidak ada data.</td></tr>'}</tbody></table>`;
+    } else {
+      bagianManajer = `
+        <div class="section-title">II. Rincian Distribusi</div>
+        <table><thead><tr>${kolomUtama}</tr></thead><tbody>${barisUtama || '<tr><td colspan="6" style="text-align:center">Tidak ada data.</td></tr>'}</tbody></table>`;
     }
 
-    const rows = filteredRiwayat.map((item) => ({
-      tanggal: item.tanggal_keputusan,
-      kota_tujuan: item.kota_tujuan,
-      volume_tbs: item.volume_tbs,
-      diputuskan_oleh: item.diputuskan_oleh,
-      status: item.status,
-    }));
+    return `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>${judul} - Switera</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Times New Roman', Georgia, serif; color: #111; font-size: 12pt; line-height: 1.5; margin: 0; }
+  .kop { display: flex; align-items: center; gap: 14px; border-bottom: 3px double #000; padding-bottom: 10px; }
+  .kop .logo { width: 54px; height: 54px; flex-shrink: 0; border: 2px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: Arial, sans-serif; font-weight: 800; font-size: 24px; background: #BCF819; }
+  .kop h1 { margin: 0; font-family: Arial, sans-serif; font-size: 22pt; letter-spacing: 1px; }
+  .kop p { margin: 2px 0 0; font-size: 10pt; color: #333; }
+  h2.judul { text-align: center; text-transform: uppercase; font-size: 15pt; margin: 22px 0 2px; text-decoration: underline; letter-spacing: 0.5px; }
+  .subjudul { text-align: center; font-size: 11pt; margin: 0 0 18px; }
+  table.meta { border: none; margin: 0 0 14px; font-size: 11pt; }
+  table.meta td { border: none; padding: 1px 0; }
+  table.meta td:first-child { width: 150px; }
+  .section-title { font-weight: bold; font-size: 12pt; margin: 18px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 10.5pt; }
+  th, td { border: 1px solid #444; padding: 6px 8px; text-align: left; vertical-align: top; }
+  thead th { background: #eeeeee; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  .ringkasan { border: 1px solid #444; background: #fafafa; padding: 10px 14px; margin: 6px 0 12px; text-align: justify; }
+  .ttd { margin-top: 42px; width: 280px; float: right; text-align: center; font-size: 11pt; }
+  .ttd .nama { font-weight: bold; text-decoration: underline; margin-top: 64px; }
+  .footer { clear: both; margin-top: 70px; border-top: 1px solid #999; padding-top: 6px; font-size: 9pt; color: #666; text-align: center; }
+</style></head>
+<body>
+  <div class="kop">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 20C4 11 10 4.5 20 4C19.5 13.5 12.5 20 4 20Z" fill="#254000" stroke="#000000" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M6.5 17.5C10 14 13.5 10.5 17.5 7.5" stroke="#000000" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M12 16C12 13 13 10.5 15 8.5M9 18C9.5 16 10.2 14.5 11.2 13" stroke="#000000" stroke-width="1.1" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>SWITERA</h1>
+      <p>Sistem Informasi Manajemen Distribusi TBS (Tandan Buah Segar)</p>
+    </div>
+  </div>
 
-    downloadCsv(`laporan-distribusi-${periode}.csv`, rows);
+  <h2 class="judul">${judul}</h2>
+  <p class="subjudul">Periode: ${esc(periodeLabel)}</p>
+
+  <table class="meta"><tbody>
+    <tr><td>Nomor</td><td>: ${esc(nomorSurat)}</td></tr>
+    <tr><td>Tanggal Cetak</td><td>: ${esc(tglPanjang)} pukul ${esc(jam)} WIB</td></tr>
+    <tr><td>Dicetak oleh</td><td>: ${esc(nama)} (${esc(roleAktif)})</td></tr>
+    <tr><td>Total Volume</td><td>: ${esc(eksekutif.volumeIni)} ton</td></tr>
+    <tr><td>Jumlah ${isTimLogistik ? "Pengiriman" : "Keputusan"}</td><td>: ${esc(eksekutif.jumlahIni)}</td></tr>
+  </tbody></table>
+
+  <div class="section-title">I. Ringkasan Eksekutif</div>
+  <div class="ringkasan">
+    ${esc(eksekutif.kesimpulan)} Total volume distribusi pada periode ini sebesar <strong>${esc(eksekutif.volumeIni)} ton</strong> (${esc(perbandingan)}).
+  </div>
+
+  ${bagianManajer}
+
+  <div class="ttd">
+    <div>&hellip;&hellip;&hellip;&hellip;&hellip;&hellip;, ${esc(tglPanjang)}</div>
+    <div>${esc(roleAktif)}</div>
+    <div class="nama">( ${esc(nama)} )</div>
+  </div>
+
+  <div class="footer">
+    Dokumen ini dihasilkan otomatis oleh Sistem Informasi Manajemen Switera pada ${esc(tglPanjang)} pukul ${esc(jam)} WIB.
+  </div>
+
+  <script>window.onload = function () { setTimeout(function () { window.print(); }, 200); };</script>
+</body></html>`;
+  };
+
+  const cetakLaporan = () => {
+    const win = window.open("", "_blank", "width=920,height=760");
+    if (!win) {
+      showToast({ type: "warning", message: "Popup diblokir browser. Izinkan popup untuk mencetak laporan." });
+      return;
+    }
+    win.document.open();
+    win.document.write(buildLaporanHtml());
+    win.document.close();
   };
 
   // Tab switching ala Stitch — underline geser antara tabel & grafik.
   const [activeTab, setActiveTab] = useState(0);
   const tabLabels = isTimLogistik
     ? ["Distribusi Aktif", "Status Pengiriman"]
-    : ["Riwayat Keputusan", "Tren Permintaan"];
+    : ["Riwayat Keputusan", "Tren Permintaan", "Efisiensi", "Anomali", "Kota"];
+  const tabWidth = tabLabels.length > 3 ? 128 : 180;
 
   const TabBar = (
-    <div style={{ position: "relative", display: "inline-flex", borderBottom: "2px solid #000000" }}>
+    <div style={{ position: "relative", display: "inline-flex", borderBottom: "2px solid #000000", maxWidth: "100%", overflowX: "auto" }}>
       {tabLabels.map((label, index) => (
         <button
           key={label}
           type="button"
           onClick={() => setActiveTab(index)}
           style={{
-            width: "180px",
+            width: `${tabWidth}px`,
+            flexShrink: 0,
             padding: "12px 8px",
             border: "none",
             background: "transparent",
@@ -597,13 +767,13 @@ function Laporan({ onNavigate }) {
           position: "absolute",
           bottom: "-2px",
           left: 0,
-          width: "180px",
+          width: `${tabWidth}px`,
           height: "4px",
           borderRadius: "var(--radius-full)",
           backgroundColor: "var(--color-lime-bold)",
           border: "1px solid #000000",
           boxSizing: "border-box",
-          transform: `translateX(${activeTab * 180}px)`,
+          transform: `translateX(${activeTab * tabWidth}px)`,
           transition: "transform 250ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       />
@@ -623,9 +793,8 @@ function Laporan({ onNavigate }) {
           <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
             <PeriodePills value={periode} onChange={setPeriode} />
             <Tombol
-              label="Ekspor CSV"
-              variant="sekunder"
-              onClick={handleExportCsv}
+              label="Cetak Laporan"
+              onClick={cetakLaporan}
               disabled={isTimLogistik ? filteredKeputusan.length === 0 : filteredRiwayat.length === 0}
             />
           </div>
@@ -660,6 +829,45 @@ function Laporan({ onNavigate }) {
               </>
             )}
           </div>
+        ) : null}
+
+        {/* Ringkasan eksekutif (MIS): angka kunci + perbandingan + kesimpulan. */}
+        {!noData ? (
+          <Card style={{ borderRadius: "var(--radius-2xl)", padding: "var(--space-5) var(--space-6)" }}>
+            <SectionHeader>Ringkasan Eksekutif</SectionHeader>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
+              <div>
+                <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>Total Distribusi</p>
+                <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-3xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>{formatTonase(eksekutif.volumeIni)}</p>
+              </div>
+              {eksekutif.delta !== null ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontSize: "var(--text-sm)",
+                    fontWeight: "var(--font-weight-bold)",
+                    border: "2px solid #000000",
+                    borderRadius: "var(--radius-full)",
+                    padding: "4px 12px",
+                    backgroundColor: "var(--color-pastel)",
+                    color: eksekutif.delta >= 0 ? "var(--color-primary)" : "var(--color-danger-text)",
+                  }}
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: "16px" }}>
+                    {eksekutif.delta >= 0 ? "trending_up" : "trending_down"}
+                  </span>
+                  {eksekutif.delta >= 0 ? "+" : ""}{eksekutif.delta}% vs periode lalu
+                </span>
+              ) : (
+                <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Perbandingan tersedia untuk periode Minggu/Bulan ini.</span>
+              )}
+            </div>
+            <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+              {eksekutif.kesimpulan}
+            </p>
+          </Card>
         ) : null}
 
         {/* AI-1: ringkasan naratif otomatis — tampil untuk kedua role selama
@@ -710,41 +918,91 @@ function Laporan({ onNavigate }) {
           <>
             {TabBar}
             {activeTab === 0 ? (
-            filteredRiwayat.length > 0 ? (
+              filteredRiwayat.length > 0 ? (
+                <Card>
+                  <SectionHeader>Riwayat Keputusan</SectionHeader>
+                  <p style={{ margin: "0 0 1rem", color: "var(--color-text-secondary)", lineHeight: 1.6, fontSize: "var(--text-sm)" }}>
+                    Seluruh keputusan yang pernah dibuat, termasuk yang dibatalkan, tetap ditampilkan pada laporan.
+                  </p>
+                  <Tabel
+                    kolom={[
+                      { key: "tanggal", label: "Tanggal" },
+                      { key: "kotaTujuan", label: "Kota Tujuan" },
+                      { key: "volume", label: "Volume TBS", numeric: true },
+                      { key: "diputuskanOleh", label: "Diputuskan Oleh" },
+                      { key: "status", label: "Status" },
+                    ]}
+                    data={tableRowsManajer}
+                  />
+                </Card>
+              ) : (
+                <EmptyState pesan="Belum ada riwayat keputusan pada periode yang dipilih." />
+              )
+            ) : activeTab === 1 ? (
+              chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
+                <GrafikTrenPermintaan labels={chartConfig.labels} datasets={chartConfig.datasets} />
+              ) : (
+                <EmptyState pesan="Belum ada data tren permintaan pada periode yang dipilih." />
+              )
+            ) : activeTab === 2 ? (
+              <>
+                <div className="app-grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(160px, 1fr))", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+                  <MetricCard label="Tingkat Pemenuhan" nilai={`${efisiensi.tingkatPemenuhan}%`} size="lg" accent="primary" />
+                  <MetricCard label="Rata-rata Waktu" nilai={efisiensi.rataWaktu !== null ? `${efisiensi.rataWaktu} hari` : "Belum ada"} size="lg" accent="info" />
+                  <MetricCard label="Persentase Pembatalan" nilai={`${efisiensi.persenPembatalan}%`} size="lg" accent="danger" />
+                </div>
+                {chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
+                  <GrafikTrenPermintaan labels={chartConfig.labels} datasets={chartConfig.datasets} />
+                ) : null}
+              </>
+            ) : activeTab === 3 ? (
               <Card>
-                <SectionHeader>Riwayat Keputusan</SectionHeader>
-                <p
-                  style={{
-                    margin: "0 0 1rem",
-                    color: "var(--color-text-secondary)",
-                    lineHeight: 1.6,
-                    fontSize: "var(--text-sm)",
-                  }}
-                >
-                  Seluruh keputusan yang pernah dibuat, termasuk yang dibatalkan, tetap ditampilkan pada laporan.
-                </p>
-
-                <Tabel
-                  kolom={[
-                    { key: "tanggal", label: "Tanggal" },
-                    { key: "kotaTujuan", label: "Kota Tujuan" },
-                    { key: "volume", label: "Volume TBS", numeric: true },
-                    { key: "diputuskanOleh", label: "Diputuskan Oleh" },
-                    { key: "status", label: "Status" },
-                  ]}
-                  data={tableRowsManajer}
-                />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
+                  <SectionHeader>Kejadian Anomali</SectionHeader>
+                  <select
+                    value={anomaliKota}
+                    onChange={(event) => setAnomaliKota(event.target.value)}
+                    className="field-select"
+                    style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", backgroundColor: "var(--color-surface)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", padding: "8px 32px 8px 14px", boxShadow: "var(--shadow-sm)" }}
+                  >
+                    <option value="">Semua kota</option>
+                    {daftarKota.map((kota) => (
+                      <option key={kota.nama} value={kota.nama}>{kota.nama}</option>
+                    ))}
+                  </select>
+                </div>
+                {anomaliList.length > 0 ? (
+                  <Tabel
+                    kolom={[
+                      { key: "tanggal", label: "Tanggal" },
+                      { key: "kota", label: "Kota" },
+                      { key: "jenis", label: "Jenis Anomali" },
+                      { key: "detail", label: "Detail" },
+                    ]}
+                    data={anomaliList.map((item, index) => ({ id: `${item.kota}-${index}`, tanggal: formatDate(item.tanggal), kota: item.kota, jenis: item.jenis, detail: item.detail }))}
+                  />
+                ) : (
+                  <EmptyState pesan="Tidak ada anomali pada periode dan filter yang dipilih." />
+                )}
               </Card>
             ) : (
-              <EmptyState pesan="Belum ada riwayat keputusan pada periode yang dipilih." />
-            )
-            ) : chartConfig.labels.length > 0 && chartConfig.datasets.length > 0 ? (
-              <GrafikTrenPermintaan
-                labels={chartConfig.labels}
-                datasets={chartConfig.datasets}
-              />
-            ) : (
-              <EmptyState pesan="Belum ada data tren permintaan pada periode yang dipilih." />
+              <Card>
+                <SectionHeader>Perbandingan Kinerja per Kota</SectionHeader>
+                {kotaPerforma.length > 0 ? (
+                  <Tabel
+                    kolom={[
+                      { key: "kota", label: "Kota" },
+                      { key: "permintaan", label: "Permintaan", numeric: true },
+                      { key: "alokasi", label: "Dialokasikan", numeric: true },
+                      { key: "pemenuhan", label: "Pemenuhan", numeric: true },
+                      { key: "selesai", label: "Selesai", numeric: true },
+                    ]}
+                    data={kotaPerforma.map((item) => ({ id: item.kota, kota: item.kota, permintaan: formatTonase(item.permintaan), alokasi: formatTonase(item.alokasi), pemenuhan: `${item.pemenuhan}%`, selesai: item.selesai }))}
+                  />
+                ) : (
+                  <EmptyState pesan="Belum ada data kota pada periode yang dipilih." />
+                )}
+              </Card>
             )}
           </>
         )}

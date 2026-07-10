@@ -8,7 +8,7 @@ import Tombol from "../components/Tombol";
 import { showToast } from "../components/Toast";
 import store from "../store";
 import { computeRekomendasiDistribusi, getLocalDateKey, parseDate } from "../utils/distribusi";
-import { formatTonase } from "../utils/format";
+import { formatDate, formatTonase } from "../utils/format";
 
 // AI-2: card rekomendasi keputusan naratif — pola yang sama dengan
 // RingkasanAI di Laporan.jsx (state lokal, komponen shared).
@@ -148,6 +148,29 @@ function KeputusanDistribusi({ onNavigate }) {
 
     return sorted[0];
   }, [snapshot.keputusan]);
+
+  // Konteks keputusan (MIS): informasi pendukung sebelum konfirmasi.
+  const konteksRekomendasi = useMemo(() => {
+    const kota = rekomendasiList[0];
+    if (!kota) {
+      return null;
+    }
+    const keputusanKota = (snapshot.keputusan ?? []).filter((item) => item.kota_tujuan === kota.kota);
+    let terakhir = null;
+    keputusanKota.forEach((item) => {
+      if (!terakhir || parseDate(item.tanggal_keputusan) > parseDate(terakhir)) {
+        terakhir = item.tanggal_keputusan;
+      }
+    });
+    const sisaStokSetelah = (snapshot.stokTbs ?? 0) - kota.alokasi;
+    const lebihKritis = rekomendasiList.find(
+      (item) =>
+        item.kota !== kota.kota &&
+        item.totalPermintaan > kota.totalPermintaan &&
+        !(snapshot.keputusan ?? []).some((k) => k.kota_tujuan === item.kota && k.status !== "selesai")
+    );
+    return { terakhir, sisaStokSetelah, lebihKritis };
+  }, [rekomendasiList, snapshot.keputusan, snapshot.stokTbs]);
 
   const saveKeputusan = async (targetKota, alasan) => {
     if (!targetKota) {
@@ -339,6 +362,33 @@ function KeputusanDistribusi({ onNavigate }) {
                   : "."}{" "}
                 Menyetujui rekomendasi ini akan mencatat keputusan dan mengurangi stok TBS secara otomatis.
               </p>
+
+              {konteksRekomendasi ? (
+                <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-3) var(--space-4)", backgroundColor: "var(--color-surface-secondary)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <p style={{ margin: 0, fontSize: "var(--text-2xs)", fontWeight: "var(--font-weight-bold)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)", color: "var(--color-text-muted)" }}>
+                    Konteks Keputusan
+                  </p>
+                  {[
+                    { label: "Terakhir distribusi ke kota ini", nilai: konteksRekomendasi.terakhir ? formatDate(konteksRekomendasi.terakhir) : "Belum pernah" },
+                    { label: "Total permintaan menumpuk", nilai: formatTonase(rekomendasi.totalPermintaan) },
+                    { label: "Sisa stok setelah keputusan ini", nilai: formatTonase(konteksRekomendasi.sisaStokSetelah), warna: konteksRekomendasi.sisaStokSetelah < 0 ? "var(--color-danger-text)" : undefined },
+                  ].map((row) => (
+                    <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>{row.label}</span>
+                      <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: row.warna ?? "var(--color-on-surface)" }}>{row.nilai}</span>
+                    </div>
+                  ))}
+                  {konteksRekomendasi.lebihKritis ? (
+                    <div style={{ marginTop: "4px", display: "flex", gap: "8px", alignItems: "flex-start", border: "2px solid #000000", borderLeft: "6px solid var(--color-warning-text)", borderRadius: "var(--radius-md)", padding: "8px 10px", backgroundColor: "var(--color-warning-bg)" }}>
+                      <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: "16px", color: "#000000" }}>priority_high</span>
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-primary)", lineHeight: 1.5 }}>
+                        Kota <strong>{konteksRekomendasi.lebihKritis.kota}</strong> punya permintaan lebih besar ({formatTonase(konteksRekomendasi.lebihKritis.totalPermintaan)}) dan belum diputuskan.
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "var(--space-2)" }}>
                 <Tombol
                   label="Setujui Rekomendasi"

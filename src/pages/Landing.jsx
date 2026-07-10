@@ -749,7 +749,7 @@ function Landing({ onNavigate }) {
             { angka: "8", label: "Kota Tujuan" },
             { angka: "1.500+", label: "Ton TBS Terkelola" },
             { angka: "3", label: "Peran Terintegrasi" },
-            { angka: "< 4 dtk", label: "Sinkron Antar Pengguna" },
+            { angka: "1", label: "Sumber Data Terpusat" },
           ].map((s, i) => (
             <Reveal key={s.label} delay={i * 80}>
               <div>

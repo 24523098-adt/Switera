@@ -37,6 +37,7 @@ function RiwayatAktivitas({ onNavigate }) {
   const [filterRole, setFilterRole] = useState("");
   const [dariTanggal, setDariTanggal] = useState("");
   const [sampaiTanggal, setSampaiTanggal] = useState("");
+  const [keyword, setKeyword] = useState("");
   const [focusedField, setFocusedField] = useState("");
 
   useEffect(() => {
@@ -61,17 +62,44 @@ function RiwayatAktivitas({ onNavigate }) {
     [snapshot.activityLog]
   );
 
-  const filteredLog = useMemo(
-    () =>
-      activityLog.filter((item) => {
-        if (filterRole && item.role !== filterRole) {
-          return false;
-        }
+  const filteredLog = useMemo(() => {
+    const kata = keyword.trim().toLowerCase();
+    return activityLog.filter((item) => {
+      if (filterRole && item.role !== filterRole) {
+        return false;
+      }
+      if (kata && !(item.aksi ?? "").toLowerCase().includes(kata) && !(item.aktor ?? "").toLowerCase().includes(kata)) {
+        return false;
+      }
+      return cocokRentangTanggal(item.waktu, dariTanggal, sampaiTanggal);
+    });
+  }, [activityLog, filterRole, dariTanggal, sampaiTanggal, keyword]);
 
-        return cocokRentangTanggal(item.waktu, dariTanggal, sampaiTanggal);
-      }),
-    [activityLog, filterRole, dariTanggal, sampaiTanggal]
-  );
+  // Ringkasan (MIS): total hari ini, distribusi per role, jam tersibuk.
+  const ringkasan = useMemo(() => {
+    const total = activityLog.length;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const totalHariIni = activityLog.filter((item) => (item.waktu ?? "").slice(0, 10) === todayKey).length;
+    const perRole = {};
+    const jamCount = new Array(24).fill(0);
+    activityLog.forEach((item) => {
+      perRole[item.role] = (perRole[item.role] ?? 0) + 1;
+      const jam = new Date(item.waktu).getHours();
+      if (!Number.isNaN(jam)) jamCount[jam] += 1;
+    });
+    const perRolePersen = Object.entries(perRole)
+      .map(([role, jumlah]) => ({ role, persen: total > 0 ? Math.round((jumlah / total) * 100) : 0 }))
+      .sort((a, b) => b.persen - a.persen);
+    let jamTersibuk = null;
+    let maxCount = 0;
+    jamCount.forEach((count, jam) => {
+      if (count > maxCount) {
+        maxCount = count;
+        jamTersibuk = jam;
+      }
+    });
+    return { total, totalHariIni, perRolePersen, jamTersibuk };
+  }, [activityLog]);
 
   const tableRows = filteredLog.map((item) => ({
     id: item.id,
@@ -152,6 +180,19 @@ function RiwayatAktivitas({ onNavigate }) {
             }}
           >
             <div style={labelStyle}>
+              <span>Cari Aksi / Aktor</span>
+              <input
+                type="search"
+                value={keyword}
+                onFocus={() => setFocusedField("keyword")}
+                onBlur={() => setFocusedField("")}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="Kata kunci aksi"
+                style={getFieldStyle("keyword")}
+              />
+            </div>
+
+            <div style={labelStyle}>
               <span>Role</span>
               <select
                 value={filterRole}
@@ -194,6 +235,31 @@ function RiwayatAktivitas({ onNavigate }) {
             </div>
           </div>
         </Card>
+
+        {/* Ringkasan aktivitas (MIS) */}
+        <div className="app-grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(180px, 1fr))", gap: "var(--space-3)" }}>
+          <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: "var(--color-pastel-card)" }}>
+            <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>Aktivitas Hari Ini</p>
+            <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>{ringkasan.totalHariIni}</p>
+            <p style={{ margin: "2px 0 0", fontSize: "var(--text-2xs)", color: "var(--color-text-secondary)" }}>dari {ringkasan.total} total</p>
+          </div>
+          <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: "var(--color-surface)" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>Aktivitas per Role</p>
+            {ringkasan.perRolePersen.length > 0 ? ringkasan.perRolePersen.map((row) => (
+              <div key={row.role} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "3px" }}>
+                <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.role}</span>
+                <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-bold)", color: "var(--color-primary)" }}>{row.persen}%</span>
+              </div>
+            )) : <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Belum ada data</span>}
+          </div>
+          <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: "var(--color-surface)" }}>
+            <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>Jam Tersibuk</p>
+            <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>
+              {ringkasan.jamTersibuk !== null ? `${String(ringkasan.jamTersibuk).padStart(2, "0")}.00` : "-"}
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: "var(--text-2xs)", color: "var(--color-text-secondary)" }}>berdasarkan jejak log</p>
+          </div>
+        </div>
 
         {tableRows.length > 0 ? (
           /* Timeline ala Stitch — garis vertikal, avatar inisial, badge role. */

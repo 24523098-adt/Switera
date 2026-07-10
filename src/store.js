@@ -43,6 +43,10 @@ const getNextId = (items, prefix) => {
 // server is now the source of truth for all DOMAIN collections (Phase 9
 // hydrated in-memory cache decision). Only the session (active user) and
 // the tema UI preference — never a backend concern — are persisted here.
+// Kept in sessionStorage (per-tab), mirroring the token in apiClient.js, so
+// each tab holds its own session and multiple roles can be logged in across
+// tabs at once. Trade-off: closing the tab ends the session (no persistent
+// "Ingat Saya" login).
 const SESSION_STORAGE_KEY = "switera_session_v2";
 
 const loadPersistedSession = () => {
@@ -51,7 +55,7 @@ const loadPersistedSession = () => {
   }
 
   try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -100,12 +104,12 @@ const persistState = () => {
   }
 
   try {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       SESSION_STORAGE_KEY,
       JSON.stringify({ userAktif: state.userAktif, tema: state.tema })
     );
   } catch {
-    // localStorage unavailable (private mode/quota) — continue without persistence
+    // sessionStorage unavailable (private mode/quota) — continue without persistence
   }
 };
 
@@ -154,6 +158,8 @@ let pollIntervalId = null;
 // accounts polling simultaneously — nowhere near a tight-loop/DoS pattern),
 // and is far cheaper than re-evaluating WebSocket push, which
 // REQUIREMENTS.md explicitly defers as SYNC-02 (T-10-POLL-DOS: accepted).
+// Grafik tidak lagi berkedip pada cadence rapat ini: chart di-update di
+// tempat (useLiveChart, chart.update("none")), bukan destroy+recreate.
 const POLL_INTERVAL_MS = 4000;
 
 // Wraps hydrate() in try/catch so a single failed tick (network blip,
@@ -166,7 +172,7 @@ const pollTick = async () => {
   } catch {
     // Intentionally swallowed: a transient poll failure is invisible
     // background work, not a user action — Toasting every network blip
-    // every 4s would be noise. The interval keeps running; the NEXT tick
+    // on each tick would be noise. The interval keeps running; the NEXT tick
     // will retry. A 401 mid-tick is handled separately by apiClient's
     // existing onUnauthorized handler (above), which clears userAktif and
     // lets App.jsx's effect cleanup call stopPolling() — this catch must

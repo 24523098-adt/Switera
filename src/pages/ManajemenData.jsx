@@ -98,6 +98,10 @@ function ManajemenData({ onNavigate }) {
   const [hoveredField, setHoveredField] = useState("");
   const [inlineEditingId, setInlineEditingId] = useState(null);
   const [inlineValue, setInlineValue] = useState("");
+  const [filterKota, setFilterKota] = useState("");
+  const [filterPeriode, setFilterPeriode] = useState("semua");
+  const [volMin, setVolMin] = useState("");
+  const [volMax, setVolMax] = useState("");
 
   useEffect(() => {
     const unsubscribe = store.subscribe((nextSnapshot) => {
@@ -132,17 +136,65 @@ function ManajemenData({ onNavigate }) {
     [snapshot.permintaan]
   );
 
+  // Peta kapasitas kota untuk deteksi anomali (permintaan melebihi kapasitas).
+  const kapasitasMap = useMemo(
+    () => new Map(daftarKota.map((kota) => [kota.nama, Number(kota.kapasitas) || 0])),
+    [daftarKota]
+  );
+
+  const dalamPeriode = (tanggal) => {
+    if (filterPeriode === "semua" || !tanggal) return true;
+    const t = new Date(`${tanggal}T00:00:00`).getTime();
+    const now = Date.now();
+    const hari = filterPeriode === "minggu" ? 7 : 30;
+    return t >= now - hari * 24 * 60 * 60 * 1000;
+  };
+
   const filteredPermintaan = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
+    const min = volMin === "" ? null : Number(volMin);
+    const max = volMax === "" ? null : Number(volMax);
 
-    if (!normalizedKeyword) {
-      return sortedPermintaan;
-    }
+    return sortedPermintaan.filter((item) => {
+      if (normalizedKeyword && !item.kota.toLowerCase().includes(normalizedKeyword)) return false;
+      if (filterKota && item.kota !== filterKota) return false;
+      if (!dalamPeriode(item.tanggal_permintaan)) return false;
+      const jumlah = Number(item.jumlah_permintaan) || 0;
+      if (min !== null && jumlah < min) return false;
+      if (max !== null && jumlah > max) return false;
+      return true;
+    });
+  }, [keyword, sortedPermintaan, filterKota, filterPeriode, volMin, volMax]);
 
-    return sortedPermintaan.filter((item) =>
-      item.kota.toLowerCase().includes(normalizedKeyword)
-    );
-  }, [keyword, sortedPermintaan]);
+  // Ringkasan agregat (MIS): total, rata-rata per kota, kota tertinggi/terendah.
+  const ringkasan = useMemo(() => {
+    const perKota = new Map();
+    let total = 0;
+    (snapshot.permintaan ?? []).forEach((item) => {
+      const jumlah = Number(item.jumlah_permintaan) || 0;
+      total += jumlah;
+      perKota.set(item.kota, (perKota.get(item.kota) || 0) + jumlah);
+    });
+    const entries = [...perKota.entries()].sort((a, b) => b[1] - a[1]);
+    return {
+      total,
+      rataPerKota: entries.length > 0 ? Math.round((total / entries.length) * 10) / 10 : 0,
+      tertinggi: entries[0] ?? null,
+      terendah: entries[entries.length - 1] ?? null,
+    };
+  }, [snapshot.permintaan]);
+
+  // Baris anomali: permintaan melebihi kapasitas kota.
+  const anomaliIds = useMemo(() => {
+    const set = new Set();
+    (snapshot.permintaan ?? []).forEach((item) => {
+      const kapasitas = kapasitasMap.get(item.kota) ?? 0;
+      if (kapasitas > 0 && (Number(item.jumlah_permintaan) || 0) > kapasitas) {
+        set.add(item.id);
+      }
+    });
+    return set;
+  }, [snapshot.permintaan, kapasitasMap]);
 
   const validateEditForm = async (nextForm) => {
     const nextErrors = {};
@@ -286,7 +338,19 @@ function ManajemenData({ onNavigate }) {
   const tableRows = filteredPermintaan.map((item) => ({
     id: item.id,
     nomorId: item.id,
-    namaKota: item.kota,
+    namaKota: anomaliIds.has(item.id) ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+        {item.kota}
+        <span
+          title="Permintaan melebihi kapasitas kota"
+          style={{ fontSize: "var(--text-2xs)", fontWeight: "var(--font-weight-bold)", border: "2px solid #000000", borderRadius: "var(--radius-full)", padding: "1px 8px", backgroundColor: "var(--color-danger-bg)", color: "var(--color-danger-text)" }}
+        >
+          Anomali
+        </span>
+      </span>
+    ) : (
+      item.kota
+    ),
     tanggalPermintaan: formatDate(item.tanggal_permintaan),
     tanggalInput: formatDate(item.tanggal_input),
     jumlah:
@@ -439,6 +503,54 @@ function ManajemenData({ onNavigate }) {
           gap: "1.5rem",
         }}
       >
+        {/* Ringkasan agregat (MIS) */}
+        <div className="app-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: "var(--space-3)" }}>
+          {[
+            { label: "Total Permintaan", nilai: `${ringkasan.total} ton` },
+            { label: "Rata-rata / Kota", nilai: `${ringkasan.rataPerKota} ton` },
+            { label: "Kota Tertinggi", nilai: ringkasan.tertinggi ? `${ringkasan.tertinggi[0]}` : "-", sub: ringkasan.tertinggi ? `${ringkasan.tertinggi[1]} ton` : "" },
+            { label: "Kota Terendah", nilai: ringkasan.terendah ? `${ringkasan.terendah[0]}` : "-", sub: ringkasan.terendah ? `${ringkasan.terendah[1]} ton` : "" },
+          ].map((box) => (
+            <Card key={box.label} style={{ padding: "var(--space-4)" }}>
+              <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>{box.label}</p>
+              <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{box.nilai}</p>
+              {box.sub ? <p style={{ margin: "2px 0 0", fontSize: "var(--text-2xs)", color: "var(--color-text-secondary)" }}>{box.sub}</p> : null}
+            </Card>
+          ))}
+        </div>
+
+        {/* Filter analitik */}
+        <Card style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={fieldLabelTextStyle}>Kota</span>
+            <select className="field-select" value={filterKota} onChange={(event) => setFilterKota(event.target.value)} style={{ ...getFieldStyle("filterKota"), minWidth: "160px" }}>
+              <option value="">Semua kota</option>
+              {daftarKota.map((kota) => (
+                <option key={kota.nama} value={kota.nama}>{kota.nama}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={fieldLabelTextStyle}>Periode</span>
+            <select className="field-select" value={filterPeriode} onChange={(event) => setFilterPeriode(event.target.value)} style={{ ...getFieldStyle("filterPeriode"), minWidth: "150px" }}>
+              <option value="semua">Semua waktu</option>
+              <option value="minggu">7 hari terakhir</option>
+              <option value="bulan">30 hari terakhir</option>
+            </select>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={fieldLabelTextStyle}>Volume min</span>
+            <input type="number" min="0" value={volMin} onChange={(event) => setVolMin(event.target.value)} placeholder="0" style={{ ...getFieldStyle("volMin"), width: "110px" }} />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={fieldLabelTextStyle}>Volume maks</span>
+            <input type="number" min="0" value={volMax} onChange={(event) => setVolMax(event.target.value)} placeholder="~" style={{ ...getFieldStyle("volMax"), width: "110px" }} />
+          </label>
+          {(filterKota || filterPeriode !== "semua" || volMin || volMax) ? (
+            <Tombol variant="sekunder" label="Reset Filter" onClick={() => { setFilterKota(""); setFilterPeriode("semua"); setVolMin(""); setVolMax(""); }} />
+          ) : null}
+        </Card>
+
         <Card style={{ animationDelay: "40ms" }}>
           <SectionHeader>
             Daftar Permintaan — Menampilkan {tableRows.length} dari {sortedPermintaan.length} data
@@ -455,6 +567,7 @@ function ManajemenData({ onNavigate }) {
                 { key: "keterangan", label: "Keterangan" },
               ]}
               data={tableRows}
+              getRowStyle={(baris) => (anomaliIds.has(baris.id) ? { backgroundColor: "var(--color-danger-bg)" } : undefined)}
               aksi={(baris) => {
                 const currentItem = filteredPermintaan.find((item) => item.id === baris.id);
 

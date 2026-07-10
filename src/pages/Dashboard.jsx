@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Badge from "../components/Badge";
 import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
@@ -10,27 +10,27 @@ import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
 import { SkeletonChart } from "../components/Skeleton";
 import useRipple, { RippleSpans } from "../hooks/useRipple";
+import useLiveChart from "../hooks/useLiveChart";
 import store from "../store";
 import { formatWaktuRelatif } from "../utils/waktu";
 import { formatterAngka, formatDate, formatDateSingkat, formatTonase } from "../utils/format";
 import {
-  CHART_PALETTE,
   chartAnimationDefaults,
   chartGridDefaults,
   chartTickDefaults,
   chartTooltipDefaults,
-  withOpacity,
 } from "../utils/chartDefaults";
+import { getDuplicateGroups, getLocalDateKey, parseDate } from "../utils/distribusi";
 import {
-  aggregatePermintaanRanking,
-  computeKpiMetrics,
-  computeRekomendasiDistribusi,
-  getDuplicateGroups,
-  getLatestKeputusanByKota,
-  getLocalDateKey,
-  parseDate,
-} from "../utils/distribusi";
-import { computeForecastPerKota } from "../utils/forecast";
+  getMisSituasiHariIni,
+  getMisTindakanMendesak,
+  getMisRekomendasiPrioritas,
+  getMisKeputusanBerjalan,
+  getMisProyeksiStok,
+  sinkronNotifikasiMis,
+} from "../api/apiClient";
+import { showToast } from "../components/Toast";
+import { computeExceptions, computeSlaBreaches } from "../utils/mis";
 
 const formatterTanggalHero = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -283,219 +283,6 @@ function ActionCard({ ikon, iconColor, judul, sub, onClick }) {
   );
 }
 
-function GrafikPermintaan({ rankingKota }) {
-  const canvasRef = useRef(null);
-  const [chartError, setChartError] = useState("");
-  const [isChartReady, setIsChartReady] = useState(false);
-
-  useEffect(() => {
-    if (!canvasRef.current || rankingKota.length === 0 || typeof window === "undefined") {
-      return undefined;
-    }
-
-    setIsChartReady(false);
-    let chartInstance;
-    let isActive = true;
-
-    import("chart.js/auto")
-      .then((module) => {
-        if (!isActive || !canvasRef.current) {
-          return;
-        }
-
-        const Chart = module.default;
-        const ctx = canvasRef.current.getContext("2d");
-        const colors = rankingKota.map((_item, index) => CHART_PALETTE[index % CHART_PALETTE.length]);
-
-        chartInstance = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: rankingKota.map((item) => item.kota),
-            datasets: [
-              {
-                label: "Permintaan per Kota",
-                data: rankingKota.map((item) => item.totalPermintaan),
-                backgroundColor: colors.map((color) => withOpacity(color, 0.7)),
-                borderColor: colors,
-                borderWidth: 2,
-                borderRadius: 10,
-                maxBarThickness: 48,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: chartAnimationDefaults,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                ...chartTooltipDefaults,
-                callbacks: {
-                  label(context) {
-                    return `${formatterAngka.format(context.parsed.y)} ton`;
-                  },
-                },
-              },
-            },
-            scales: {
-              x: {
-                grid: { display: false },
-                ticks: { ...chartTickDefaults },
-              },
-              y: {
-                beginAtZero: true,
-                grid: { ...chartGridDefaults },
-                ticks: {
-                  ...chartTickDefaults,
-                  callback(value) {
-                    return `${formatterAngka.format(value)} ton`;
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        setChartError("");
-        setIsChartReady(true);
-      })
-      .catch(() => {
-        if (isActive) {
-          setChartError("Grafik tidak dapat dimuat karena Chart.js belum tersedia.");
-        }
-      });
-
-    return () => {
-      isActive = false;
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
-    };
-  }, [rankingKota]);
-
-  return (
-    <Card style={{ minHeight: "420px" }}>
-      <SectionHeader>Grafik Permintaan per Kota</SectionHeader>
-
-      {chartError ? (
-        <EmptyState pesan={chartError} />
-      ) : (
-        <div style={{ height: "320px" }}>
-          {isChartReady ? null : <SkeletonChart height="320px" />}
-          <canvas
-            ref={canvasRef}
-            aria-label="Grafik permintaan per kota"
-            style={{
-              display: isChartReady ? "block" : "none",
-              animation: "fadeInUp 300ms var(--ease-smooth) both",
-            }}
-          />
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function GrafikMiniPerKota({ rankingKota }) {
-  const canvasRef = useRef(null);
-  const [chartError, setChartError] = useState("");
-  const [isChartReady, setIsChartReady] = useState(false);
-  const top5 = useMemo(() => rankingKota.slice(0, 5), [rankingKota]);
-
-  useEffect(() => {
-    if (!canvasRef.current || top5.length === 0 || typeof window === "undefined") {
-      return undefined;
-    }
-
-    setIsChartReady(false);
-    let chartInstance;
-    let isActive = true;
-
-    import("chart.js/auto")
-      .then((module) => {
-        if (!isActive || !canvasRef.current) {
-          return;
-        }
-
-        const Chart = module.default;
-        const ctx = canvasRef.current.getContext("2d");
-        const gradient = ctx.createLinearGradient(0, 0, canvasRef.current.width, 0);
-        gradient.addColorStop(0, CHART_PALETTE[0]);
-        gradient.addColorStop(1, CHART_PALETTE[1]);
-
-        chartInstance = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: top5.map((item) => item.kota),
-            datasets: [
-              {
-                data: top5.map((item) => item.totalPermintaan),
-                backgroundColor: gradient,
-                borderRadius: 6,
-                maxBarThickness: 18,
-              },
-            ],
-          },
-          options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: chartAnimationDefaults,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                ...chartTooltipDefaults,
-                callbacks: {
-                  label(context) {
-                    return formatTonase(context.parsed.x);
-                  },
-                },
-              },
-            },
-            scales: {
-              x: { display: false, grid: { display: false } },
-              y: { grid: { display: false }, ticks: { ...chartTickDefaults } },
-            },
-          },
-        });
-
-        setChartError("");
-        setIsChartReady(true);
-      })
-      .catch(() => {
-        if (isActive) {
-          setChartError("Grafik tidak dapat dimuat.");
-        }
-      });
-
-    return () => {
-      isActive = false;
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
-    };
-  }, [top5]);
-
-  return (
-    <Card>
-      <SectionHeader>Permintaan per Kota</SectionHeader>
-      {chartError ? (
-        <EmptyState pesan={chartError} />
-      ) : (
-        <div style={{ height: "160px" }}>
-          {isChartReady ? null : <SkeletonChart height="160px" />}
-          <canvas
-            ref={canvasRef}
-            aria-label="Grafik mini permintaan per kota"
-            style={{ display: isChartReady ? "block" : "none" }}
-          />
-        </div>
-      )}
-    </Card>
-  );
-}
-
 // Pilih ikon feed dari kata kunci teks aksi activity log backend
 // (catatAktivitas: "Menambahkan data permintaan kota ...", "Menyimpan
 // keputusan distribusi ...", "Stok TBS berkurang ...", dst).
@@ -509,11 +296,54 @@ function ikonUntukAksi(aksi) {
   return <IkonClock />;
 }
 
-function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, onNavigate }) {
+function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, daftarKota, stokTbs, daftarAkun, onNavigate }) {
   const totalPermintaan = permintaan.length;
   const allDates = permintaan.map((item) => item.tanggal_input).filter(Boolean);
   const latestDate = allDates.sort((first, second) => parseDate(second) - parseDate(first))[0];
   const duplicateGroups = getDuplicateGroups(permintaan);
+
+  // ── Kesehatan sistem (MIS) untuk Admin ──
+  const kesehatan = useMemo(() => {
+    const kotaList = daftarKota ?? [];
+    const akunList = daftarAkun ?? [];
+    const todayKey = getLocalDateKey();
+
+    const akunPerRole = akunList.reduce((acc, akun) => {
+      acc[akun.role] = (acc[akun.role] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const permintaanHariIni = permintaan.filter((item) => item.tanggal_input === todayKey).length;
+
+    const exceptions = computeExceptions({ keputusan, permintaan, stokTbs: stokTbs ?? 0 });
+    const adaKritis = exceptions.some((item) => item.severity === "kritis");
+    const adaPerhatian = exceptions.some((item) => item.severity === "perhatian");
+    const statusSistem = adaKritis ? "kritis" : adaPerhatian ? "perhatian" : "aman";
+
+    const alokasiByKota = keputusan.reduce((map, item) => {
+      map.set(item.kota_tujuan, (map.get(item.kota_tujuan) || 0) + (Number(item.volume_tbs) || 0));
+      return map;
+    }, new Map());
+    const utilList = kotaList
+      .filter((kota) => Number(kota.kapasitas) > 0)
+      .map((kota) => Math.min(100, ((alokasiByKota.get(kota.nama) || 0) / kota.kapasitas) * 100));
+    const utilisasiKapasitas = utilList.length > 0 ? Math.round(utilList.reduce((a, b) => a + b, 0) / utilList.length) : 0;
+
+    // Rekomendasi tindakan Admin dari kondisi nyata.
+    const rekomendasi = [];
+    if (duplicateGroups.length > 0) {
+      rekomendasi.push({ teks: `${duplicateGroups.length} data permintaan duplikat perlu divalidasi.`, aksi: "manajemen-data" });
+    }
+    const exceptionStok = exceptions.find((item) => item.kategori === "Stok");
+    if (exceptionStok) {
+      rekomendasi.push({ teks: "Stok TBS perlu diperbarui atau ditambah.", aksi: "manajemen-kota" });
+    }
+    if (kotaList.length === 0) {
+      rekomendasi.push({ teks: "Belum ada data kota. Tambahkan kota terlebih dahulu.", aksi: "manajemen-kota" });
+    }
+
+    return { akunPerRole, permintaanHariIni, anomaliCount: exceptions.length, utilisasiKapasitas, statusSistem, rekomendasi };
+  }, [daftarKota, daftarAkun, permintaan, keputusan, stokTbs, duplicateGroups]);
 
   const permintaanPerKota = useMemo(() => {
     const counts = new Map();
@@ -553,6 +383,68 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, onNavig
       <div className="bento-grid stagger-children">
         <div className="bento-span-full">
           <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
+        </div>
+
+        <div className="bento-span-full">
+          <Card style={{ borderRadius: "var(--radius-2xl)", padding: "var(--space-5) var(--space-6)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: "14px",
+                  height: "14px",
+                  borderRadius: "var(--radius-full)",
+                  border: "2px solid #000000",
+                  backgroundColor:
+                    kesehatan.statusSistem === "kritis"
+                      ? "var(--color-status-error)"
+                      : kesehatan.statusSistem === "perhatian"
+                        ? "var(--color-status-warning)"
+                        : "var(--color-status-success)",
+                }}
+              />
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>
+                Kesehatan Sistem
+              </span>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
+                Status: {kesehatan.statusSistem}
+              </span>
+            </div>
+
+            <div
+              className="app-grid-4"
+              style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}
+            >
+              {[
+                { label: "Akun Aktif", nilai: formatterAngka.format((daftarAkun ?? []).length), sub: Object.entries(kesehatan.akunPerRole).map(([r, n]) => `${r}: ${n}`).join(" · ") || "Belum ada" },
+                { label: "Permintaan Hari Ini", nilai: formatterAngka.format(kesehatan.permintaanHariIni), sub: "Masuk hari ini" },
+                { label: "Anomali Terdeteksi", nilai: formatterAngka.format(kesehatan.anomaliCount), sub: "Kondisi hari ini" },
+                { label: "Utilisasi Kapasitas", nilai: `${kesehatan.utilisasiKapasitas}%`, sub: "Rata-rata semua kota" },
+              ].map((box) => (
+                <div key={box.label} style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-3) var(--space-4)", backgroundColor: "var(--color-pastel-card)" }}>
+                  <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>{box.label}</p>
+                  <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>{box.nilai}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "var(--text-2xs)", color: "var(--color-text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{box.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {kesehatan.rekomendasi.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)", color: "var(--color-text-muted)" }}>
+                  Rekomendasi Tindakan
+                </span>
+                {kesehatan.rekomendasi.map((rek, index) => (
+                  <div key={index} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", border: "2px solid #000000", borderLeft: "8px solid var(--color-warning-text)", borderRadius: "var(--radius-lg)", padding: "var(--space-2) var(--space-4)", backgroundColor: "var(--color-warning-bg)", flexWrap: "wrap" }}>
+                    <span style={{ flex: 1, minWidth: "160px", fontSize: "var(--text-sm)", color: "var(--color-text-primary)", fontWeight: "var(--font-weight-semibold)" }}>{rek.teks}</span>
+                    <button type="button" className="link-underline-hover" onClick={() => onNavigate?.(rek.aksi)} style={{ color: "var(--color-primary)", fontWeight: "var(--font-weight-bold)", fontSize: "var(--text-xs)", whiteSpace: "nowrap" }}>
+                      Tindak lanjut →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </Card>
         </div>
 
         {duplicateGroups.length > 0 ? (
@@ -740,380 +632,663 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, onNavig
   );
 }
 
-function DashboardManajer({ permintaan, keputusan, userAktif, daftarKota, stokTbs, serverKpi, serverRekomendasi }) {
-  const [feedback, setFeedback] = useState("");
-  const todayKey = getLocalDateKey();
-  const rankingKota = useMemo(
-    () => aggregatePermintaanRanking(permintaan),
-    [permintaan]
-  );
-  const rekomendasiList = useMemo(
-    () =>
-      serverRekomendasi?.length > 0
-        ? serverRekomendasi
-        : computeRekomendasiDistribusi(permintaan, daftarKota, stokTbs),
-    [serverRekomendasi, permintaan, daftarKota, stokTbs]
-  );
-  const latestDecisionByKota = useMemo(
-    () => getLatestKeputusanByKota(keputusan),
-    [keputusan]
-  );
-  const forecastByKota = useMemo(() => {
-    const forecasts = computeForecastPerKota(permintaan);
-    return new Map(forecasts.map((item) => [item.kota, item]));
-  }, [permintaan]);
-  const kpi = useMemo(
-    () => serverKpi ?? computeKpiMetrics(keputusan, permintaan, daftarKota),
-    [serverKpi, keputusan, permintaan, daftarKota]
-  );
-  const totalTbsTerdistribusi = keputusan
-    .filter((item) => item.status !== "menunggu")
-    .reduce((total, item) => total + (Number(item.volume_tbs) || 0), 0);
+// ── Dashboard Manajer Distribusi (MIS) ──────────────────────────────────────
+// Lima bagian pendukung keputusan yang seluruhnya berasal dari endpoint MIS
+// backend (/mis/*). Tidak ada tabel mentah tanpa olahan di sini (bukan TPS):
+// setiap angka sudah diagregasi, diberi status, atau dibandingkan.
 
-  const maxTotal = rankingKota[0]?.totalPermintaan ?? 0;
+const STATUS_STOK_GAYA = {
+  aman: { warna: "var(--color-success-text)", label: "Aman" },
+  perhatian: { warna: "var(--color-warning-text)", label: "Perhatian" },
+  kritis: { warna: "var(--color-danger-text)", label: "Kritis" },
+};
 
-  const getRankBadgeStyle = (rank) => {
-    if (rank === 1) {
-      return { backgroundColor: "var(--color-accent-subtle)", color: "var(--color-accent)", fontWeight: 700 };
-    }
-    if (rank === 2) {
-      return { backgroundColor: "rgba(156,163,175,0.15)", color: "#9ca3af" };
-    }
-    if (rank === 3) {
-      return { backgroundColor: "rgba(184,135,51,0.15)", color: "#b87333" };
-    }
-    return { backgroundColor: "transparent", color: "var(--color-text-muted)" };
-  };
+const TINGKAT_GAYA = {
+  kritis: { border: "var(--color-danger)", bg: "var(--color-danger-bg)", label: "Kritis", ikon: "error" },
+  perhatian: { border: "var(--color-warning-text)", bg: "var(--color-warning-bg)", label: "Perhatian", ikon: "warning" },
+  informasi: { border: "var(--color-info-text)", bg: "var(--color-info-bg)", label: "Informasi", ikon: "info" },
+};
 
-  const rankingRows = rankingKota.map((item, index) => ({
-    id: item.kota,
-    nomor: (
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minWidth: "26px",
-          padding: "2px 8px",
-          borderRadius: "var(--radius-xs)",
-          fontSize: "var(--text-sm)",
-          ...getRankBadgeStyle(index + 1),
-        }}
-      >
-        {index + 1}
-      </span>
-    ),
-    namaKota: item.kota,
-    totalPermintaan: (
-      <div>
-        <span>{formatTonase(item.totalPermintaan)}</span>
-        <div
+const STATUS_AKTIF_KEPUTUSAN = ["menunggu", "dalam-pengiriman"];
+
+function IkonMS({ name, size = 20, fill = false, style }) {
+  return (
+    <span
+      className="material-symbols-outlined"
+      aria-hidden="true"
+      style={{ fontSize: `${size}px`, lineHeight: 1, fontVariationSettings: `'FILL' ${fill ? 1 : 0}`, ...style }}
+    >
+      {name}
+    </span>
+  );
+}
+
+function StatBox({ label, nilai, sub, warna, ikon }) {
+  return (
+    <Card style={{ padding: "var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-2)", minHeight: "132px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)" }}>
+        <span
           style={{
-            marginTop: "4px",
-            height: "3px",
-            borderRadius: "var(--radius-full)",
-            backgroundColor: "var(--color-border)",
-            overflow: "hidden",
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--font-weight-semibold)",
+            color: "var(--color-text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "var(--tracking-wider)",
           }}
         >
-          <div
+          {label}
+        </span>
+        {ikon ? (
+          <span
             style={{
-              height: "100%",
+              width: "36px",
+              height: "36px",
+              flexShrink: 0,
+              display: "grid",
+              placeItems: "center",
+              border: "2px solid #000000",
               borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--color-primary)",
-              width: `${maxTotal > 0 ? (item.totalPermintaan / maxTotal) * 100 : 0}%`,
+              backgroundColor: "var(--color-pastel)",
             }}
-          />
+          >
+            <IkonMS name={ikon} size={20} style={{ color: "#000000" }} />
+          </span>
+        ) : null}
+      </div>
+      <span
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize: "var(--text-3xl)",
+          fontWeight: "var(--font-weight-bold)",
+          letterSpacing: "-0.02em",
+          lineHeight: 1.1,
+          color: warna ?? "var(--color-on-surface)",
+        }}
+      >
+        {nilai}
+      </span>
+      {sub ? <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>{sub}</span> : null}
+    </Card>
+  );
+}
+
+// Bagian 1 — Situasi Hari Ini.
+function SituasiHariIni({ situasi }) {
+  if (!situasi) {
+    return <SkeletonChart height="132px" />;
+  }
+  const gayaStok = STATUS_STOK_GAYA[situasi.statusStok] ?? STATUS_STOK_GAYA.aman;
+  const surplus = situasi.defisitSurplus >= 0;
+
+  return (
+    <div
+      className="stagger-children app-grid-4"
+      style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(180px, 1fr))", gap: "var(--space-4)" }}
+    >
+      <StatBox
+        label="Stok TBS Tersisa"
+        nilai={formatTonase(situasi.stokTersisa)}
+        warna={gayaStok.warna}
+        ikon="inventory_2"
+        sub={situasi.hariStokHabis !== null ? `Habis dalam ${situasi.hariStokHabis} hari · ${gayaStok.label}` : "Konsumsi belum terukur"}
+      />
+      <StatBox
+        label="Total Permintaan Menunggu"
+        nilai={formatTonase(situasi.totalPermintaanMenunggu)}
+        ikon="pending_actions"
+        sub="Belum ada keputusan"
+      />
+      <StatBox
+        label="Kota Belum Terpenuhi"
+        nilai={`${formatterAngka.format(situasi.kotaBelumTerpenuhi)} kota`}
+        ikon="location_off"
+        sub="Dalam 7 hari terakhir"
+      />
+      <StatBox
+        label={surplus ? "Surplus Stok" : "Defisit Stok"}
+        nilai={formatTonase(Math.abs(situasi.defisitSurplus))}
+        warna={surplus ? "var(--color-success-text)" : "var(--color-danger-text)"}
+        ikon={surplus ? "trending_up" : "trending_down"}
+        sub="Stok vs total permintaan menunggu"
+      />
+    </div>
+  );
+}
+
+// Bagian 2 — Tindakan Mendesak.
+function TindakanMendesakPanel({ tindakan, onNavigate }) {
+  const kosong = Array.isArray(tindakan) && tindakan.length === 0;
+
+  return (
+    <Card style={{ borderRadius: "var(--radius-2xl)", padding: "var(--space-5) var(--space-6)" }}>
+      <SectionHeader>Tindakan yang Perlu Dilakukan</SectionHeader>
+
+      {tindakan === null ? (
+        <SkeletonChart height="120px" />
+      ) : kosong ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-3)",
+            padding: "var(--space-4)",
+            border: "2px solid #000000",
+            borderRadius: "var(--radius-lg)",
+            backgroundColor: "var(--color-success-bg)",
+          }}
+        >
+          <IkonMS name="task_alt" size={24} fill style={{ color: "#000000" }} />
+          <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-primary)" }}>
+            Semua kondisi aman. Tidak ada tindakan mendesak saat ini.
+          </span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+          {tindakan.map((item, index) => {
+            const gaya = TINGKAT_GAYA[item.tingkat] ?? TINGKAT_GAYA.informasi;
+            return (
+              <div
+                key={`${item.tipe}-${index}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-3)",
+                  border: "2px solid #000000",
+                  borderLeft: `8px solid ${gaya.border}`,
+                  borderRadius: "var(--radius-lg)",
+                  padding: "var(--space-3) var(--space-4)",
+                  backgroundColor: gaya.bg,
+                  flexWrap: "wrap",
+                }}
+              >
+                <IkonMS name={gaya.ikon} size={22} fill style={{ color: "#000000", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: "180px" }}>
+                  <p style={{ margin: 0, fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-bold)", color: "var(--color-text-primary)" }}>
+                    {item.judul}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
+                    {item.deskripsi}
+                  </p>
+                </div>
+                {item.aksi ? (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.(item.aksi)}
+                    style={{
+                      flexShrink: 0,
+                      border: "2px solid #000000",
+                      borderRadius: "var(--radius-full)",
+                      backgroundColor: "var(--color-lime)",
+                      color: "#000000",
+                      fontFamily: "var(--font-body)",
+                      fontSize: "var(--text-xs)",
+                      fontWeight: "var(--font-weight-bold)",
+                      padding: "6px 14px",
+                      boxShadow: "var(--shadow-sm)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Tindak lanjut →
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const medalPeringkat = (rank) => (rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : String(rank));
+
+// Bagian 3 — Kota yang Perlu Keputusan Sekarang.
+function KotaPrioritas({ prioritas, onNavigate }) {
+  const rows = (prioritas ?? []).map((item, index) => {
+    const aktif = STATUS_AKTIF_KEPUTUSAN.includes(item.statusKeputusanAktif);
+    return {
+      id: item.kota,
+      peringkat: (
+        <span style={{ fontSize: "var(--text-md)", fontWeight: "var(--font-weight-bold)" }}>{medalPeringkat(index + 1)}</span>
+      ),
+      kota: <span style={{ fontWeight: "var(--font-weight-semibold)" }}>{item.kota}</span>,
+      permintaan: formatTonase(item.totalPermintaan),
+      hari: `${item.hariTanpaDistribusi} hari`,
+      urgensi: (
+        <div style={{ minWidth: "120px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-2xs)", fontWeight: "var(--font-weight-bold)", marginBottom: "3px" }}>
+            <span>Skor</span>
+            <span>{item.skorUrgensi}</span>
+          </div>
+          <div style={{ height: "8px", borderRadius: "var(--radius-full)", border: "2px solid #000000", backgroundColor: "var(--color-surface)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${item.skorUrgensi}%`, backgroundColor: "var(--color-lime)" }} />
+          </div>
+        </div>
+      ),
+      status: aktif ? (
+        <Badge status={item.statusKeputusanAktif} />
+      ) : item.statusKeputusanAktif === "selesai" ? (
+        <Badge status="selesai" />
+      ) : (
+        <span
+          style={{
+            display: "inline-block",
+            fontSize: "var(--text-2xs)",
+            fontWeight: "var(--font-weight-bold)",
+            border: "2px solid #000000",
+            borderRadius: "var(--radius-full)",
+            padding: "2px 10px",
+            backgroundColor: "var(--color-warning-bg)",
+            color: "#000000",
+          }}
+        >
+          Belum ada
+        </span>
+      ),
+      aksi: aktif ? (
+        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>—</span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onNavigate?.("keputusan-distribusi")}
+          style={{
+            border: "2px solid #000000",
+            borderRadius: "var(--radius-full)",
+            backgroundColor: "var(--color-lime)",
+            color: "#000000",
+            fontFamily: "var(--font-body)",
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--font-weight-bold)",
+            padding: "5px 14px",
+            boxShadow: "var(--shadow-sm)",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Putuskan
+        </button>
+      ),
+    };
+  });
+
+  return (
+    <Card>
+      <SectionHeader>Kota yang Perlu Keputusan Sekarang</SectionHeader>
+      {rows.length > 0 ? (
+        <Tabel
+          kolom={[
+            { key: "peringkat", label: "#" },
+            { key: "kota", label: "Nama Kota" },
+            { key: "permintaan", label: "Permintaan", numeric: true },
+            { key: "hari", label: "Hari Tanpa Distribusi", numeric: true },
+            { key: "urgensi", label: "Skor Urgensi" },
+            { key: "status", label: "Status" },
+            { key: "aksi", label: "Aksi" },
+          ]}
+          data={rows}
+          getRowStyle={(_baris, index) => (index === 0 ? { backgroundColor: "var(--color-pastel-card)" } : undefined)}
+        />
+      ) : (
+        <EmptyState pesan="Belum ada kota yang memerlukan keputusan." />
+      )}
+    </Card>
+  );
+}
+
+// Bagian 4 — Keputusan yang Sedang Berjalan.
+function KeputusanBerjalan({ berjalan, onBatal }) {
+  if (berjalan === null) {
+    return (
+      <Card>
+        <SectionHeader>Keputusan yang Sedang Berjalan</SectionHeader>
+        <SkeletonChart height="120px" />
+      </Card>
+    );
+  }
+  if (berjalan.length === 0) {
+    return (
+      <Card>
+        <SectionHeader>Keputusan yang Sedang Berjalan</SectionHeader>
+        <EmptyState pesan="Belum ada keputusan aktif." />
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <SectionHeader>Keputusan yang Sedang Berjalan</SectionHeader>
+      <div
+        className="app-grid-3"
+        style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(220px, 1fr))", gap: "var(--space-4)" }}
+      >
+        {berjalan.map((item) => {
+          const terlewat = item.statusEta === "terlewat";
+          const lama = item.durasiHari > 7;
+          const borderColor = terlewat ? "var(--color-danger)" : lama ? "var(--color-warning-text)" : "#000000";
+          const etaLabel =
+            item.statusEta === "tanpa_eta" ? "Tanpa ETA" : `ETA ${formatDate(item.eta)} · ${terlewat ? "Terlewat" : "Tepat waktu"}`;
+          return (
+            <div
+              key={item.id}
+              style={{
+                border: `2px solid ${borderColor}`,
+                borderLeft: `8px solid ${borderColor}`,
+                borderRadius: "var(--radius-lg)",
+                boxShadow: "var(--shadow-sm)",
+                backgroundColor: "var(--color-surface)",
+                padding: "var(--space-4)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                <strong style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-md)", color: "var(--color-on-surface)" }}>
+                  {item.kota}
+                </strong>
+                <Badge status={item.status} />
+              </div>
+              <span style={{ fontSize: "var(--text-lg)", fontWeight: "var(--font-weight-bold)", fontFamily: "var(--font-heading)", color: "var(--color-primary)" }}>
+                {formatTonase(item.volume_tbs)}
+              </span>
+              <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
+                Berjalan {item.durasiHari} hari
+              </span>
+              <span style={{ fontSize: "var(--text-xs)", color: terlewat ? "var(--color-danger-text)" : "var(--color-text-secondary)", fontWeight: terlewat ? "var(--font-weight-bold)" : "var(--font-weight-normal)" }}>
+                {etaLabel}
+              </span>
+              {item.armada ? (
+                <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Armada: {item.armada}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onBatal(item)}
+                style={{
+                  marginTop: "2px",
+                  alignSelf: "flex-start",
+                  border: "2px solid var(--color-danger)",
+                  borderRadius: "var(--radius-full)",
+                  backgroundColor: "var(--color-surface)",
+                  color: "var(--color-danger-text)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--font-weight-bold)",
+                  padding: "5px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Batalkan
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function ProyeksiChart({ proyeksi, batasMinimum }) {
+  const sig = useMemo(
+    () => JSON.stringify([proyeksi.map((p) => p.estimasiStok), batasMinimum]),
+    [proyeksi, batasMinimum]
+  );
+
+  const buildData = () => ({
+    labels: proyeksi.map((p) => p.tanggal.slice(5)),
+    datasets: [
+      {
+        label: "Estimasi Stok",
+        data: proyeksi.map((p) => p.estimasiStok),
+        borderColor: "#4c6700",
+        backgroundColor: "rgba(188, 248, 25, 0.30)",
+        fill: true,
+        tension: 0.3,
+        pointRadius: 2,
+        borderWidth: 2,
+      },
+      {
+        label: "Batas Minimum",
+        data: proyeksi.map(() => batasMinimum),
+        borderColor: "#ba1a1a",
+        backgroundColor: "rgba(255, 107, 107, 0.12)",
+        borderDash: [6, 6],
+        fill: "origin",
+        pointRadius: 0,
+        borderWidth: 2,
+      },
+    ],
+  });
+
+  const { canvasRef, error: chartError, isReady } = useLiveChart({
+    sig,
+    canDraw: proyeksi.length > 0,
+    buildConfig: () => ({
+      type: "line",
+      data: buildData(),
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: chartAnimationDefaults,
+        plugins: {
+          legend: { display: true, labels: { font: { family: "Bricolage Grotesque" }, usePointStyle: true, boxWidth: 8 } },
+          tooltip: {
+            ...chartTooltipDefaults,
+            callbacks: { label(context) { return `${formatterAngka.format(context.parsed.y)} ton`; } },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { ...chartTickDefaults } },
+          y: {
+            beginAtZero: true,
+            grid: { ...chartGridDefaults },
+            ticks: { ...chartTickDefaults, callback(value) { return `${formatterAngka.format(value)} t`; } },
+          },
+        },
+      },
+    }),
+    applyData: (chart) => {
+      const next = buildData();
+      chart.data.labels = next.labels;
+      chart.data.datasets = next.datasets;
+    },
+  });
+
+  if (chartError) {
+    return <EmptyState pesan={chartError} />;
+  }
+
+  return (
+    <div style={{ height: "280px" }}>
+      {isReady ? null : <SkeletonChart height="280px" />}
+      <canvas ref={canvasRef} aria-label="Proyeksi stok 14 hari" style={{ display: isReady ? "block" : "none" }} />
+    </div>
+  );
+}
+
+// Bagian 5 — Proyeksi Stok.
+function ProyeksiStok({ proyeksi, onMintaStok }) {
+  if (!proyeksi) {
+    return (
+      <Card>
+        <SectionHeader>Stok Bertahan Berapa Hari Lagi</SectionHeader>
+        <SkeletonChart height="280px" />
+      </Card>
+    );
+  }
+  const batasMinimum = Math.round(proyeksi.rataPermintaanHarian * 7);
+  const perluTambah = proyeksi.hariHabis !== null && proyeksi.hariHabis < 14;
+
+  return (
+    <Card>
+      <SectionHeader>Stok Bertahan Berapa Hari Lagi</SectionHeader>
+      <div
+        className="app-grid-2"
+        style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(160px, 1fr))", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}
+      >
+        <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: "var(--color-pastel-card)" }}>
+          <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>
+            Rata-rata Permintaan Harian
+          </p>
+          <p style={{ margin: "4px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: "var(--color-on-surface)" }}>
+            {formatTonase(proyeksi.rataPermintaanHarian)}
+          </p>
+        </div>
+        <div style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: perluTambah ? "var(--color-danger-bg)" : "var(--color-pastel-card)" }}>
+          <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>
+            Estimasi Stok Habis
+          </p>
+          <p style={{ margin: "4px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: perluTambah ? "var(--color-danger-text)" : "var(--color-on-surface)" }}>
+            {proyeksi.hariHabis !== null ? `${proyeksi.hariHabis} hari` : "Tak terukur"}
+          </p>
         </div>
       </div>
-    ),
-    statusDistribusi: (
-      <Badge
-        status={latestDecisionByKota.get(item.kota)?.status ?? "menunggu"}
-      />
-    ),
-  }));
 
-  const rekomendasiKota = rekomendasiList[0];
+      <ProyeksiChart proyeksi={proyeksi.proyeksi} batasMinimum={batasMinimum} />
 
-  const handleTetapkanDistribusi = async () => {
-    if (!rekomendasiKota) {
+      {perluTambah ? (
+        <div
+          style={{
+            marginTop: "var(--space-4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "var(--space-3)",
+            border: "2px solid #000000",
+            borderLeft: "8px solid var(--color-danger)",
+            borderRadius: "var(--radius-lg)",
+            padding: "var(--space-3) var(--space-4)",
+            backgroundColor: "var(--color-danger-bg)",
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-text-primary)" }}>
+            <IkonMS name="warning" size={20} fill style={{ color: "#000000" }} />
+            Stok diperkirakan habis dalam {proyeksi.hariHabis} hari.
+          </span>
+          <button
+            type="button"
+            onClick={onMintaStok}
+            style={{
+              border: "2px solid #000000",
+              borderRadius: "var(--radius-full)",
+              backgroundColor: "var(--color-lime)",
+              color: "#000000",
+              fontFamily: "var(--font-body)",
+              fontSize: "var(--text-xs)",
+              fontWeight: "var(--font-weight-bold)",
+              padding: "6px 14px",
+              boxShadow: "var(--shadow-sm)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Minta Tambah Stok ke Admin
+          </button>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function DashboardManajer({ userAktif, onNavigate }) {
+  const [situasi, setSituasi] = useState(null);
+  const [tindakan, setTindakan] = useState(null);
+  const [prioritas, setPrioritas] = useState(null);
+  const [berjalan, setBerjalan] = useState(null);
+  const [proyeksi, setProyeksi] = useState(null);
+  const [batalTarget, setBatalTarget] = useState(null);
+
+  const muat = useCallback(async () => {
+    // allSettled: tiap panel muat mandiri — satu endpoint gagal (mis. 404
+    // sebelum backend di-restart, atau 401 sesi habis) tidak lagi membuat
+    // seluruh dashboard kosong. Setter hanya dipanggil untuk yang berhasil.
+    const [s, t, p, b, pr] = await Promise.allSettled([
+      getMisSituasiHariIni(),
+      getMisTindakanMendesak(),
+      getMisRekomendasiPrioritas(),
+      getMisKeputusanBerjalan(),
+      getMisProyeksiStok(),
+    ]);
+    if (s.status === "fulfilled") setSituasi(s.value);
+    if (t.status === "fulfilled") setTindakan(t.value);
+    if (p.status === "fulfilled") setPrioritas(p.value);
+    if (b.status === "fulfilled") setBerjalan(b.value);
+    if (pr.status === "fulfilled") setProyeksi(pr.value);
+  }, []);
+
+  useEffect(() => {
+    muat();
+    const id = window.setInterval(muat, 8000);
+    return () => window.clearInterval(id);
+  }, [muat]);
+
+  // Sinkronisasi notifikasi cerdas sekali saat dashboard dimuat, lalu segarkan
+  // daftar notifikasi agar badge header mencerminkan hasilnya.
+  useEffect(() => {
+    (async () => {
+      try {
+        await sinkronNotifikasiMis();
+        await store.loadNotifikasi();
+      } catch {
+        // diamkan; sinkronisasi notifikasi opsional
+      }
+    })();
+  }, []);
+
+  const konfirmasiBatal = async () => {
+    if (!batalTarget) {
       return;
     }
-
-    // SYNCHRONOUS cache read — stays unchanged (this handler reads the
-    // current in-memory state, not a fresh server fetch).
-    const keputusanSaatIni = store.getKeputusan();
-    const existingDecision = keputusanSaatIni.find(
-      (item) =>
-        item.kota_tujuan === rekomendasiKota.kota &&
-        item.status !== "selesai"
-    );
-
-    if (existingDecision) {
-      setFeedback(
-        `Kota ${rekomendasiKota.kota} sudah memiliki keputusan distribusi aktif.`
-      );
-      return;
-    }
-
     try {
-      await store.addKeputusan({
-        kota_tujuan: rekomendasiKota.kota,
-        volume_tbs: rekomendasiKota.alokasi,
-        tanggal_keputusan: todayKey,
-        diputuskan_oleh: "Manajer Distribusi",
-        status: "menunggu",
-      });
-
-      setFeedback(
-        `Keputusan distribusi untuk ${rekomendasiKota.kota} berhasil ditambahkan (alokasi ${formatTonase(rekomendasiKota.alokasi)}).`
-      );
+      await store.removeKeputusan(batalTarget.id);
+      setBatalTarget(null);
+      muat();
     } catch {
-      // runMutation already Toasted the server's error message.
+      // runMutation sudah menampilkan pesan error server via Toast.
     }
+  };
+
+  const mintaTambahStok = () => {
+    showToast({ type: "success", message: "Permintaan penambahan stok telah dikirim ke Admin." });
   };
 
   return (
     <>
       <PageHeader
         judul="Dashboard"
-        deskripsi="Pantau ranking permintaan dan ambil keputusan distribusi."
+        deskripsi="Informasi keputusan distribusi harian untuk Manajer."
       />
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.5rem",
-        }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
 
-        <div
-          className="stagger-children app-grid-3"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(220px, 1fr))",
-            gap: "var(--space-4)",
-          }}
-        >
-          <MetricCard
-            label="Total Kota Terpantau"
-            nilai={formatterAngka.format(rankingKota.length)}
-            ikon={<IkonMapPin />}
-            accent="primary"
-            size="lg"
-            trend="Data terkini"
-            shimmer
-          />
-          <MetricCard
-            label="Permintaan Tertinggi"
-            nilai={rankingKota[0] ? formatTonase(rankingKota[0].totalPermintaan) : "Belum ada"}
-            ikon={<IkonTrendUp />}
-            accent="accent"
-            size="lg"
-            trend="Data terkini"
-            sparkline={rankingKota[0] ? forecastByKota.get(rankingKota[0].kota)?.riwayat : undefined}
-            shimmer
-          />
-          <MetricCard
-            label="Total TBS Terdistribusi"
-            nilai={formatTonase(totalTbsTerdistribusi)}
-            ikon={<IkonTruck />}
-            accent="info"
-            size="lg"
-            trend="Data terkini"
-            shimmer
-          />
-        </div>
-
-        <div
-          className="stagger-children app-grid-4"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
-            gap: "var(--space-4)",
-          }}
-        >
-          <MetricCard label="Tingkat Pemenuhan" nilai={`${kpi.fulfillmentRate}%`} accent="primary" />
-          <MetricCard
-            label="Ketepatan Waktu"
-            nilai={kpi.onTimeRate === null ? "Belum ada data" : `${kpi.onTimeRate}%`}
-            accent="info"
-          />
-          <MetricCard
-            label="Rata-rata Siklus"
-            nilai={kpi.avgSiklusJam === null ? "Belum ada data" : `${Math.round(kpi.avgSiklusJam)} jam`}
-            accent="accent"
-          />
-          <MetricCard
-            label="Cakupan Kota"
-            nilai={`${kpi.kotaTercover}/${kpi.totalKota} kota`}
-            accent="success"
-          />
-        </div>
-
-        <div
-          className="app-grid-2-1"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "var(--space-5)",
-            alignItems: "start",
-          }}
-        >
-          <Card>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "var(--space-3)",
-                paddingBottom: "var(--space-3)",
-                borderBottom: "2px solid #000000",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--font-weight-bold)",
-                  color: "#000000",
-                  textTransform: "uppercase",
-                  letterSpacing: "var(--tracking-wider)",
-                }}
-              >
-                Ranking Kota
-              </span>
-              <span
-                style={{
-                  backgroundColor: "var(--color-pastel)",
-                  border: "2px solid #000000",
-                  fontSize: "var(--text-xs)",
-                  fontWeight: "var(--font-weight-bold)",
-                  padding: "2px 10px",
-                  borderRadius: "var(--radius-full)",
-                  color: "#000000",
-                }}
-              >
-                {rankingKota.length} kota
-              </span>
-            </div>
-            {rankingRows.length > 0 ? (
-              <Tabel
-                kolom={[
-                  { key: "nomor", label: "No" },
-                  { key: "namaKota", label: "Nama Kota" },
-                  { key: "totalPermintaan", label: "Total Permintaan (ton)", numeric: true },
-                  { key: "statusDistribusi", label: "Status Distribusi" },
-                ]}
-                data={rankingRows}
-                getRowStyle={(_baris, index) =>
-                  index === 0 ? { backgroundColor: "var(--color-pastel-card)" } : undefined
-                }
-              />
-            ) : (
-              <EmptyState pesan="Tambahkan data permintaan agar ranking kota dapat dihitung." />
-            )}
-          </Card>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-5)" }}>
-            <Card
-              style={{
-                backgroundColor: "var(--color-pastel-card)",
-                borderRadius: "var(--radius-2xl)",
-                padding: "var(--space-6)",
-              }}
-            >
-              <div>
-                {rekomendasiKota ? (
-                  <>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        backgroundColor: "var(--color-lime)",
-                        border: "2px solid #000000",
-                        color: "#000000",
-                        fontSize: "var(--text-2xs)",
-                        fontWeight: "var(--font-weight-bold)",
-                        padding: "3px 10px",
-                        borderRadius: "var(--radius-full)",
-                        marginBottom: "var(--space-3)",
-                      }}
-                    >
-                      Rekomendasi Sistem · Skor {rekomendasiKota.skor}
-                    </span>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: "var(--text-xs)",
-                        color: "var(--color-text-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "var(--tracking-wider)",
-                      }}
-                    >
-                      Kota Tujuan Disarankan
-                    </p>
-                    <p
-                      style={{
-                        margin: "var(--space-2) 0",
-                        fontSize: "var(--text-2xl)",
-                        fontWeight: "var(--font-weight-bold)",
-                        color: "var(--color-text-primary)",
-                      }}
-                    >
-                      {rekomendasiKota.kota}
-                    </p>
-                    <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-                      Permintaan{" "}
-                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-primary)", fontWeight: "var(--font-weight-semibold)" }}>
-                        {formatTonase(rekomendasiKota.totalPermintaan)}
-                      </span>
-                      {" · "}Kapasitas{" "}
-                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
-                        {formatTonase(rekomendasiKota.kapasitas)}
-                      </span>
-                    </p>
-                    <p style={{ margin: "4px 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-                      Alokasi disarankan{" "}
-                      <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-accent)", fontWeight: "var(--font-weight-semibold)" }}>
-                        {formatTonase(rekomendasiKota.alokasi)}
-                      </span>
-                    </p>
-                    {!rekomendasiKota.terpenuhiPenuh ? (
-                      <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--color-warning)" }}>
-                        ⚠ {rekomendasiKota.dibatasiKapasitas
-                          ? "Dibatasi oleh kapasitas kota."
-                          : "Dibatasi oleh ketersediaan stok TBS."}
-                      </p>
-                    ) : null}
-                    <div style={{ height: "1px", backgroundColor: "var(--color-border)", margin: "var(--space-4) 0" }} />
-                    <Tombol
-                      label="Tetapkan Tujuan"
-                      onClick={handleTetapkanDistribusi}
-                      style={{ width: "100%", padding: "10px" }}
-                    />
-                    {feedback ? (
-                      <p style={{ margin: "var(--space-3) 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
-                        {feedback}
-                      </p>
-                    ) : null}
-                  </>
-                ) : (
-                  <EmptyState pesan="Belum ada rekomendasi karena data permintaan masih kosong." />
-                )}
-              </div>
-            </Card>
-
-            {rankingKota.length > 0 ? <GrafikMiniPerKota rankingKota={rankingKota} /> : null}
-          </div>
-        </div>
-
-        {rankingKota.length > 0 ? (
-          <GrafikPermintaan rankingKota={rankingKota} />
-        ) : (
-          <EmptyState pesan="Belum ada data untuk ditampilkan pada grafik permintaan." />
-        )}
+        <SituasiHariIni situasi={situasi} />
+        <TindakanMendesakPanel tindakan={tindakan} onNavigate={onNavigate} />
+        <KotaPrioritas prioritas={prioritas} onNavigate={onNavigate} />
+        <KeputusanBerjalan berjalan={berjalan} onBatal={setBatalTarget} />
+        <ProyeksiStok proyeksi={proyeksi} onMintaStok={mintaTambahStok} />
       </div>
+
+      {batalTarget ? (
+        <Modal
+          judul="Batalkan keputusan distribusi"
+          onTutup={() => setBatalTarget(null)}
+          konten={
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <p style={{ margin: 0, color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Batalkan keputusan distribusi ke{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>{batalTarget.kota}</strong> sebesar{" "}
+                <strong style={{ color: "var(--color-text-primary)" }}>{formatTonase(batalTarget.volume_tbs)}</strong>?
+                Volume akan dikembalikan ke stok TBS.
+              </p>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", flexWrap: "wrap" }}>
+                <Tombol label="Tidak" variant="sekunder" onClick={() => setBatalTarget(null)} />
+                <Tombol label="Ya, Batalkan" variant="bahaya" onClick={konfirmasiBatal} />
+              </div>
+            </div>
+          }
+        />
+      ) : null}
     </>
   );
 }
@@ -1148,6 +1323,33 @@ function DashboardLogistik({ keputusan, userAktif }) {
     });
     return counts;
   }, [sortedKeputusan]);
+
+  // ── Ringkasan operasional (MIS) untuk Tim Logistik ──
+  const todayKeyLogistik = getLocalDateKey();
+  const bebanKerja = useMemo(() => {
+    const aktif = sortedKeputusan.filter((item) => item.status === "menunggu" || item.status === "dalam-pengiriman").length;
+    const selesaiHariIni = sortedKeputusan.filter(
+      (item) => item.status === "selesai" && item.waktu_selesai && getLocalDateKey(new Date(item.waktu_selesai)) === todayKeyLogistik
+    ).length;
+    const etaTerlewat = computeSlaBreaches(keputusan).filter((item) => item.jenis === "melewati-eta").length;
+    return { aktif, selesaiHariIni, perluKonfirmasi: ringkasanStatus.menunggu, etaTerlewat };
+  }, [sortedKeputusan, keputusan, ringkasanStatus, todayKeyLogistik]);
+
+  // Prioritas kerja: ETA terlewat paling atas (merah), lalu ETA terdekat.
+  const prioritasKerja = useMemo(() => {
+    const nilaiUrut = (item) => {
+      if (!item.eta) return Number.MAX_SAFE_INTEGER;
+      return parseDate(item.eta).getTime();
+    };
+    return sortedKeputusan
+      .filter((item) => item.status === "menunggu" || item.status === "dalam-pengiriman")
+      .map((item) => ({ ...item, terlewat: item.eta ? parseDate(item.eta) < parseDate(todayKeyLogistik) : false }))
+      .sort((a, b) => {
+        if (a.terlewat !== b.terlewat) return a.terlewat ? -1 : 1;
+        return nilaiUrut(a) - nilaiUrut(b);
+      })
+      .slice(0, 6);
+  }, [sortedKeputusan, todayKeyLogistik]);
 
   const statusRows = sortedKeputusan.map((item) => {
     const stepIndex = statusUrutan.indexOf(item.status);
@@ -1257,6 +1459,84 @@ function DashboardLogistik({ keputusan, userAktif }) {
         }}
       >
         <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
+
+        {/* Ringkasan operasional (MIS): beban kerja hari ini + SLA. */}
+        <div
+          className="app-grid-4"
+          style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(150px, 1fr))", gap: "var(--space-3)" }}
+        >
+          {[
+            { label: "Total Aktif", nilai: bebanKerja.aktif, warna: "var(--color-on-surface)" },
+            { label: "Selesai Hari Ini", nilai: bebanKerja.selesaiHariIni, warna: "var(--color-success-text)" },
+            { label: "Perlu Konfirmasi", nilai: bebanKerja.perluKonfirmasi, warna: "var(--color-warning-text)" },
+            { label: "ETA Terlewat", nilai: bebanKerja.etaTerlewat, warna: bebanKerja.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)" },
+          ].map((box) => (
+            <div
+              key={box.label}
+              style={{
+                border: "2px solid #000000",
+                borderRadius: "var(--radius-lg)",
+                padding: "var(--space-3) var(--space-4)",
+                backgroundColor: box.label === "ETA Terlewat" && bebanKerja.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>{box.label}</p>
+              <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: box.warna }}>{formatterAngka.format(box.nilai)}</p>
+            </div>
+          ))}
+        </div>
+
+        {prioritasKerja.length > 0 ? (
+          <Card>
+            <SectionHeader>Prioritas Kerja (ETA Terdekat)</SectionHeader>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              {prioritasKerja.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-3)",
+                    border: "2px solid #000000",
+                    borderLeft: `8px solid ${item.terlewat ? "var(--color-danger)" : "var(--color-lime)"}`,
+                    borderRadius: "var(--radius-lg)",
+                    padding: "var(--space-2) var(--space-4)",
+                    backgroundColor: item.terlewat ? "var(--color-danger-bg)" : "var(--color-surface)",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ flex: 1, minWidth: "140px", fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-surface)" }}>
+                    {item.kota_tujuan} · {formatTonase(item.volume_tbs)}
+                  </span>
+                  <Badge status={item.status} />
+                  <span style={{ fontSize: "var(--text-xs)", fontWeight: item.terlewat ? "var(--font-weight-bold)" : "var(--font-weight-normal)", color: item.terlewat ? "var(--color-danger-text)" : "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                    {item.eta ? `${item.terlewat ? "Terlewat" : "ETA"} ${formatDate(item.eta)}` : "Tanpa ETA"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openStatusModal(item)}
+                    style={{
+                      border: "2px solid #000000",
+                      borderRadius: "var(--radius-full)",
+                      backgroundColor: "var(--color-lime)",
+                      color: "#000000",
+                      fontFamily: "var(--font-body)",
+                      fontSize: "var(--text-xs)",
+                      fontWeight: "var(--font-weight-bold)",
+                      padding: "5px 14px",
+                      boxShadow: "var(--shadow-sm)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Update Status
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         <div
           className="stagger-children app-grid-3"
@@ -1630,7 +1910,15 @@ function Dashboard({ onNavigate }) {
     store.loadActivityLog();
   }, []);
 
-  const { roleAktif, permintaan, keputusan, activityLog, userAktif, daftarKota, stokTbs, kpi, rekomendasi } = snapshot;
+  // Panel kesehatan sistem Admin butuh daftar akun; loadAkun aman untuk non-Admin
+  // (mengembalikan array kosong pada 403), tetapi hanya dipanggil untuk Admin.
+  useEffect(() => {
+    if (snapshot.roleAktif === "Admin") {
+      store.loadAkun();
+    }
+  }, [snapshot.roleAktif]);
+
+  const { roleAktif, permintaan, keputusan, activityLog, userAktif, daftarKota, stokTbs, kpi, rekomendasi, daftarAkun } = snapshot;
 
   const contentByRole = {
     Admin: (
@@ -1639,20 +1927,13 @@ function Dashboard({ onNavigate }) {
         keputusan={keputusan}
         activityLog={activityLog}
         userAktif={userAktif}
+        daftarKota={daftarKota}
+        stokTbs={stokTbs}
+        daftarAkun={daftarAkun}
         onNavigate={onNavigate}
       />
     ),
-    "Manajer Distribusi": (
-      <DashboardManajer
-        permintaan={permintaan}
-        keputusan={keputusan}
-        userAktif={userAktif}
-        daftarKota={daftarKota}
-        stokTbs={stokTbs}
-        serverKpi={kpi}
-        serverRekomendasi={rekomendasi}
-      />
-    ),
+    "Manajer Distribusi": <DashboardManajer userAktif={userAktif} onNavigate={onNavigate} />,
     "Tim Logistik": <DashboardLogistik keputusan={keputusan} userAktif={userAktif} />,
   };
 

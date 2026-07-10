@@ -122,15 +122,19 @@ const computeKpiMetrics = (keputusan, permintaan, daftarKota) => {
 
     avgSiklusJam =
       siklusJamList.reduce((total, jam) => total + jam, 0) / siklusJamList.length;
+  }
 
-    const tepatWaktu = selesai.filter((item) => {
-      if (!item.eta) {
-        return true;
-      }
-      return new Date(item.waktu_selesai) <= new Date(`${item.eta}T23:59:59`);
-    });
-
-    onTimeRate = Math.round((tepatWaktu.length / selesai.length) * 100);
+  // Ketepatan Waktu hanya dihitung dari keputusan selesai yang PUNYA ETA.
+  // Keputusan tanpa ETA (mis. langsung menunggu -> selesai) dikeluarkan dari
+  // basis, bukan dianggap tepat waktu, supaya angka mencerminkan kepatuhan
+  // ETA yang sebenarnya. Bila tidak ada satu pun keputusan selesai ber-ETA,
+  // onTimeRate tetap null -> UI menampilkan "Belum ada data".
+  const selesaiBerEta = selesai.filter((item) => item.eta);
+  if (selesaiBerEta.length > 0) {
+    const tepatWaktu = selesaiBerEta.filter(
+      (item) => new Date(item.waktu_selesai) <= new Date(`${item.eta}T23:59:59`)
+    );
+    onTimeRate = Math.round((tepatWaktu.length / selesaiBerEta.length) * 100);
   }
 
   const kotaTercoverSet = new Set(keputusan.map((item) => item.kota_tujuan));

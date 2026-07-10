@@ -10,11 +10,15 @@ const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL ?? "http://localhost:400
 
 const TOKEN_KEY = "switera_token";
 
-// localStorage access is guarded the same way src/store.js guards it
-// (private-mode/quota tolerant — failures degrade silently, never throw).
+// The token lives in sessionStorage (per-tab), not localStorage: each browser
+// tab keeps its own session, so different roles can be logged in side by side
+// in separate tabs without overwriting each other's token. Trade-off: closing
+// the tab ends the session ("Ingat Saya"/persistent login is intentionally
+// gone). Access is guarded (private-mode/quota tolerant — failures degrade
+// silently, never throw).
 function getToken() {
   try {
-    return window.localStorage.getItem(TOKEN_KEY);
+    return window.sessionStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
@@ -22,17 +26,17 @@ function getToken() {
 
 function setToken(token) {
   try {
-    window.localStorage.setItem(TOKEN_KEY, token);
+    window.sessionStorage.setItem(TOKEN_KEY, token);
   } catch {
-    // localStorage unavailable (private mode/quota) — continue without persistence
+    // sessionStorage unavailable (private mode/quota) — continue without persistence
   }
 }
 
 function clearToken() {
   try {
-    window.localStorage.removeItem(TOKEN_KEY);
+    window.sessionStorage.removeItem(TOKEN_KEY);
   } catch {
-    // localStorage unavailable (private mode/quota) — continue without persistence
+    // sessionStorage unavailable (private mode/quota) — continue without persistence
   }
 }
 
@@ -132,6 +136,19 @@ async function apiFetch(path, { method = "GET", body, auth = true } = {}) {
   }
 }
 
+// ── Fungsi MIS (Management Information System) untuk Manajer Distribusi ──
+// Pembungkus tipis di atas apiFetch. Semua endanya READ dan khusus peran
+// Manajer Distribusi di backend. getKpi sengaja menunjuk /mis/kpi (KPI manajer
+// baru), bukan /kpi lama yang tetap dipakai dashboard/laporan lain.
+const getMisSituasiHariIni = () => apiFetch("/mis/situasi-hari-ini");
+const getMisTindakanMendesak = () => apiFetch("/mis/tindakan-mendesak");
+const getMisRekomendasiPrioritas = () => apiFetch("/mis/rekomendasi-prioritas");
+const getMisKeputusanBerjalan = () => apiFetch("/mis/keputusan-berjalan");
+const getMisProyeksiStok = () => apiFetch("/mis/proyeksi-stok");
+const getKpi = () => apiFetch("/mis/kpi");
+const getEfisiensiLogistik = () => apiFetch("/efisiensi-logistik");
+const sinkronNotifikasiMis = () => apiFetch("/mis/sinkron-notifikasi", { method: "POST" });
+
 export {
   apiFetch,
   getToken,
@@ -140,4 +157,12 @@ export {
   setUnauthorizedHandler,
   subscribeLoading,
   isLoading,
+  getMisSituasiHariIni,
+  getMisTindakanMendesak,
+  getMisRekomendasiPrioritas,
+  getMisKeputusanBerjalan,
+  getMisProyeksiStok,
+  getKpi,
+  getEfisiensiLogistik,
+  sinkronNotifikasiMis,
 };

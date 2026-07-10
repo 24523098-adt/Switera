@@ -85,7 +85,7 @@
   --color-warning-subtle: var(--color-warning-bg);
 
   --font-heading: 'Bricolage Grotesque', -apple-system, sans-serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-body: 'Bricolage Grotesque', -apple-system, sans-serif;
   --font-display: var(--font-heading);
   --font-mono: var(--font-heading);
 
@@ -157,6 +157,30 @@
   --z-sticky: 200;
   --z-modal: 300;
   --z-toast: 400;
+
+  /* ===== Token bernama sesuai spesifikasi MIS (alias aman, tanpa regresi) =====
+     Nama-nama ini disediakan agar kode baru bisa memakainya langsung. Nilainya
+     dipetakan ke token Neo-Brutalism yang sudah ada supaya tidak ada perubahan
+     tampilan. Catatan penting: --color-primary sengaja tetap olive (#4c6700)
+     yaitu warna teks/ikon yang terbaca; warna brand lime yaitu --color-lime
+     atau --color-primary-container, bukan --color-primary. */
+  --color-surface-secondary: var(--color-pastel-card); /* #eafcc2 */
+  --color-text: var(--color-text-primary);             /* #111111 */
+  --color-shadow: #000000;
+  --radius-card: var(--radius-lg);      /* 16px */
+  --radius-button: var(--radius-full);  /* 9999px */
+  --border-card: 2px solid #000000;
+  --shadow-card: var(--shadow-md);      /* 4px 4px */
+  --shadow-hover: var(--shadow-sm);     /* 2px 2px */
+  --shadow-modal: var(--shadow-lg);     /* 8px 8px */
+
+  /* Palet status brutalist terang, khusus untuk LATAR chip/badge/aksen,
+     bukan warna teks (warna teks status tetap pakai token *-text agar
+     kontras aman). */
+  --color-status-error: #ff6b6b;
+  --color-status-warning: #ffe566;
+  --color-status-info: #66b2ff;
+  --color-status-success: #bcf819;
 }
 
 /* ===== Material Symbols Outlined, kelas dasar (font-family wajib) ===== */

@@ -149,6 +149,7 @@ function ManajemenKota({ onNavigate }) {
   useEffect(() => {
     store.loadKota();
     store.loadStok();
+    store.loadKeputusan();
   }, []);
 
   const daftarKota = useMemo(() => snapshot.daftarKota ?? [], [snapshot.daftarKota]);
@@ -158,39 +159,63 @@ function ManajemenKota({ onNavigate }) {
   // dianimasikan via transisi width saat data masuk.
   const maxKapasitas = Math.max(1, ...daftarKota.map((kota) => kota.kapasitas));
 
-  const tableRows = daftarKota.map((kota) => ({
-    id: kota.nama,
-    nama: kota.nama,
-    kapasitas: (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: "12px", justifyContent: "flex-end" }}>
-        <span style={{ minWidth: "64px", textAlign: "right", fontWeight: "var(--font-weight-semibold)" }}>
-          {kota.kapasitas}
-        </span>
-        <span
-          aria-hidden="true"
-          style={{
-            width: "120px",
-            height: "8px",
-            borderRadius: "var(--radius-full)",
-            backgroundColor: "var(--color-surface-container)",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
+  // Alokasi aktif per kota (dari keputusan) untuk menghitung utilisasi kapasitas.
+  const alokasiByKota = useMemo(() => {
+    const map = new Map();
+    (snapshot.keputusan ?? []).forEach((item) => {
+      map.set(item.kota_tujuan, (map.get(item.kota_tujuan) || 0) + (Number(item.volume_tbs) || 0));
+    });
+    return map;
+  }, [snapshot.keputusan]);
+
+  const tableRows = daftarKota.map((kota) => {
+    const alokasi = alokasiByKota.get(kota.nama) || 0;
+    const persen = kota.kapasitas > 0 ? Math.min(100, Math.round((alokasi / kota.kapasitas) * 100)) : 0;
+    const warnaUtil = persen >= 90 ? "var(--color-danger)" : persen >= 70 ? "var(--color-warning-text)" : "var(--color-primary)";
+    return {
+      id: kota.nama,
+      nama: kota.nama,
+      kapasitas: (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "12px", justifyContent: "flex-end" }}>
+          <span style={{ minWidth: "64px", textAlign: "right", fontWeight: "var(--font-weight-semibold)" }}>
+            {kota.kapasitas}
+          </span>
           <span
+            aria-hidden="true"
             style={{
-              display: "block",
-              height: "100%",
-              width: `${Math.round((kota.kapasitas / maxKapasitas) * 100)}%`,
+              width: "120px",
+              height: "8px",
               borderRadius: "var(--radius-full)",
-              backgroundColor: "var(--color-primary)",
-              transition: "width 600ms cubic-bezier(0.16, 1, 0.3, 1)",
+              backgroundColor: "var(--color-surface-container)",
+              overflow: "hidden",
+              flexShrink: 0,
             }}
-          />
+          >
+            <span
+              style={{
+                display: "block",
+                height: "100%",
+                width: `${Math.round((kota.kapasitas / maxKapasitas) * 100)}%`,
+                borderRadius: "var(--radius-full)",
+                backgroundColor: "var(--color-primary)",
+                transition: "width 600ms cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            />
+          </span>
         </span>
-      </span>
-    ),
-  }));
+      ),
+      utilisasi: (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "10px", justifyContent: "flex-end" }}>
+          <span style={{ minWidth: "42px", textAlign: "right", fontWeight: "var(--font-weight-bold)", color: warnaUtil }}>
+            {persen}%
+          </span>
+          <span aria-hidden="true" style={{ width: "100px", height: "8px", borderRadius: "var(--radius-full)", border: "2px solid #000000", backgroundColor: "var(--color-surface)", overflow: "hidden", flexShrink: 0 }}>
+            <span style={{ display: "block", height: "100%", width: `${persen}%`, backgroundColor: warnaUtil }} />
+          </span>
+        </span>
+      ),
+    };
+  });
 
   const validateForm = (nextForm) => {
     const nextErrors = {};
@@ -350,6 +375,7 @@ function ManajemenKota({ onNavigate }) {
               kolom={[
                 { key: "nama", label: "Nama Kota" },
                 { key: "kapasitas", label: "Kapasitas (ton)", numeric: true },
+                { key: "utilisasi", label: "Utilisasi", numeric: true },
               ]}
               data={tableRows}
               aksi={(baris) => {

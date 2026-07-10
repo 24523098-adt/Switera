@@ -19,7 +19,6 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [ingatSaya, setIngatSaya] = useState(false);
   const [focusedField, setFocusedField] = useState("");
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +56,7 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
 
     setIsSubmitting(true);
     try {
-      await store.login(username, password, role, ingatSaya);
+      await store.login(username, password, role);
       onNavigate?.("/dashboard");
     } catch {
       // The server returns one generic 401 for unknown-user/wrong-password/
@@ -75,6 +74,33 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
       onSwitchToRegister();
     } else {
       onNavigate?.("/register");
+    }
+  };
+
+  // Akun demo cepat — kredensial sesuai seed database (server/prisma/seed.js).
+  const demoAccounts = [
+    { role: "Admin", username: "admin", password: "admin123", label: "Admin" },
+    { role: "Manajer Distribusi", username: "manajer", password: "manajer123", label: "Manajer" },
+    { role: "Tim Logistik", username: "logistik", password: "logistik123", label: "Logistik" },
+  ];
+
+  const handleDemoLogin = async (akun) => {
+    if (isSubmitting) {
+      return;
+    }
+    // Isi form agar terlihat kredensial yang dipakai, lalu langsung login.
+    setRole(akun.role);
+    setUsername(akun.username);
+    setPassword(akun.password);
+    setErrors({});
+    setIsSubmitting(true);
+    try {
+      await store.login(akun.username, akun.password, akun.role);
+      onNavigate?.("/dashboard");
+    } catch {
+      setErrors({ password: "Login demo gagal. Pastikan server & database aktif." });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -300,30 +326,13 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               alignItems: "center",
               marginTop: "var(--space-2)",
               marginBottom: "var(--space-6)",
               fontSize: "var(--text-xs)",
             }}
           >
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-2)",
-                color: "var(--color-text-secondary)",
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={ingatSaya}
-                onChange={(event) => setIngatSaya(event.target.checked)}
-                style={{ accentColor: "var(--color-lime)", width: "16px", height: "16px" }}
-              />
-              Ingat saya
-            </label>
             <a
               href="#"
               className="auth-forgot-link"
@@ -346,6 +355,45 @@ function Login({ onNavigate, onClose, onSwitchToRegister }) {
             disabled={isSubmitting}
             style={{ width: "100%" }}
           />
+
+          {/* Masuk cepat demo: satu klik login ke tiap peran. */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-3)",
+              margin: "var(--space-5) 0 var(--space-3)",
+            }}
+          >
+            <span style={{ flex: 1, height: "2px", backgroundColor: "#000000" }} />
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--font-weight-bold)",
+                color: "var(--color-text-secondary)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Masuk cepat (demo)
+            </span>
+            <span style={{ flex: 1, height: "2px", backgroundColor: "#000000" }} />
+          </div>
+
+          <div style={{ display: "flex", gap: "var(--space-2)" }}>
+            {demoAccounts.map((akun) => (
+              <button
+                key={akun.role}
+                type="button"
+                className="tombol tombol-sekunder"
+                onClick={() => handleDemoLogin(akun)}
+                disabled={isSubmitting}
+                title={`Masuk sebagai ${akun.role} (${akun.username})`}
+                style={{ flex: 1, padding: "9px 8px", fontSize: "var(--text-xs)" }}
+              >
+                {akun.label}
+              </button>
+            ))}
+          </div>
 
           <p
             style={{

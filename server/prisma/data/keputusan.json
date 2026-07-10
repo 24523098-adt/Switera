@@ -3,23 +3,175 @@
     "id": "KPT-001",
     "kota_tujuan": "Pekanbaru",
     "volume_tbs": 25,
-    "tanggal_keputusan": "2026-06-10",
-    "diputuskan_oleh": "Rina Saputri",
+    "tanggal_keputusan": "2026-05-06",
+    "diputuskan_oleh": "Budi Santoso",
     "status": "selesai"
   },
   {
     "id": "KPT-002",
     "kota_tujuan": "Medan",
+    "volume_tbs": 20,
+    "tanggal_keputusan": "2026-05-09",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-003",
+    "kota_tujuan": "Palembang",
+    "volume_tbs": 15,
+    "tanggal_keputusan": "2026-05-12",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-004",
+    "kota_tujuan": "Padang",
     "volume_tbs": 18,
-    "tanggal_keputusan": "2026-06-14",
+    "tanggal_keputusan": "2026-05-15",
+    "diputuskan_oleh": "Rina Saputri",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-005",
+    "kota_tujuan": "Jambi",
+    "volume_tbs": 11,
+    "tanggal_keputusan": "2026-05-18",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-006",
+    "kota_tujuan": "Dumai",
+    "volume_tbs": 13,
+    "tanggal_keputusan": "2026-05-21",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dibatalkan"
+  },
+  {
+    "id": "KPT-007",
+    "kota_tujuan": "Rokan Hilir",
+    "volume_tbs": 16,
+    "tanggal_keputusan": "2026-05-24",
+    "diputuskan_oleh": "Rina Saputri",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-008",
+    "kota_tujuan": "Bengkalis",
+    "volume_tbs": 9,
+    "tanggal_keputusan": "2026-05-27",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-009",
+    "kota_tujuan": "Pekanbaru",
+    "volume_tbs": 24,
+    "tanggal_keputusan": "2026-05-30",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "selesai"
+  },
+  {
+    "id": "KPT-010",
+    "kota_tujuan": "Medan",
+    "volume_tbs": 21,
+    "tanggal_keputusan": "2026-06-03",
     "diputuskan_oleh": "Dedi Pratama",
     "status": "dalam-pengiriman"
   },
   {
-    "id": "KPT-003",
+    "id": "KPT-011",
+    "kota_tujuan": "Palembang",
+    "volume_tbs": 17,
+    "tanggal_keputusan": "2026-06-06",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-012",
     "kota_tujuan": "Padang",
+    "volume_tbs": 19,
+    "tanggal_keputusan": "2026-06-09",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-013",
+    "kota_tujuan": "Jambi",
     "volume_tbs": 12,
-    "tanggal_keputusan": "2026-06-16",
+    "tanggal_keputusan": "2026-06-12",
+    "diputuskan_oleh": "Rina Saputri",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-014",
+    "kota_tujuan": "Dumai",
+    "volume_tbs": 13,
+    "tanggal_keputusan": "2026-06-15",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-015",
+    "kota_tujuan": "Rokan Hilir",
+    "volume_tbs": 18,
+    "tanggal_keputusan": "2026-06-18",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dibatalkan"
+  },
+  {
+    "id": "KPT-016",
+    "kota_tujuan": "Pekanbaru",
+    "volume_tbs": 26,
+    "tanggal_keputusan": "2026-06-21",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "dalam-pengiriman"
+  },
+  {
+    "id": "KPT-017",
+    "kota_tujuan": "Medan",
+    "volume_tbs": 22,
+    "tanggal_keputusan": "2026-06-24",
+    "diputuskan_oleh": "Dedi Pratama",
+    "status": "menunggu"
+  },
+  {
+    "id": "KPT-018",
+    "kota_tujuan": "Palembang",
+    "volume_tbs": 16,
+    "tanggal_keputusan": "2026-06-27",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "menunggu"
+  },
+  {
+    "id": "KPT-019",
+    "kota_tujuan": "Padang",
+    "volume_tbs": 20,
+    "tanggal_keputusan": "2026-06-30",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "menunggu"
+  },
+  {
+    "id": "KPT-020",
+    "kota_tujuan": "Jambi",
+    "volume_tbs": 14,
+    "tanggal_keputusan": "2026-07-02",
+    "diputuskan_oleh": "Siska Wulandari",
+    "status": "menunggu"
+  },
+  {
+    "id": "KPT-021",
+    "kota_tujuan": "Dumai",
+    "volume_tbs": 12,
+    "tanggal_keputusan": "2026-07-04",
+    "diputuskan_oleh": "Budi Santoso",
+    "status": "menunggu"
+  },
+  {
+    "id": "KPT-022",
+    "kota_tujuan": "Rokan Hilir",
+    "volume_tbs": 17,
+    "tanggal_keputusan": "2026-07-06",
     "diputuskan_oleh": "Siska Wulandari",
     "status": "menunggu"
   }

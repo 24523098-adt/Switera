@@ -342,6 +342,37 @@ function InputData({ onNavigate }) {
 
   const belumDiisi = <span style={{ color: "var(--color-text-disabled)", fontStyle: "italic" }}>Belum diisi</span>;
 
+  // Konteks bisnis kota terpilih: kapasitas, sisa kapasitas, rata-rata historis
+  // 30 hari, serta peringatan bila permintaan melebihi kapasitas atau melonjak
+  // lebih dari 50 persen di atas rata-rata. Menjadikan input data pendukung
+  // keputusan (MIS), bukan sekadar pencatatan (TPS).
+  const konteksKota = useMemo(() => {
+    const kotaObj = daftarKota.find((item) => item.nama === form.kota);
+    if (!kotaObj) {
+      return null;
+    }
+    const kapasitas = Number(kotaObj.kapasitas) || 0;
+    const semua = (snapshot.permintaan ?? []).filter((item) => item.kota === form.kota);
+    const batas30 = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const in30 = semua.filter(
+      (item) => item.tanggal_permintaan && new Date(`${item.tanggal_permintaan}T00:00:00`).getTime() >= batas30
+    );
+    const basis = in30.length > 0 ? in30 : semua;
+    const rataHistoris = basis.length > 0
+      ? basis.reduce((total, item) => total + (Number(item.jumlah_permintaan) || 0), 0) / basis.length
+      : 0;
+    const totalKota = semua.reduce((total, item) => total + (Number(item.jumlah_permintaan) || 0), 0);
+    const jumlah = Number(form.jumlahPermintaan) || 0;
+    return {
+      kapasitas,
+      sisaKapasitas: kapasitas - totalKota,
+      rataHistoris: Math.round(rataHistoris * 10) / 10,
+      jumlahData: basis.length,
+      melebihiKapasitas: jumlah > 0 && jumlah > kapasitas,
+      lonjakan: jumlah > 0 && rataHistoris > 0 && jumlah > rataHistoris * 1.5,
+    };
+  }, [daftarKota, form.kota, form.jumlahPermintaan, snapshot.permintaan]);
+
   return (
     <>
       <PageHeader
@@ -693,12 +724,46 @@ function InputData({ onNavigate }) {
                 </li>
               </ul>
 
-              <div style={{ marginTop: "var(--space-5)", backgroundColor: "var(--color-pastel)", border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "12px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <Ikon name="info" size={18} style={{ color: "var(--color-secondary)", marginTop: "2px" }} />
-                <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)", lineHeight: 1.6 }}>
-                  Pastikan data tonase akurat — angka ini menjadi dasar ranking dan alokasi distribusi.
-                </p>
-              </div>
+              {konteksKota ? (
+                <div style={{ marginTop: "var(--space-5)", border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-4)", backgroundColor: "var(--color-pastel-card)" }}>
+                  <p style={{ margin: "0 0 var(--space-3)", fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)", color: "var(--color-text-muted)" }}>
+                    Konteks Kota {form.kota}
+                  </p>
+                  {[
+                    { label: "Kapasitas kota", nilai: `${konteksKota.kapasitas} ton` },
+                    { label: "Sisa kapasitas", nilai: `${konteksKota.sisaKapasitas} ton`, warna: konteksKota.sisaKapasitas < 0 ? "var(--color-danger-text)" : undefined },
+                    { label: `Rata-rata (${konteksKota.jumlahData} data)`, nilai: `${konteksKota.rataHistoris} ton` },
+                  ].map((row) => (
+                    <div key={row.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>{row.label}</span>
+                      <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: row.warna ?? "var(--color-on-surface)" }}>{row.nilai}</span>
+                    </div>
+                  ))}
+                  {konteksKota.melebihiKapasitas ? (
+                    <div style={{ marginTop: "8px", display: "flex", gap: "8px", alignItems: "flex-start", border: "2px solid #000000", borderLeft: "6px solid var(--color-danger)", borderRadius: "var(--radius-md)", padding: "8px 10px", backgroundColor: "var(--color-danger-bg)" }}>
+                      <Ikon name="error" size={16} style={{ color: "#000000", marginTop: "1px" }} />
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-primary)", lineHeight: 1.5 }}>
+                        Permintaan melebihi kapasitas kota ({konteksKota.kapasitas} ton).
+                      </span>
+                    </div>
+                  ) : null}
+                  {konteksKota.lonjakan ? (
+                    <div style={{ marginTop: "8px", display: "flex", gap: "8px", alignItems: "flex-start", border: "2px solid #000000", borderLeft: "6px solid var(--color-warning-text)", borderRadius: "var(--radius-md)", padding: "8px 10px", backgroundColor: "var(--color-warning-bg)" }}>
+                      <Ikon name="warning" size={16} style={{ color: "#000000", marginTop: "1px" }} />
+                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-primary)", lineHeight: 1.5 }}>
+                        Permintaan lebih dari 50 persen di atas rata-rata historis ({konteksKota.rataHistoris} ton).
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div style={{ marginTop: "var(--space-5)", backgroundColor: "var(--color-pastel)", border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "12px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                  <Ikon name="info" size={18} style={{ color: "var(--color-secondary)", marginTop: "2px" }} />
+                  <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)", lineHeight: 1.6 }}>
+                    Pastikan data tonase akurat — angka ini menjadi dasar ranking dan alokasi distribusi.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
         </div>

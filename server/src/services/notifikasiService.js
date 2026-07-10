@@ -59,6 +59,17 @@ export async function tambahNotifikasi({ judul, pesan, tipe, id }) {
 }
 
 /**
+ * Mengecek apakah sudah ada notifikasi dengan judul sama dalam N jam terakhir.
+ * Dipakai sinkronisasi notifikasi cerdas MIS agar tidak membuat duplikat setiap
+ * kali kondisi yang sama masih berlaku (dedupe).
+ */
+export async function adaNotifikasiTerbaru(judul, dalamJam = 24) {
+  const batas = new Date(Date.now() - dalamJam * 60 * 60 * 1000);
+  const row = await prisma.notifikasi.findFirst({ where: { judul, waktu: { gte: batas } } });
+  return Boolean(row);
+}
+
+/**
  * Marks a single notification as read. Mirrors src/store.js's tandaiDibaca.
  */
 export async function tandaiDibaca(id) {

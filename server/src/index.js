@@ -9,6 +9,7 @@ import stokRouter from "./routes/stokRoutes.js";
 import permintaanRouter from "./routes/permintaanRoutes.js";
 import keputusanRouter from "./routes/keputusanRoutes.js";
 import distribusiRouter from "./routes/distribusiRoutes.js";
+import misRouter from "./routes/misRoutes.js";
 import ringkasanRouter from "./routes/ringkasanRoutes.js";
 import notifikasiRouter from "./routes/notifikasiRoutes.js";
 import activityLogRouter from "./routes/activityLogRoutes.js";
@@ -53,6 +54,11 @@ app.use("/public", publicRouter);
 // endpoint names exactly (Express 5 supports a router mounted at root with
 // full paths defined inside it).
 app.use(distribusiRouter);
+
+// misRouter juga full-path sendiri (/mis/*, /efisiensi-logistik) — pola mount
+// tanpa prefix yang sama dengan distribusiRouter. Endpoint MIS baru untuk
+// Manajer Distribusi; tidak menimpa route lama.
+app.use(misRouter);
 
 // ringkasanRouter juga mendefinisikan full path-nya sendiri
 // (/laporan/ringkasan) — pola mount tanpa prefix yang sama dengan

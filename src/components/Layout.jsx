@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import Tombol from "./Tombol";
 import CommandPalette from "./CommandPalette";
 import store from "../store";
+import { getMisTindakanMendesak } from "../api/apiClient";
 import { menuByRole, roleOptions } from "../utils/navigation";
 import { formatWaktuRelatif } from "../utils/waktu";
 import useRipple, { RippleSpans } from "../hooks/useRipple";
@@ -13,10 +14,16 @@ const SIDEBAR_WIDTH = "280px";
 
 // Material Symbols per tipe notifikasi dan warna teks/bg (Neo-Brutalism).
 const notifStyle = {
+  kritis: { ikon: "error", warna: "var(--color-danger-text)", bg: "var(--color-danger-bg)" },
+  perhatian: { ikon: "warning", warna: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
   info: { ikon: "info", warna: "var(--color-info-text)", bg: "var(--color-info-bg)" },
   warning: { ikon: "warning", warna: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
   success: { ikon: "check_circle", warna: "var(--color-success-text)", bg: "var(--color-success-bg)" },
 };
+
+// Peringkat keparahan untuk mengurutkan notifikasi: kritis di atas, lalu
+// perhatian, lalu informasi (info/success).
+const NOTIF_RANK = { kritis: 0, perhatian: 1, warning: 1, info: 2, success: 2 };
 
 // Nama ikon Material Symbols per `icon` pada menuByRole (navigation.js).
 const menuIconByType = {
@@ -112,6 +119,42 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
     store.loadNotifikasi();
   }, []);
 
+  // Indikator kesehatan sistem MIS di header. Sumbernya /mis/tindakan-mendesak
+  // yang khusus Manajer Distribusi, jadi dot hanya diambil dan ditampilkan
+  // untuk peran itu; peran lain tidak menampilkan indikator. Hijau bila tidak
+  // ada kondisi, kuning bila ada perhatian, merah bila ada kondisi kritis.
+  const [statusKesehatan, setStatusKesehatan] = useState(null);
+  useEffect(() => {
+    if (roleAktif !== "Manajer Distribusi") {
+      setStatusKesehatan(null);
+      return undefined;
+    }
+    let aktif = true;
+    const muat = async () => {
+      try {
+        const tindakan = await getMisTindakanMendesak();
+        if (!aktif) return;
+        if (tindakan.some((item) => item.tingkat === "kritis")) setStatusKesehatan("kritis");
+        else if (tindakan.some((item) => item.tingkat === "perhatian")) setStatusKesehatan("perhatian");
+        else setStatusKesehatan("aman");
+      } catch {
+        // diamkan; indikator sekadar tidak tampil bila gagal
+      }
+    };
+    muat();
+    const id = window.setInterval(muat, 15000);
+    return () => {
+      aktif = false;
+      window.clearInterval(id);
+    };
+  }, [roleAktif]);
+
+  const warnaKesehatan = {
+    aman: "var(--color-status-success)",
+    perhatian: "var(--color-status-warning)",
+    kritis: "var(--color-status-error)",
+  }[statusKesehatan];
+
   useEffect(() => {
     if (!isNotifOpen) {
       return undefined;
@@ -154,14 +197,21 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Dikelompokkan menurut keparahan (kritis di atas, lalu perhatian, lalu
+  // informasi), dan di dalam tiap kelompok terbaru dulu.
   const notifikasiList = useMemo(
     () =>
-      [...(snapshot.notifikasi ?? [])].sort(
-        (first, second) => new Date(second.waktu) - new Date(first.waktu)
-      ),
+      [...(snapshot.notifikasi ?? [])].sort((first, second) => {
+        const rankFirst = NOTIF_RANK[first.tipe] ?? 2;
+        const rankSecond = NOTIF_RANK[second.tipe] ?? 2;
+        if (rankFirst !== rankSecond) return rankFirst - rankSecond;
+        return new Date(second.waktu) - new Date(first.waktu);
+      }),
     [snapshot.notifikasi]
   );
   const unreadCount = notifikasiList.filter((item) => !item.dibaca).length;
+  // Badge merah hanya untuk notifikasi kritis yang belum dibaca.
+  const unreadKritis = notifikasiList.filter((item) => !item.dibaca && item.tipe === "kritis").length;
 
   const handleMenuChange = (key) => {
     setIsSidebarOpen(false);
@@ -418,6 +468,25 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
           >
             {judulHalaman}
           </h1>
+          {warnaKesehatan ? (
+            <button
+              type="button"
+              aria-label={`Kesehatan sistem: ${statusKesehatan}`}
+              title={`Kesehatan sistem: ${statusKesehatan}. Klik untuk buka dashboard.`}
+              onClick={() => handleMenuChange("dashboard")}
+              style={{
+                flexShrink: 0,
+                width: "16px",
+                height: "16px",
+                padding: 0,
+                borderRadius: "var(--radius-full)",
+                border: "2px solid #000000",
+                backgroundColor: warnaKesehatan,
+                cursor: "pointer",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            />
+          ) : null}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
@@ -479,8 +548,8 @@ function Layout({ children, title = "Switera", menuAktif: menuAktifProp, onMenuC
                     height: "16px",
                     padding: "0 3px",
                     borderRadius: "var(--radius-full)",
-                    backgroundColor: "var(--color-error)",
-                    color: "#fff",
+                    backgroundColor: unreadKritis > 0 ? "var(--color-error)" : "var(--color-lime)",
+                    color: unreadKritis > 0 ? "#fff" : "#000000",
                     fontSize: "0.625rem",
                     fontWeight: "var(--font-weight-bold)",
                     display: "grid",

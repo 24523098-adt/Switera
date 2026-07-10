@@ -51,14 +51,30 @@ const kotaSeed = [
   { nama: "Rokan Hilir", kapasitas: 140 },
 ];
 
-// Legacy stokTbsSeed value from src/store.js line 40, left unmodeled in
-// Phase 6 — now seeded into the Stok singleton row (Phase 8).
-const stokTbsSeed = 150;
+// Stok TBS awal untuk demo — dinaikkan agar dashboard punya headroom yang
+// masuk akal terhadap volume keputusan distribusi contoh.
+const stokTbsSeed = 850;
 
 const prisma = new PrismaClient();
 
 // cost factor 10: standard bcryptjs default, sufficient for school-project scale
 const BCRYPT_COST_FACTOR = 10;
+
+// Buang seluruh data lama sebelum menyemai ulang, agar database berisi
+// TEPAT dataset demo di bawah (bukan gabungan data lama + upsert). Urutan
+// penghapusan mengikuti constraint FK: baris anak (Permintaan/Keputusan/
+// RiwayatKeputusan yang mereferensikan Kota) dihapus sebelum Kota.
+async function resetDatabase() {
+  await prisma.permintaan.deleteMany();
+  await prisma.keputusan.deleteMany();
+  await prisma.riwayatKeputusan.deleteMany();
+  await prisma.notifikasi.deleteMany();
+  await prisma.activityLog.deleteMany();
+  await prisma.kota.deleteMany();
+  await prisma.stok.deleteMany();
+  await prisma.akun.deleteMany();
+  console.log("Reset: semua data lama dihapus");
+}
 
 async function seedKota() {
   for (const kota of kotaSeed) {
@@ -190,6 +206,8 @@ async function seedActivityLog() {
 }
 
 async function main() {
+  // Buang semua data lama dulu, lalu semai ulang dataset demo dari nol.
+  await resetDatabase();
   // Kota first — required before Permintaan/Keputusan/RiwayatKeputusan due to FK constraints.
   await seedKota();
   await seedStok();

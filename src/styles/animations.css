@@ -81,6 +81,20 @@
 .animate-pulse-dot { animation: pulse 2s ease-in-out infinite; }
 .animate-hard-shadow { animation: hardShadowShift 150ms ease-out both; }
 
+/* Hover khas Neo-Brutalism: elemen naik sedikit dan bayangan hitam menebal.
+   Dipakai kartu/tombol yang ingin efek "hardShadowHover" eksplisit. */
+.hover-hard-shadow {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.hover-hard-shadow:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px 0px #000000;
+}
+.hover-hard-shadow:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-sm);
+}
+
 .delay-1 { animation-delay: 50ms; }
 .delay-2 { animation-delay: 100ms; }
 .delay-3 { animation-delay: 150ms; }

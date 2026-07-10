@@ -9,8 +9,10 @@ import SectionHeader from "../components/SectionHeader";
 import Tabel from "../components/Tabel";
 import Tombol from "../components/Tombol";
 import store from "../store";
-import { parseDate } from "../utils/distribusi";
+import { getLocalDateKey, parseDate } from "../utils/distribusi";
 import { formatDate, formatTonase } from "../utils/format";
+
+const HARI_MS = 24 * 60 * 60 * 1000;
 
 const statusOptions = ["menunggu", "dalam-pengiriman", "selesai"];
 const statusLabels = {
@@ -60,6 +62,29 @@ function StatusDistribusi({ onNavigate }) {
       }
     });
     return counts;
+  }, [keputusanAktif]);
+
+  const hariIni = parseDate(getLocalDateKey());
+
+  // Sorotan otomatis (MIS): ETA terlewat dan lebih dari 7 hari tanpa update.
+  const isEtaTerlewat = (item) =>
+    item.status === "dalam-pengiriman" && item.eta && parseDate(item.eta) < hariIni;
+  const isStale = (item) => {
+    if (item.status === "selesai") return false;
+    const waktu = item.status === "dalam-pengiriman" ? item.waktu_dalam_pengiriman : item.waktu_menunggu;
+    if (!waktu) return false;
+    return (Date.now() - new Date(waktu).getTime()) / HARI_MS > 7;
+  };
+
+  const ringkasanOperasional = useMemo(() => {
+    const todayKey = getLocalDateKey();
+    const totalAktif = keputusanAktif.filter((item) => item.status !== "selesai").length;
+    const selesaiHariIni = keputusanAktif.filter(
+      (item) => item.status === "selesai" && item.waktu_selesai && getLocalDateKey(new Date(item.waktu_selesai)) === todayKey
+    ).length;
+    const etaTerlewat = keputusanAktif.filter((item) => isEtaTerlewat(item)).length;
+    return { totalAktif, selesaiHariIni, etaTerlewat };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keputusanAktif]);
 
   const rows = keputusanAktif.map((item) => ({
@@ -140,6 +165,20 @@ function StatusDistribusi({ onNavigate }) {
           gap: "1.5rem",
         }}
       >
+        {/* Ringkasan operasional (MIS) di atas kanban. */}
+        <div className="app-grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(160px, 1fr))", gap: "var(--space-3)" }}>
+          {[
+            { label: "Total Aktif", nilai: ringkasanOperasional.totalAktif, warna: "var(--color-on-surface)", bg: "var(--color-surface)" },
+            { label: "Selesai Hari Ini", nilai: ringkasanOperasional.selesaiHariIni, warna: "var(--color-success-text)", bg: "var(--color-surface)" },
+            { label: "ETA Terlewat", nilai: ringkasanOperasional.etaTerlewat, warna: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)", bg: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)" },
+          ].map((box) => (
+            <div key={box.label} style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-3) var(--space-4)", backgroundColor: box.bg, boxShadow: "var(--shadow-sm)" }}>
+              <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>{box.label}</p>
+              <p style={{ margin: "2px 0 0", fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)", color: box.warna }}>{box.nilai}</p>
+            </div>
+          ))}
+        </div>
+
         <div
           className="stagger-children app-grid-3"
           style={{
@@ -224,6 +263,8 @@ function StatusDistribusi({ onNavigate }) {
                         style={{
                           backgroundColor: "var(--color-surface)",
                           borderRadius: "var(--radius-lg)",
+                          border: `2px solid ${isEtaTerlewat(item) ? "var(--color-danger)" : isStale(item) ? "var(--color-warning-text)" : "#000000"}`,
+                          borderLeft: `8px solid ${isEtaTerlewat(item) ? "var(--color-danger)" : isStale(item) ? "var(--color-warning-text)" : "#000000"}`,
                           padding: "var(--space-4)",
                           boxShadow: "var(--shadow-sm)",
                           display: "flex",
