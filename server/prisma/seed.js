@@ -73,7 +73,53 @@ async function resetDatabase() {
   await prisma.kota.deleteMany();
   await prisma.stok.deleteMany();
   await prisma.akun.deleteMany();
+  await prisma.targetKpi.deleteMany();
+  await prisma.kpiSnapshot.deleteMany();
   console.log("Reset: semua data lama dihapus");
+}
+
+// Target KPI default (management by objectives) — baris singleton, pola Stok.
+async function seedTargetKpi() {
+  await prisma.targetKpi.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton" }, // pakai default kolom di schema
+  });
+  console.log("Seeded TargetKpi: 1 row (singleton, nilai default)");
+}
+
+// Backfill snapshot KPI 14 hari ke belakang (data demo sintetis dengan tren
+// membaik) supaya grafik Tren Kinerja langsung bermakna saat presentasi.
+// Hari-hari berikutnya terisi otomatis oleh rekamKpiSnapshotHarian saat
+// dashboard Manajer dimuat.
+async function seedKpiSnapshot() {
+  const toKey = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  const hariIni = new Date();
+  const rows = [];
+  for (let i = 14; i >= 1; i -= 1) {
+    const tanggal = new Date(hariIni.getFullYear(), hariIni.getMonth(), hariIni.getDate() - i);
+    const maju = 14 - i; // 0..13, makin besar makin dekat hari ini
+    rows.push({
+      tanggal: toKey(tanggal),
+      tingkatPemenuhan: Math.min(100, 52 + maju * 2 + (maju % 3)), // tren naik ±52% → ±80%
+      keputusanAktif: Math.max(1, 6 - Math.floor(maju / 3)),
+      rataWaktuPengiriman: Math.round((3.4 - maju * 0.09) * 10) / 10, // membaik 3.4 → ~2.2 hari
+      utilisasiKapasitas: Math.min(100, 48 + maju * 2), // 48% → 74%
+      stokTbs: 620 + maju * 17, // stok bergerak naik menuju nilai seed 850
+      totalPermintaanTon: Math.round((190 + maju * 4.5) * 10) / 10,
+    });
+  }
+
+  for (const row of rows) {
+    await prisma.kpiSnapshot.upsert({
+      where: { tanggal: row.tanggal },
+      update: row,
+      create: row,
+    });
+  }
+  console.log(`Seeded KpiSnapshot: ${rows.length} rows (backfill 14 hari)`);
 }
 
 async function seedKota() {
@@ -216,6 +262,8 @@ async function main() {
   await seedKeputusanAndRiwayat();
   await seedNotifikasi();
   await seedActivityLog();
+  await seedTargetKpi();
+  await seedKpiSnapshot();
 }
 
 main()

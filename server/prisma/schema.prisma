@@ -98,3 +98,31 @@ model Stok {
   id      String @id @default("singleton")
   stokTbs Int
 }
+
+// Target KPI yang ditetapkan Manajer Distribusi (management by objectives).
+// Singleton seperti Stok. Nilai-nilai ini dipakai misService sebagai ambang
+// keputusan (status stok, eskalasi keputusan) dan pembanding realisasi KPI —
+// menggantikan konstanta hardcoded.
+model TargetKpi {
+  id               String @id @default("singleton")
+  targetPemenuhan  Int    @default(80) // % keputusan berstatus selesai
+  targetWaktuKirim Float  @default(2) // hari rata-rata pengiriman
+  targetUtilisasi  Int    @default(70) // % utilisasi kapasitas rata-rata
+  minHariPasokan   Int    @default(14) // stok di bawah ini = perhatian; setengahnya = kritis
+  maxHariEskalasi  Int    @default(3) // keputusan menunggu lebih lama dari ini dieskalasi
+}
+
+// Snapshot KPI harian — satu baris per tanggal (unique). Direkam otomatis
+// oleh sinkronNotifikasiMis saat dashboard Manajer dimuat, menjadi sumber
+// grafik Tren Kinerja lintas waktu (ciri pelaporan berkala MIS).
+model KpiSnapshot {
+  id                  Int      @id @default(autoincrement())
+  tanggal             String   @unique // YYYY-MM-DD
+  tingkatPemenuhan    Int
+  keputusanAktif      Int
+  rataWaktuPengiriman Float?
+  utilisasiKapasitas  Int
+  stokTbs             Int
+  totalPermintaanTon  Float
+  createdAt           DateTime @default(now())
+}
