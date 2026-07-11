@@ -5,8 +5,8 @@ milestone_name: Backend & Multi-User Migration
 status: verifying
 stopped_at: context exhaustion at 87% (2026-07-03)
 last_updated: "2026-07-03T16:41:43.417Z"
-last_activity: 2026-07-10
-last_activity_desc: "Completed quick task 260710-sb7: Paket MIS — Target KPI (MBO), snapshot KPI harian + Tren Kinerja, drill-down KPI di Dashboard Manajer"
+last_activity: 2026-07-11
+last_activity_desc: "Completed quick task 260711-9y5: Perbandingan Periode di Laporan + analisis ABC Pareto + ekspor CSV + sweep istilah singkatan di UI"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-06-24)
 **v2.0 MILESTONE COMPLETE.** Phase: 10 of 10 (Multi-Client Sync & Cross-Role UAT) — FINAL phase, FINAL plan.
 Plan: Not started
 Status: **10-02-PLAN.md COMPLETE — v2.0 MILESTONE COMPLETE.** Built three multi-client verification scripts under `server/src/sync/` proving SYNC-01's success criteria hold with real concurrent client sessions (two independent `store.js` instances via Vite `ssrLoadModule` cache-busted imports) polling against the live backend: (1) `multiClientSync.verify.mjs` proves a mutation by one client session is observed by a second polling client session purely through its own real poll tick within one 4000ms interval, and that `stopPolling()` halts further sync; (2) `multiClientRbac.verify.mjs` re-proves the Phase 7 `POST /keputusan` 403 RBAC denial for Tim Logistik holds with BOTH sessions actively polling (Success Criterion 3), with an Admin positive control; (3) `multiClientRace.verify.mjs` re-proves the Phase 8 LOGIC-02 exactly-one-winner optimistic-lock guarantee through two REAL logged-in client sessions under active polling (Success Criterion 4), confirmed stable across 3 separate runs. All three scripts are self-cleaning/idempotent (re-run 2-3 times each with identical PASS output, zero orphaned rows). Two Rule-1 auto-fixes applied (a plan role/RBAC mismatch in Task 1, and a token cross-contamination hazard in the two-client bootstrap, both found and fixed before any script was committed — see 10-02-SUMMARY.md Deviations). Plan metadata commit skipped per the Phase 6-10 `commit_docs: false` standing constraint (SUMMARY.md/STATE.md written to disk only).
-Last activity: 2026-07-10 — Completed quick task 260710-sb7: Paket MIS — Target KPI (MBO), snapshot KPI harian + Tren Kinerja, drill-down KPI di Dashboard Manajer
+Last activity: 2026-07-11 — Completed quick task 260711-9y5: Perbandingan Periode di Laporan + analisis ABC Pareto + ekspor CSV + sweep istilah singkatan di UI
 
 Progress: [██████████] 100% (ALL 10 milestone phases complete, all 18 plans done — v2.0 MILESTONE COMPLETE; see Performance Metrics for plan-level detail)
 
@@ -192,6 +192,7 @@ New from 09-05 (Phase 9's final plan — ALL resolved within this plan, no open 
 | 260704-3zb | Implementasi AI-2: rekomendasi keputusan AI (POST /keputusan/rekomendasi-ai + card Rekomendasi AI di KeputusanDistribusi.jsx; geminiClient.js jadi helper Gemini bersama) | 2026-07-04 | 931e6c8 | [260704-3zb-implementasi-ai-2-rekomendasi-keputusan-](./quick/260704-3zb-implementasi-ai-2-rekomendasi-keputusan-/) |
 | 260710-rmc | Fitur MIS Peramalan Permintaan per Kota di AnalisisRanking (computeForecastPerKota + Sparkline, estimasi kebutuhan berikutnya vs stok) | 2026-07-10 | b89a3b3 | [260710-rmc-tambah-fitur-mis-peramalan-permintaan-pe](./quick/260710-rmc-tambah-fitur-mis-peramalan-permintaan-pe/) |
 | 260710-sb7 | Paket MIS: Target KPI (MBO) + snapshot KPI harian & Tren Kinerja + drill-down KPI di Dashboard Manajer | 2026-07-10 | 8ed2b35, 4c7ddd7 | [260710-sb7-paket-mis-target-kpi-mbo-riwayat-kpi-har](./quick/260710-sb7-paket-mis-target-kpi-mbo-riwayat-kpi-har/) |
+| 260711-9y5 | Perbandingan periode Laporan + analisis ABC Pareto + ekspor CSV + sweep istilah singkatan (KPI/ETA/SLA → istilah lengkap) di UI | 2026-07-11 | a1d4bc5, 881dc6d | [260711-9y5-perbandingan-periode-laporan-analisis-ab](./quick/260711-9y5-perbandingan-periode-laporan-analisis-ab/) |
 
 ## Deferred Items
 
