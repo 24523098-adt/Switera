@@ -6,6 +6,7 @@ import PageHeader from "../components/PageHeader";
 import SectionHeader from "../components/SectionHeader";
 import Sparkline from "../components/Sparkline";
 import Tabel from "../components/Tabel";
+import Tombol from "../components/Tombol";
 import { SkeletonChart } from "../components/Skeleton";
 import store from "../store";
 import {
@@ -15,10 +16,68 @@ import {
   chartTooltipDefaults,
   withOpacity,
 } from "../utils/chartDefaults";
+import { downloadCsv } from "../utils/csv";
 import { aggregatePermintaanRanking } from "../utils/distribusi";
 import { computeForecastPerKota } from "../utils/forecast";
 import { formatDate, formatTonase } from "../utils/format";
 import useLiveChart from "../hooks/useLiveChart";
+
+// Klasifikasi ABC (analisis Pareto): kelas A menyumbang ±80% kumulatif
+// permintaan, B sampai 95%, sisanya C — dasar prioritas alokasi manajemen.
+const KELAS_ABC_GAYA = {
+  A: { bg: "var(--color-lime)", keterangan: "Prioritas utama (±80% permintaan)" },
+  B: { bg: "var(--color-pastel)", keterangan: "Prioritas menengah (80–95%)" },
+  C: { bg: "var(--color-surface)", keterangan: "Prioritas rendah (sisa)" },
+};
+
+const computeKelasAbc = (ranking) => {
+  const total = ranking.reduce((sum, item) => sum + item.totalPermintaan, 0);
+  if (total <= 0) {
+    return { byKota: new Map(), ringkasan: [] };
+  }
+  let kumulatif = 0;
+  const byKota = new Map();
+  const agregat = { A: { jumlah: 0, ton: 0 }, B: { jumlah: 0, ton: 0 }, C: { jumlah: 0, ton: 0 } };
+  ranking.forEach((item) => {
+    kumulatif += item.totalPermintaan;
+    const persenKumulatif = (kumulatif / total) * 100;
+    const kelas = persenKumulatif <= 80 || byKota.size === 0 ? "A" : persenKumulatif <= 95 ? "B" : "C";
+    byKota.set(item.kota, kelas);
+    agregat[kelas].jumlah += 1;
+    agregat[kelas].ton += item.totalPermintaan;
+  });
+  const ringkasan = ["A", "B", "C"].map((kelas) => ({
+    kelas,
+    jumlah: agregat[kelas].jumlah,
+    ton: agregat[kelas].ton,
+    persen: Math.round((agregat[kelas].ton / total) * 100),
+  }));
+  return { byKota, ringkasan };
+};
+
+function ChipKelasAbc({ kelas }) {
+  const gaya = KELAS_ABC_GAYA[kelas] ?? KELAS_ABC_GAYA.C;
+  return (
+    <span
+      title={gaya.keterangan}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: "28px",
+        border: "2px solid #000000",
+        borderRadius: "var(--radius-full)",
+        padding: "2px 10px",
+        backgroundColor: gaya.bg,
+        fontSize: "var(--text-xs)",
+        fontWeight: "var(--font-weight-bold)",
+        color: "var(--color-text-primary)",
+      }}
+    >
+      {kelas}
+    </span>
+  );
+}
 
 // Tampilan chip arah tren peramalan (Neo-Brutalism: border hitam, pill).
 const TREN_CHIP = {
@@ -75,9 +134,31 @@ function PeramalanPermintaan({ forecastList, stokTbs }) {
     },
   ];
 
+  const eksporPeramalan = () =>
+    downloadCsv(
+      "peramalan-permintaan.csv",
+      forecastList.map((item) => ({
+        kota: item.kota,
+        jumlahData: item.jumlahData,
+        nilaiTerakhir: item.nilaiTerakhir,
+        estimasiBerikutnya: item.rataRata,
+        tren: item.trend,
+      })),
+      [
+        { key: "kota", label: "Kota" },
+        { key: "jumlahData", label: "Jumlah Data" },
+        { key: "nilaiTerakhir", label: "Permintaan Terakhir (ton)" },
+        { key: "estimasiBerikutnya", label: "Estimasi Berikutnya (ton)" },
+        { key: "tren", label: "Tren" },
+      ]
+    );
+
   return (
     <Card>
-      <SectionHeader>Peramalan Permintaan per Kota</SectionHeader>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+        <SectionHeader>Peramalan Permintaan per Kota</SectionHeader>
+        <Tombol label="Ekspor CSV" variant="sekunder" onClick={eksporPeramalan} />
+      </div>
       <p
         style={{
           margin: "0 0 var(--space-4)",
@@ -332,6 +413,9 @@ function AnalisisRanking({ onNavigate }) {
     [snapshot.permintaan]
   );
 
+  // Klasifikasi ABC (Pareto) dari ranking permintaan.
+  const abc = useMemo(() => computeKelasAbc(ranking), [ranking]);
+
   // Rata-rata permintaan harian 30 hari untuk simulasi ketahanan stok.
   const rataHarian = useMemo(() => {
     const batas = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -391,6 +475,7 @@ function AnalisisRanking({ onNavigate }) {
       </span>
     ),
     namaKota: item.kota,
+    kelas: <ChipKelasAbc kelas={abc.byKota.get(item.kota) ?? "C"} />,
     totalPermintaan: formatTonase(item.totalPermintaan),
     selisih: (() => {
       const difference = topValue - item.totalPermintaan;
@@ -473,6 +558,7 @@ function AnalisisRanking({ onNavigate }) {
               kolom={[
                 { key: "peringkat", label: "Peringkat" },
                 { key: "namaKota", label: "Nama Kota" },
+                { key: "kelas", label: "Kelas" },
                 { key: "totalPermintaan", label: "Total Permintaan (ton)", numeric: true },
                 { key: "selisih", label: "Selisih dari Peringkat 1", numeric: true },
               ]}
@@ -482,6 +568,45 @@ function AnalisisRanking({ onNavigate }) {
               }
             />
           </Card>
+
+          {/* Analisis Pareto (klasifikasi ABC): fokuskan kapasitas ke kota kelas A. */}
+          {abc.ringkasan.length > 0 ? (
+            <Card>
+              <SectionHeader>Analisis Pareto (Klasifikasi ABC)</SectionHeader>
+              <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+                Kota dikelompokkan menurut kontribusi kumulatif permintaan: kelas A menyerap sekitar 80%
+                kebutuhan — prioritaskan stok dan armada ke sana lebih dulu.
+              </p>
+              <div className="app-grid-3" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(160px, 1fr))", gap: "var(--space-3)" }}>
+                {abc.ringkasan.map((item) => (
+                  <div
+                    key={item.kelas}
+                    style={{
+                      border: "2px solid #000000",
+                      borderRadius: "var(--radius-lg)",
+                      padding: "var(--space-3) var(--space-4)",
+                      backgroundColor: KELAS_ABC_GAYA[item.kelas].bg,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                      <span style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-2xl)", fontWeight: "var(--font-weight-bold)" }}>
+                        Kelas {item.kelas}
+                      </span>
+                      <span style={{ fontSize: "var(--text-xs)", fontWeight: "var(--font-weight-bold)", border: "2px solid #000000", borderRadius: "var(--radius-full)", padding: "2px 10px", backgroundColor: "var(--color-surface)" }}>
+                        {item.persen}% permintaan
+                      </span>
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontSize: "var(--text-sm)", color: "var(--color-text-primary)" }}>
+                      {item.jumlah} kota · {formatTonase(item.ton)}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
+                      {KELAS_ABC_GAYA[item.kelas].keterangan}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null}
 
           <GrafikRankingHorizontal ranking={ranking} />
 
@@ -545,7 +670,36 @@ function AnalisisRanking({ onNavigate }) {
 
           {rekomendasi.length > 0 ? (
             <Card style={{ animationDelay: "80ms" }}>
-              <SectionHeader>Skor & Alokasi Distribusi</SectionHeader>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+                <SectionHeader>Skor & Alokasi Distribusi</SectionHeader>
+                <Tombol
+                  label="Ekspor CSV"
+                  variant="sekunder"
+                  onClick={() =>
+                    downloadCsv(
+                      "skor-alokasi-distribusi.csv",
+                      rekomendasi.map((item, index) => ({
+                        peringkat: index + 1,
+                        kota: item.kota,
+                        skor: item.skor,
+                        totalPermintaan: item.totalPermintaan,
+                        kapasitas: item.kapasitas,
+                        alokasi: item.alokasi,
+                        status: item.terpenuhiPenuh ? "Terpenuhi" : item.dibatasiKapasitas ? "Dibatasi Kapasitas" : "Stok Tidak Cukup",
+                      })),
+                      [
+                        { key: "peringkat", label: "Peringkat" },
+                        { key: "kota", label: "Kota" },
+                        { key: "skor", label: "Skor" },
+                        { key: "totalPermintaan", label: "Permintaan (ton)" },
+                        { key: "kapasitas", label: "Kapasitas (ton)" },
+                        { key: "alokasi", label: "Alokasi (ton)" },
+                        { key: "status", label: "Status" },
+                      ]
+                    )
+                  }
+                />
+              </div>
               <p
                 style={{
                   margin: "0 0 1rem",

@@ -458,7 +458,7 @@ function Laporan({ onNavigate }) {
     kotaTujuan: item.kota_tujuan,
     volume: formatTonase(item.volume_tbs),
     armada: item.armada
-      ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}`
+      ? `${item.armada}${item.eta ? ` · Estimasi tiba ${formatDate(item.eta)}` : ""}`
       : "-",
     status: <Badge status={item.status} />,
   }));
@@ -523,6 +523,54 @@ function Laporan({ onNavigate }) {
     return { volumeIni, jumlahIni, volumeLalu, delta, kesimpulan };
   }, [isTimLogistik, filteredKeputusan, filteredRiwayat, rangeSebelumnya, snapshot.keputusan, snapshot.riwayatKeputusan]);
 
+  // Perbandingan periode (MIS): varians metrik kunci periode terpilih vs
+  // periode sebelumnya. Delta relatif (%) untuk nilai absolut, selisih poin
+  // untuk metrik yang sudah berupa persentase.
+  const perbandinganPeriode = useMemo(() => {
+    if (!range || !rangeSebelumnya) return null;
+
+    const permintaanSemua = snapshot.permintaan ?? [];
+    const sumberKeputusan = isTimLogistik ? snapshot.keputusan ?? [] : snapshot.riwayatKeputusan ?? [];
+
+    const hitungMetrik = (r) => {
+      const permintaanRange = permintaanSemua.filter(
+        (item) => item.tanggal_permintaan && isDateInRange(item.tanggal_permintaan, r)
+      );
+      const keputusanRange = sumberKeputusan.filter(
+        (item) => item.tanggal_keputusan && isDateInRange(item.tanggal_keputusan, r)
+      );
+      const selesai = keputusanRange.filter((item) => item.status === "selesai");
+      const berEta = selesai.filter((item) => item.eta && item.waktu_selesai);
+      const tepat = berEta.filter(
+        (item) => new Date(item.waktu_selesai) <= new Date(`${item.eta}T23:59:59`)
+      );
+      return {
+        totalPermintaan: Math.round(permintaanRange.reduce((total, item) => total + (Number(item.jumlah_permintaan) || 0), 0) * 10) / 10,
+        volumeKeputusan: Math.round(keputusanRange.reduce((total, item) => total + (Number(item.volume_tbs) || 0), 0) * 10) / 10,
+        jumlahSelesai: selesai.length,
+        ketepatan: berEta.length > 0 ? Math.round((tepat.length / berEta.length) * 100) : null,
+      };
+    };
+
+    const ini = hitungMetrik(range);
+    const lalu = hitungMetrik(rangeSebelumnya);
+
+    const deltaRelatif = (a, b) => (b > 0 ? Math.round(((a - b) / b) * 100) : null);
+
+    return [
+      { label: "Total Permintaan", ini: `${ini.totalPermintaan} ton`, lalu: `${lalu.totalPermintaan} ton`, delta: deltaRelatif(ini.totalPermintaan, lalu.totalPermintaan), satuan: "%" },
+      { label: isTimLogistik ? "Volume Distribusi" : "Volume Keputusan", ini: `${ini.volumeKeputusan} ton`, lalu: `${lalu.volumeKeputusan} ton`, delta: deltaRelatif(ini.volumeKeputusan, lalu.volumeKeputusan), satuan: "%" },
+      { label: "Pengiriman Selesai", ini: `${ini.jumlahSelesai}`, lalu: `${lalu.jumlahSelesai}`, delta: deltaRelatif(ini.jumlahSelesai, lalu.jumlahSelesai), satuan: "%" },
+      {
+        label: "Ketepatan Estimasi Tiba",
+        ini: ini.ketepatan !== null ? `${ini.ketepatan}%` : "—",
+        lalu: lalu.ketepatan !== null ? `${lalu.ketepatan}%` : "—",
+        delta: ini.ketepatan !== null && lalu.ketepatan !== null ? ini.ketepatan - lalu.ketepatan : null,
+        satuan: " poin",
+      },
+    ];
+  }, [range, rangeSebelumnya, isTimLogistik, snapshot.permintaan, snapshot.keputusan, snapshot.riwayatKeputusan]);
+
   // Tab Efisiensi (Manajer): tingkat pemenuhan, rata-rata waktu, % pembatalan.
   const efisiensi = useMemo(() => {
     const total = filteredRiwayat.length;
@@ -551,7 +599,7 @@ function Laporan({ onNavigate }) {
     const hariIni = parseDate(getLocalDateKey());
     filteredKeputusan.forEach((item) => {
       if (item.status === "dalam-pengiriman" && item.eta && parseDate(item.eta) < hariIni) {
-        list.push({ tanggal: item.tanggal_keputusan, kota: item.kota_tujuan, jenis: "ETA terlewat", detail: `ETA ${formatDate(item.eta)}` });
+        list.push({ tanggal: item.tanggal_keputusan, kota: item.kota_tujuan, jenis: "Estimasi tiba terlewat", detail: `Estimasi tiba ${formatDate(item.eta)}` });
       }
     });
     return list
@@ -611,13 +659,13 @@ function Laporan({ onNavigate }) {
     const barisUtama = sumberUtama
       .map((item, i) =>
         isTimLogistik
-          ? `<tr><td class="num">${i + 1}</td><td>${esc(formatDate(item.tanggal_keputusan))}</td><td>${esc(item.kota_tujuan)}</td><td class="num">${esc(item.volume_tbs)}</td><td>${esc(item.armada ? item.armada + (item.eta ? ` / ETA ${formatDate(item.eta)}` : "") : "-")}</td><td>${esc(statusLabels[item.status] ?? item.status)}</td></tr>`
+          ? `<tr><td class="num">${i + 1}</td><td>${esc(formatDate(item.tanggal_keputusan))}</td><td>${esc(item.kota_tujuan)}</td><td class="num">${esc(item.volume_tbs)}</td><td>${esc(item.armada ? item.armada + (item.eta ? ` / Estimasi tiba ${formatDate(item.eta)}` : "") : "-")}</td><td>${esc(statusLabels[item.status] ?? item.status)}</td></tr>`
           : `<tr><td class="num">${i + 1}</td><td>${esc(formatDate(item.tanggal_keputusan))}</td><td>${esc(item.kota_tujuan)}</td><td class="num">${esc(item.volume_tbs)}</td><td>${esc(item.diputuskan_oleh)}</td><td>${esc(statusLabels[item.status] ?? item.status)}</td></tr>`
       )
       .join("");
 
     const kolomUtama = isTimLogistik
-      ? '<th class="num">No</th><th>Tanggal</th><th>Kota Tujuan</th><th class="num">Volume (ton)</th><th>Armada / ETA</th><th>Status</th>'
+      ? '<th class="num">No</th><th>Tanggal</th><th>Kota Tujuan</th><th class="num">Volume (ton)</th><th>Armada / Estimasi Tiba</th><th>Status</th>'
       : '<th class="num">No</th><th>Tanggal</th><th>Kota Tujuan</th><th class="num">Volume (ton)</th><th>Diputuskan Oleh</th><th>Status</th>';
 
     // Bagian khusus Manajer: efisiensi + kinerja per kota.
@@ -870,6 +918,64 @@ function Laporan({ onNavigate }) {
           </Card>
         ) : null}
 
+        {/* Perbandingan periode (MIS): varians metrik kunci vs periode lalu. */}
+        {!noData && perbandinganPeriode ? (
+          <Card>
+            <SectionHeader>Perbandingan Periode</SectionHeader>
+            <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+              {periode === "minggu-ini" ? "Minggu ini dibandingkan minggu lalu" : "Bulan ini dibandingkan bulan lalu"} — perubahan
+              tiap metrik kunci sebagai dasar evaluasi kinerja periode berjalan.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              {perbandinganPeriode.map((baris) => (
+                <div
+                  key={baris.label}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(140px, 1.4fr) 1fr 1fr minmax(110px, 1fr)",
+                    alignItems: "center",
+                    gap: "var(--space-3)",
+                    border: "2px solid #000000",
+                    borderRadius: "var(--radius-lg)",
+                    padding: "var(--space-2) var(--space-4)",
+                    backgroundColor: "var(--color-surface)",
+                  }}
+                >
+                  <span style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-weight-semibold)", color: "var(--color-on-surface)" }}>
+                    {baris.label}
+                  </span>
+                  <span style={{ fontSize: "var(--text-sm)", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{baris.ini}</span>
+                  <span style={{ fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>dari {baris.lalu}</span>
+                  {baris.delta !== null ? (
+                    <span
+                      style={{
+                        justifySelf: "end",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        border: "2px solid #000000",
+                        borderRadius: "var(--radius-full)",
+                        padding: "2px 10px",
+                        fontSize: "var(--text-xs)",
+                        fontWeight: "var(--font-weight-bold)",
+                        backgroundColor: baris.delta >= 0 ? "var(--color-lime)" : "var(--color-danger-bg)",
+                        color: baris.delta >= 0 ? "#000000" : "var(--color-danger-text)",
+                      }}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: "14px", lineHeight: 1 }}>
+                        {baris.delta >= 0 ? "trending_up" : "trending_down"}
+                      </span>
+                      {baris.delta >= 0 ? "+" : ""}{baris.delta}{baris.satuan}
+                    </span>
+                  ) : (
+                    <span style={{ justifySelf: "end", fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>Tak terbanding</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
         {/* AI-1: ringkasan naratif otomatis — tampil untuk kedua role selama
             ada data pada periode terpilih. */}
         {!noData ? <RingkasanAI periode={periode} /> : null}
@@ -899,7 +1005,7 @@ function Laporan({ onNavigate }) {
                     { key: "tanggal", label: "Tanggal" },
                     { key: "kotaTujuan", label: "Kota Tujuan" },
                     { key: "volume", label: "Volume TBS", numeric: true },
-                    { key: "armada", label: "Armada / ETA" },
+                    { key: "armada", label: "Armada / Estimasi Tiba" },
                     { key: "status", label: "Status" },
                   ]}
                   data={tableRowsTimLogistik}

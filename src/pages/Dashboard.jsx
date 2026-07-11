@@ -20,6 +20,7 @@ import {
   chartTickDefaults,
   chartTooltipDefaults,
 } from "../utils/chartDefaults";
+import { downloadCsv } from "../utils/csv";
 import { getDuplicateGroups, getLocalDateKey, parseDate } from "../utils/distribusi";
 import {
   getMisSituasiHariIni,
@@ -976,7 +977,7 @@ function KeputusanBerjalan({ berjalan, onBatal }) {
           const lama = item.durasiHari > 7;
           const borderColor = terlewat ? "var(--color-danger)" : lama ? "var(--color-warning-text)" : "#000000";
           const etaLabel =
-            item.statusEta === "tanpa_eta" ? "Tanpa ETA" : `ETA ${formatDate(item.eta)} · ${terlewat ? "Terlewat" : "Tepat waktu"}`;
+            item.statusEta === "tanpa_eta" ? "Tanpa estimasi tiba" : `Estimasi tiba ${formatDate(item.eta)} · ${terlewat ? "Terlewat" : "Tepat waktu"}`;
           return (
             <div
               key={item.id}
@@ -1285,7 +1286,7 @@ function KinerjaVsTarget({ kpi, onDrill, onAturTarget }) {
         <div>
           <SectionHeader>Kinerja vs Target</SectionHeader>
           <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-            Realisasi KPI dibandingkan dengan target yang Anda tetapkan. Klik kartu untuk menelusuri pembentuk angkanya.
+            Realisasi indikator kinerja dibandingkan dengan target yang Anda tetapkan. Klik kartu untuk menelusuri pembentuk angkanya.
           </p>
         </div>
         <Tombol label="Atur Target" variant="sekunder" onClick={onAturTarget} />
@@ -1414,7 +1415,7 @@ function TrenKinerjaChart({ riwayat, targetPemenuhan }) {
   return (
     <div style={{ height: "260px" }}>
       {isReady ? null : <SkeletonChart height="260px" />}
-      <canvas ref={canvasRef} aria-label="Tren kinerja KPI harian" style={{ display: isReady ? "block" : "none" }} />
+      <canvas ref={canvasRef} aria-label="Tren indikator kinerja harian" style={{ display: isReady ? "block" : "none" }} />
     </div>
   );
 }
@@ -1423,17 +1424,43 @@ function TrenKinerja({ riwayat, targetPemenuhan }) {
   if (!riwayat) {
     return <SkeletonChart height="260px" />;
   }
+  const eksporRiwayat = () =>
+    downloadCsv(
+      "riwayat-indikator-kinerja.csv",
+      riwayat.map((item) => ({
+        tanggal: item.tanggal,
+        tingkatPemenuhan: item.tingkatPemenuhan,
+        utilisasiKapasitas: item.utilisasiKapasitas,
+        keputusanAktif: item.keputusanAktif,
+        rataWaktuPengiriman: item.rataWaktuPengiriman ?? "",
+        stokTbs: item.stokTbs,
+        totalPermintaanTon: item.totalPermintaanTon,
+      })),
+      [
+        { key: "tanggal", label: "Tanggal" },
+        { key: "tingkatPemenuhan", label: "Tingkat Pemenuhan (%)" },
+        { key: "utilisasiKapasitas", label: "Utilisasi Kapasitas (%)" },
+        { key: "keputusanAktif", label: "Keputusan Aktif" },
+        { key: "rataWaktuPengiriman", label: "Rata Waktu Kirim (hari)" },
+        { key: "stokTbs", label: "Stok TBS (ton)" },
+        { key: "totalPermintaanTon", label: "Total Permintaan (ton)" },
+      ]
+    );
+
   return (
     <Card>
-      <SectionHeader>Tren Kinerja</SectionHeader>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+        <SectionHeader>Tren Kinerja</SectionHeader>
+        <Tombol label="Ekspor CSV" variant="sekunder" onClick={eksporRiwayat} disabled={riwayat.length === 0} />
+      </div>
       <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-        Snapshot KPI direkam otomatis setiap hari — grafik ini menjawab apakah kinerja distribusi membaik
+        Indikator kinerja direkam otomatis setiap hari — grafik ini menjawab apakah kinerja distribusi membaik
         dari waktu ke waktu, dibandingkan garis target.
       </p>
       {riwayat.length > 1 ? (
         <TrenKinerjaChart riwayat={riwayat} targetPemenuhan={targetPemenuhan} />
       ) : (
-        <EmptyState pesan="Riwayat KPI belum cukup untuk menampilkan tren (butuh minimal 2 hari)." />
+        <EmptyState pesan="Riwayat kinerja belum cukup untuk menampilkan tren (butuh minimal 2 hari)." />
       )}
     </Card>
   );
@@ -1483,7 +1510,7 @@ function ModalDrillKpi({ jenis, onTutup }) {
           { key: "kota", label: "Kota" },
           { key: "volume", label: "Volume (ton)", numeric: true },
           { key: "siklusJam", label: "Siklus (jam)", numeric: true },
-          { key: "eta", label: "ETA" },
+          { key: "eta", label: "Estimasi Tiba" },
           { key: "tepat", label: "Ketepatan" },
         ]}
         data={detail.map((item) => ({
@@ -1494,7 +1521,7 @@ function ModalDrillKpi({ jenis, onTutup }) {
           eta: item.eta ? formatDate(item.eta) : "—",
           tepat:
             item.tepatWaktu === null ? (
-              <span style={{ color: "var(--color-text-muted)", fontSize: "var(--text-xs)" }}>Tanpa ETA</span>
+              <span style={{ color: "var(--color-text-muted)", fontSize: "var(--text-xs)" }}>Tanpa estimasi</span>
             ) : item.tepatWaktu ? (
               <span style={{ color: "var(--color-success-text)", fontSize: "var(--text-xs)", fontWeight: 600 }}>Tepat waktu</span>
             ) : (
@@ -1544,7 +1571,7 @@ function ModalDrillKpi({ jenis, onTutup }) {
 
   return (
     <Modal
-      judul={DRILL_JUDUL[jenis] ?? "Rincian KPI"}
+      judul={DRILL_JUDUL[jenis] ?? "Rincian Indikator Kinerja"}
       onTutup={onTutup}
       konten={<div style={{ maxHeight: "60vh", overflowY: "auto" }}>{konten}</div>}
     />
@@ -1571,22 +1598,22 @@ function ModalAturTarget({ target, onTutup, onTersimpan }) {
     try {
       const body = Object.fromEntries(FIELD_TARGET.map((f) => [f.key, Number(form[f.key])]));
       await setTargetKpi(body);
-      showToast({ type: "success", message: "Target KPI berhasil diperbarui." });
+      showToast({ type: "success", message: "Target kinerja berhasil diperbarui." });
       onTersimpan();
     } catch (error) {
-      showToast({ type: "error", message: error.message || "Gagal menyimpan target KPI." });
+      showToast({ type: "error", message: error.message || "Gagal menyimpan target kinerja." });
       setIsSaving(false);
     }
   };
 
   return (
     <Modal
-      judul="Atur Target KPI"
+      judul="Atur Target Kinerja"
       onTutup={onTutup}
       konten={
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
           <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-            Target ini menjadi acuan seluruh indikator: status KPI, ambang peringatan stok, dan eskalasi
+            Target ini menjadi acuan seluruh indikator: status indikator kinerja, ambang peringatan stok, dan eskalasi
             keputusan. Perubahan tercatat di riwayat aktivitas.
           </p>
           {FIELD_TARGET.map((f) => (
@@ -1805,7 +1832,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
       id: item.id,
       kotaTujuan: item.kota_tujuan,
       volume: formatTonase(item.volume_tbs),
-      armada: item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "-",
+      armada: item.armada ? `${item.armada}${item.eta ? ` · Estimasi tiba ${formatDate(item.eta)}` : ""}` : "-",
       status: <Badge status={item.status} />,
       tanggal: formatDate(item.tanggal_keputusan),
       progres: (
@@ -1854,7 +1881,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
         nextErrors.armada = "Armada / Sopir wajib diisi saat status Dalam Pengiriman.";
       }
       if (!eta) {
-        nextErrors.eta = "Estimasi Tiba (ETA) wajib dipilih saat status Dalam Pengiriman.";
+        nextErrors.eta = "Estimasi tiba wajib dipilih saat status Dalam Pengiriman.";
       }
     }
 
@@ -1916,7 +1943,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
             { label: "Total Aktif", nilai: bebanKerja.aktif, warna: "var(--color-on-surface)" },
             { label: "Selesai Hari Ini", nilai: bebanKerja.selesaiHariIni, warna: "var(--color-success-text)" },
             { label: "Perlu Konfirmasi", nilai: bebanKerja.perluKonfirmasi, warna: "var(--color-warning-text)" },
-            { label: "ETA Terlewat", nilai: bebanKerja.etaTerlewat, warna: bebanKerja.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)" },
+            { label: "Estimasi Tiba Terlewat", nilai: bebanKerja.etaTerlewat, warna: bebanKerja.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)" },
           ].map((box) => (
             <div
               key={box.label}
@@ -1924,7 +1951,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
                 border: "2px solid #000000",
                 borderRadius: "var(--radius-lg)",
                 padding: "var(--space-3) var(--space-4)",
-                backgroundColor: box.label === "ETA Terlewat" && bebanKerja.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)",
+                backgroundColor: box.label === "Estimasi Tiba Terlewat" && bebanKerja.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)",
                 boxShadow: "var(--shadow-sm)",
               }}
             >
@@ -1936,7 +1963,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
 
         {prioritasKerja.length > 0 ? (
           <Card>
-            <SectionHeader>Prioritas Kerja (ETA Terdekat)</SectionHeader>
+            <SectionHeader>Prioritas Kerja (Estimasi Tiba Terdekat)</SectionHeader>
             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
               {prioritasKerja.map((item) => (
                 <div
@@ -1958,7 +1985,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
                   </span>
                   <Badge status={item.status} />
                   <span style={{ fontSize: "var(--text-xs)", fontWeight: item.terlewat ? "var(--font-weight-bold)" : "var(--font-weight-normal)", color: item.terlewat ? "var(--color-danger-text)" : "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
-                    {item.eta ? `${item.terlewat ? "Terlewat" : "ETA"} ${formatDate(item.eta)}` : "Tanpa ETA"}
+                    {item.eta ? `${item.terlewat ? "Terlewat" : "Estimasi tiba"} ${formatDate(item.eta)}` : "Tanpa estimasi tiba"}
                   </span>
                   <button
                     type="button"
@@ -2157,7 +2184,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
                           </span>
                         </div>
                         <span style={{ fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)" }}>
-                          {item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "Armada belum ditetapkan"}
+                          {item.armada ? `${item.armada}${item.eta ? ` · Estimasi tiba ${formatDate(item.eta)}` : ""}` : "Armada belum ditetapkan"}
                         </span>
                         <button
                           type="button"
@@ -2282,7 +2309,7 @@ function DashboardLogistik({ keputusan, userAktif }) {
                   </label>
                   <label style={{ display: "block" }}>
                     <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
-                      Estimasi Tiba (ETA)
+                      Estimasi Tiba
                     </span>
                     <input
                       type="date"
