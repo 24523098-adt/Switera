@@ -204,9 +204,9 @@ export const computeExceptions = ({ keputusan, permintaan, stokTbs, baseDate = n
     alerts.push({
       id: "sla-breach",
       severity: "kritis",
-      kategori: "SLA",
+      kategori: "Tenggat",
       ikon: "schedule",
-      pesan: `${sla.length} pengiriman melewati estimasi tiba (ETA).`,
+      pesan: `${sla.length} pengiriman melewati estimasi tiba.`,
       target: "laporan",
       aksiLabel: "Lihat laporan",
     });

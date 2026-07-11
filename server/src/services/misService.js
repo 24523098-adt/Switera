@@ -239,8 +239,8 @@ export async function getTindakanMendesak() {
       tindakan.push({
         tipe: "eta_terlewat",
         tingkat: "kritis",
-        judul: `ETA terlewat: ${item.kota_tujuan}`,
-        deskripsi: `Pengiriman ke ${item.kota_tujuan} sudah melewati ETA ${item.eta}.`,
+        judul: `Estimasi tiba terlewat: ${item.kota_tujuan}`,
+        deskripsi: `Pengiriman ke ${item.kota_tujuan} sudah melewati estimasi tiba ${item.eta}.`,
         aksi: "keputusan-distribusi",
         data: { id: item.id, kota: item.kota_tujuan, eta: item.eta },
       });

@@ -46,7 +46,7 @@ export async function setTargetKpi(data, aktor, role) {
   await catatAktivitas(
     aktor,
     role,
-    `Memperbarui target KPI (pemenuhan ${row.targetPemenuhan}%, waktu kirim ${row.targetWaktuKirim} hari, ` +
+    `Memperbarui target kinerja (pemenuhan ${row.targetPemenuhan}%, waktu kirim ${row.targetWaktuKirim} hari, ` +
       `utilisasi ${row.targetUtilisasi}%, pasokan min ${row.minHariPasokan} hari, eskalasi ${row.maxHariEskalasi} hari)`
   );
 

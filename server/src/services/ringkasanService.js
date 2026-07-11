@@ -132,7 +132,7 @@ const SYSTEM_PROMPT = [
   "- Tulis 2-4 paragraf naratif yang mengalir; tanpa heading, tanpa bullet,",
   "  tanpa markdown, tanpa sapaan pembuka atau penutup.",
   "- Mulai langsung dari temuan terpenting untuk sudut pandang pembaca.",
-  "- Sebut angka penting (total ton, jumlah pengiriman, persentase KPI)",
+  "- Sebut angka penting (total ton, jumlah pengiriman, persentase indikator kinerja)",
   "  persis seperti pada data — jangan mengarang atau membulatkan sendiri.",
   "- Jika suatu nilai null atau datanya kosong, katakan datanya belum",
   "  tersedia; jangan berspekulasi.",

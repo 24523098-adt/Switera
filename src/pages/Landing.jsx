@@ -127,7 +127,7 @@ const FITUR = [
     judul: "Pelacakan Status Pengiriman",
     deskripsi:
       "Setiap keputusan distribusi dipantau dari Menunggu, Dalam Pengiriman, sampai Selesai, lengkap dengan armada dan estimasi tiba.",
-    poin: ["Armada dan ETA per pengiriman", "Riwayat waktu tiap perubahan status"],
+    poin: ["Armada dan estimasi tiba per pengiriman", "Riwayat waktu tiap perubahan status"],
   },
   {
     ikon: "description",

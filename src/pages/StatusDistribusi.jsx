@@ -91,7 +91,7 @@ function StatusDistribusi({ onNavigate }) {
     id: item.id,
     kotaTujuan: item.kota_tujuan,
     volume: formatTonase(item.volume_tbs),
-    armada: item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "-",
+    armada: item.armada ? `${item.armada}${item.eta ? ` · Estimasi tiba ${formatDate(item.eta)}` : ""}` : "-",
     tanggalKeputusan: formatDate(item.tanggal_keputusan),
     status: <Badge status={item.status} />,
   }));
@@ -112,7 +112,7 @@ function StatusDistribusi({ onNavigate }) {
         nextErrors.armada = "Armada / Sopir wajib diisi saat status Dalam Pengiriman.";
       }
       if (!eta) {
-        nextErrors.eta = "Estimasi Tiba (ETA) wajib dipilih saat status Dalam Pengiriman.";
+        nextErrors.eta = "Estimasi tiba wajib dipilih saat status Dalam Pengiriman.";
       }
     }
 
@@ -170,7 +170,7 @@ function StatusDistribusi({ onNavigate }) {
           {[
             { label: "Total Aktif", nilai: ringkasanOperasional.totalAktif, warna: "var(--color-on-surface)", bg: "var(--color-surface)" },
             { label: "Selesai Hari Ini", nilai: ringkasanOperasional.selesaiHariIni, warna: "var(--color-success-text)", bg: "var(--color-surface)" },
-            { label: "ETA Terlewat", nilai: ringkasanOperasional.etaTerlewat, warna: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)", bg: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)" },
+            { label: "Estimasi Tiba Terlewat", nilai: ringkasanOperasional.etaTerlewat, warna: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-text)" : "var(--color-on-surface)", bg: ringkasanOperasional.etaTerlewat > 0 ? "var(--color-danger-bg)" : "var(--color-surface)" },
           ].map((box) => (
             <div key={box.label} style={{ border: "2px solid #000000", borderRadius: "var(--radius-lg)", padding: "var(--space-3) var(--space-4)", backgroundColor: box.bg, boxShadow: "var(--shadow-sm)" }}>
               <p style={{ margin: 0, fontSize: "var(--text-2xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "var(--tracking-wider)" }}>{box.label}</p>
@@ -281,7 +281,7 @@ function StatusDistribusi({ onNavigate }) {
                           </span>
                         </div>
                         <div style={{ fontSize: "var(--text-xs)", color: "var(--color-on-surface-variant)", display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <span>{item.armada ? `${item.armada}${item.eta ? ` · ETA ${formatDate(item.eta)}` : ""}` : "Armada belum ditetapkan"}</span>
+                          <span>{item.armada ? `${item.armada}${item.eta ? ` · Estimasi tiba ${formatDate(item.eta)}` : ""}` : "Armada belum ditetapkan"}</span>
                           <span>Keputusan: {formatDate(item.tanggal_keputusan)}</span>
                         </div>
                         <button
@@ -408,7 +408,7 @@ function StatusDistribusi({ onNavigate }) {
                   </label>
                   <label style={{ display: "block" }}>
                     <span style={{ display: "block", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
-                      Estimasi Tiba (ETA)
+                      Estimasi Tiba
                     </span>
                     <input
                       type="date"
