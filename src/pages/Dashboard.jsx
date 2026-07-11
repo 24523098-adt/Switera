@@ -32,6 +32,7 @@ import {
   getTargetKpi,
   setTargetKpi,
   getRiwayatKpi,
+  buatBriefingHarian,
   sinkronNotifikasiMis,
 } from "../api/apiClient";
 import { showToast } from "../components/Toast";
@@ -1201,6 +1202,78 @@ function ProyeksiStok({ proyeksi, onMintaStok }) {
   );
 }
 
+// ── Briefing Harian AI (AI-3) — naratif Gemini dari agregat MIS, on-demand ───
+function BriefingHarian() {
+  const [briefing, setBriefing] = useState("");
+  const [briefingError, setBriefingError] = useState("");
+  const [isMembuat, setIsMembuat] = useState(false);
+
+  const handleBuat = async () => {
+    setIsMembuat(true);
+    setBriefingError("");
+    try {
+      const hasil = await buatBriefingHarian();
+      setBriefing(hasil?.briefing ?? "");
+    } catch (error) {
+      setBriefingError(error.message || "Gagal membuat briefing. Coba lagi.");
+    } finally {
+      setIsMembuat(false);
+    }
+  };
+
+  return (
+    <Card style={{ animationDelay: "40ms" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "var(--space-3)", flexWrap: "wrap" }}>
+        <SectionHeader>
+          <span
+            className="material-symbols-outlined"
+            aria-hidden="true"
+            style={{ fontSize: "16px", verticalAlign: "-3px", marginRight: "6px" }}
+          >
+            auto_awesome
+          </span>
+          Briefing Harian
+        </SectionHeader>
+        <Tombol
+          label={briefing ? "Buat Ulang" : "Buat Briefing"}
+          variant="sekunder"
+          onClick={handleBuat}
+          isLoading={isMembuat}
+        />
+      </div>
+
+      {briefingError ? (
+        <p style={{ margin: 0, color: "var(--color-danger)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
+          {briefingError}
+        </p>
+      ) : briefing ? (
+        <div style={{ animation: "fadeInUp 300ms var(--ease-smooth) both" }}>
+          {briefing.split(/\n{2,}/).map((paragraf, index) => (
+            <p
+              key={index}
+              style={{
+                margin: index === 0 ? 0 : "0.75rem 0 0",
+                color: "var(--color-text-secondary)",
+                fontSize: "var(--text-sm)",
+                lineHeight: 1.7,
+                whiteSpace: "pre-line",
+              }}
+            >
+              {paragraf}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--text-sm)", lineHeight: 1.6 }}>
+          {isMembuat
+            ? "AI sedang merangkum kondisi distribusi hari ini…"
+            : "Buat rangkuman naratif kondisi hari ini — situasi stok, tindakan mendesak, pencapaian target, dan prioritas aksi — dengan bantuan AI."}
+        </p>
+      )}
+    </Card>
+  );
+}
+
 // ── Bagian 6 — Kinerja vs Target (management by objectives) ─────────────────
 // Realisasi KPI tidak berdiri sendiri: selalu dibandingkan dengan target yang
 // ditetapkan manajer (/mis/target-kpi), dan tiap kartu bisa diklik untuk
@@ -1722,6 +1795,7 @@ function DashboardManajer({ userAktif, onNavigate }) {
         <HeroStrip nama={userAktif?.nama} role={userAktif?.role} />
 
         <SituasiHariIni situasi={situasi} />
+        <BriefingHarian />
         <KinerjaVsTarget kpi={kpi} onDrill={setDrillKpi} onAturTarget={() => setAturTarget(true)} />
         <TrenKinerja riwayat={riwayatKpi} targetPemenuhan={kpi?.target?.targetPemenuhan} />
         <TindakanMendesakPanel tindakan={tindakan} onNavigate={onNavigate} />

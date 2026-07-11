@@ -151,6 +151,7 @@ const sinkronNotifikasiMis = () => apiFetch("/mis/sinkron-notifikasi", { method:
 const getTargetKpi = () => apiFetch("/mis/target-kpi");
 const setTargetKpi = (body) => apiFetch("/mis/target-kpi", { method: "PUT", body });
 const getRiwayatKpi = (hari = 30) => apiFetch(`/mis/riwayat-kpi?hari=${hari}`);
+const buatBriefingHarian = () => apiFetch("/mis/briefing-harian", { method: "POST" });
 
 export {
   apiFetch,
@@ -171,4 +172,5 @@ export {
   getTargetKpi,
   setTargetKpi,
   getRiwayatKpi,
+  buatBriefingHarian,
 };

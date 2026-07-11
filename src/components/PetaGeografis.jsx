@@ -13,7 +13,15 @@ const KOORDINAT_KOTA = {
   "Rokan Hilir": [2.1667, 100.8167],
 };
 
-function PetaGeografis({ ranking, daftarKota }) {
+// Warna marker menurut kelas ABC (overlay MIS). Tanpa overlay, semua marker
+// memakai warna hijau lama (perilaku Landing tidak berubah).
+const WARNA_KELAS = {
+  A: "#4c6700",
+  B: "#a2d800",
+  C: "#9ca3af",
+};
+
+function PetaGeografis({ ranking, daftarKota, overlayByKota }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -60,24 +68,33 @@ function PetaGeografis({ ranking, daftarKota }) {
         return;
       }
 
+      const overlay = overlayByKota?.get?.(item.kota) ?? null;
+      const warna = overlay ? WARNA_KELAS[overlay.kelas] ?? WARNA_KELAS.C : "#006a43";
+
       const radius = 8 + (item.totalPermintaan / maxPermintaan) * 16;
       const marker = L.circleMarker(koordinat, {
         radius,
-        color: "#006a43",
+        color: warna,
         weight: 2,
-        fillColor: "#006a43",
+        fillColor: warna,
         fillOpacity: 0.45,
       }).addTo(map);
 
+      const barisOverlay = overlay
+        ? `<br/>Kelas prioritas: <strong>${overlay.kelas}</strong>` +
+          (overlay.persenPemenuhan !== null && overlay.persenPemenuhan !== undefined
+            ? `<br/>Pemenuhan: ${overlay.persenPemenuhan}% (alokasi ${overlay.alokasi} ton)`
+            : "")
+        : "";
       marker.bindPopup(
         `<strong>${item.kota}</strong><br/>Permintaan: ${item.totalPermintaan} ton<br/>Kapasitas: ${
           kapasitasMap.get(item.kota) ?? "-"
-        } ton`
+        } ton${barisOverlay}`
       );
 
       markersRef.current.push(marker);
     });
-  }, [ranking, daftarKota]);
+  }, [ranking, daftarKota, overlayByKota]);
 
   return (
     <div

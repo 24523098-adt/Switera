@@ -3,6 +3,7 @@ import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import MetricCard from "../components/MetricCard";
 import PageHeader from "../components/PageHeader";
+import PetaGeografis from "../components/PetaGeografis";
 import SectionHeader from "../components/SectionHeader";
 import Sparkline from "../components/Sparkline";
 import Tabel from "../components/Tabel";
@@ -416,6 +417,24 @@ function AnalisisRanking({ onNavigate }) {
   // Klasifikasi ABC (Pareto) dari ranking permintaan.
   const abc = useMemo(() => computeKelasAbc(ranking), [ranking]);
 
+  // Overlay peta (MIS): kelas ABC + pemenuhan per kota dari hasil rekomendasi.
+  const overlayPeta = useMemo(() => {
+    const rekomendasiByKota = new Map(rekomendasi.map((item) => [item.kota, item]));
+    const overlay = new Map();
+    ranking.forEach((item) => {
+      const rek = rekomendasiByKota.get(item.kota);
+      overlay.set(item.kota, {
+        kelas: abc.byKota.get(item.kota) ?? "C",
+        alokasi: rek ? rek.alokasi : 0,
+        persenPemenuhan:
+          rek && item.totalPermintaan > 0
+            ? Math.round((rek.alokasi / item.totalPermintaan) * 100)
+            : null,
+      });
+    });
+    return overlay;
+  }, [ranking, rekomendasi, abc]);
+
   // Rata-rata permintaan harian 30 hari untuk simulasi ketahanan stok.
   const rataHarian = useMemo(() => {
     const batas = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -609,6 +628,28 @@ function AnalisisRanking({ onNavigate }) {
           ) : null}
 
           <GrafikRankingHorizontal ranking={ranking} />
+
+          {/* Peta distribusi dengan overlay MIS: warna = kelas prioritas ABC. */}
+          <Card>
+            <SectionHeader>Peta Distribusi</SectionHeader>
+            <p style={{ margin: "0 0 var(--space-4)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
+              Sebaran geografis permintaan — ukuran lingkaran menunjukkan volume, warna menunjukkan
+              kelas prioritas (gelap = kelas A). Klik lingkaran untuk rincian pemenuhan kota.
+            </p>
+            <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap", marginBottom: "var(--space-3)" }}>
+              {[
+                { kelas: "A", warna: "#4c6700" },
+                { kelas: "B", warna: "#a2d800" },
+                { kelas: "C", warna: "#9ca3af" },
+              ].map((item) => (
+                <span key={item.kelas} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "var(--text-xs)", color: "var(--color-text-secondary)" }}>
+                  <span aria-hidden="true" style={{ width: "12px", height: "12px", borderRadius: "50%", border: "2px solid #000000", backgroundColor: item.warna, display: "inline-block" }} />
+                  Kelas {item.kelas}
+                </span>
+              ))}
+            </div>
+            <PetaGeografis ranking={ranking} daftarKota={snapshot.daftarKota ?? []} overlayByKota={overlayPeta} />
+          </Card>
 
           {/* Peramalan kebutuhan periode berikutnya (MIS): dari data historis ke antisipasi. */}
           {forecastList.length > 0 ? (
