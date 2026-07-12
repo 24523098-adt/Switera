@@ -7,14 +7,14 @@ export const roleOptions = [
 export const menuByRole = {
   Admin: [
     { key: "dashboard", label: "Dashboard", icon: "dashboard" },
-    { key: "input-data", label: "Input Data", icon: "input" },
-    { key: "manajemen-data", label: "Manajemen Data", icon: "database" },
-    { key: "manajemen-kota", label: "Manajemen Kota", icon: "city" },
     { key: "manajemen-akun", label: "Manajemen Akun", icon: "user" },
     { key: "riwayat-aktivitas", label: "Riwayat Aktivitas", icon: "report" },
   ],
   "Manajer Distribusi": [
     { key: "dashboard", label: "Dashboard", icon: "dashboard" },
+    { key: "input-data", label: "Input Data", icon: "input" },
+    { key: "manajemen-data", label: "Manajemen Data", icon: "database" },
+    { key: "manajemen-kota", label: "Manajemen Kota", icon: "city" },
     { key: "analisis-ranking", label: "Analisis & Ranking", icon: "chart" },
     {
       key: "keputusan-distribusi",

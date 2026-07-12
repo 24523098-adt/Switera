@@ -340,17 +340,15 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, daftarK
       .map((kota) => Math.min(100, ((alokasiByKota.get(kota.nama) || 0) / kota.kapasitas) * 100));
     const utilisasiKapasitas = utilList.length > 0 ? Math.round(utilList.reduce((a, b) => a + b, 0) / utilList.length) : 0;
 
-    // Rekomendasi tindakan Admin dari kondisi nyata.
+    // Rekomendasi tindakan Admin — fokus administrasi akun & pengguna.
+    // Urusan data sawit (permintaan, kota, stok) kini ditangani Manajer
+    // Distribusi, jadi rekomendasi Admin menyoroti kelengkapan akun peran.
     const rekomendasi = [];
-    if (duplicateGroups.length > 0) {
-      rekomendasi.push({ teks: `${duplicateGroups.length} data permintaan duplikat perlu divalidasi.`, aksi: "manajemen-data" });
+    if ((akunPerRole["Manajer Distribusi"] ?? 0) === 0) {
+      rekomendasi.push({ teks: "Belum ada akun Manajer Distribusi. Tambahkan agar distribusi dapat dikelola.", aksi: "manajemen-akun" });
     }
-    const exceptionStok = exceptions.find((item) => item.kategori === "Stok");
-    if (exceptionStok) {
-      rekomendasi.push({ teks: "Stok TBS perlu diperbarui atau ditambah.", aksi: "manajemen-kota" });
-    }
-    if (kotaList.length === 0) {
-      rekomendasi.push({ teks: "Belum ada data kota. Tambahkan kota terlebih dahulu.", aksi: "manajemen-kota" });
+    if ((akunPerRole["Tim Logistik"] ?? 0) === 0) {
+      rekomendasi.push({ teks: "Belum ada akun Tim Logistik. Tambahkan agar pengiriman dapat dijalankan.", aksi: "manajemen-akun" });
     }
 
     return { akunPerRole, permintaanHariIni, anomaliCount: exceptions.length, utilisasiKapasitas, statusSistem, rekomendasi };
@@ -389,7 +387,7 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, daftarK
     <>
       <PageHeader
         judul="Dashboard"
-        deskripsi="Ringkasan data permintaan dan keputusan distribusi."
+        deskripsi="Ringkasan akun, aktivitas, dan kesehatan sistem aplikasi."
       />
       <div className="bento-grid stagger-children">
         <div className="bento-span-full">
@@ -457,47 +455,6 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, daftarK
             ) : null}
           </Card>
         </div>
-
-        {duplicateGroups.length > 0 ? (
-          <div
-            className="bento-span-full"
-            style={{
-              backgroundColor: "var(--color-warning-bg)",
-              border: "2px solid #000000",
-              borderLeft: "8px solid var(--color-warning-text)",
-              borderRadius: "var(--radius-lg)",
-              padding: "var(--space-3) var(--space-4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "var(--space-3)",
-              fontSize: "var(--text-sm)",
-              flexWrap: "wrap",
-            }}
-          >
-            <span style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flex: 1, minWidth: "200px" }}>
-              <IkonWarningTriangle />
-              <span style={{ color: "var(--color-text-secondary)" }}>
-                Ditemukan {formatterAngka.format(duplicateGroups.length)} data duplikat. Periksa Manajemen Data.
-              </span>
-            </span>
-            <button
-              type="button"
-              className="link-underline-hover"
-              onClick={() => onNavigate?.("manajemen-data")}
-              onMouseDown={onMouseDown}
-              style={{
-                color: "var(--color-warning)",
-                fontWeight: "var(--font-weight-semibold)",
-                fontSize: "var(--text-sm)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Periksa sekarang →
-              <RippleSpans ripples={ripples} removeRipple={removeRipple} />
-            </button>
-          </div>
-        ) : null}
 
         <div className="bento-span-2 bento-row-2">
           <MetricCard
@@ -574,18 +531,18 @@ function DashboardAdmin({ permintaan, keputusan, activityLog, userAktif, daftarK
           <ActionCard
             ikon={<IkonPlusCircle />}
             iconColor="var(--color-primary)"
-            judul="Input Data Baru"
-            sub="Tambah permintaan kota baru"
-            onClick={() => onNavigate?.("input-data")}
+            judul="Kelola Akun"
+            sub="Tambah atau ubah akun pengguna"
+            onClick={() => onNavigate?.("manajemen-akun")}
           />
         </div>
         <div className="bento-span-2" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
           <ActionCard
             ikon={<IkonTableList />}
             iconColor="var(--color-accent)"
-            judul="Kelola Data"
-            sub="Edit atau hapus data permintaan"
-            onClick={() => onNavigate?.("manajemen-data")}
+            judul="Riwayat Aktivitas"
+            sub="Pantau semua aktivitas pengguna"
+            onClick={() => onNavigate?.("riwayat-aktivitas")}
           />
         </div>
 

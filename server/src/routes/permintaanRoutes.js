@@ -16,8 +16,8 @@ const router = express.Router();
 // Reads are open to any authenticated role — every role's dashboards and
 // the ranking engine consume request data downstream (AUTH-03 reasoning
 // mirrors kotaRoutes.js: src/utils/navigation.js places "Input Data" /
-// "Manajemen Data" in the Admin menu only, so writes are gated below, not
-// reads).
+// "Manajemen Data" in the Manajer Distribusi menu, so writes are gated
+// below, not reads).
 
 router.get("/", requireAuth, async (req, res, next) => {
   try {
@@ -42,13 +42,15 @@ router.get("/duplikat", requireAuth, async (req, res, next) => {
   }
 });
 
-// Writes are Admin-only server-side (AUTH-03) — the real security boundary,
-// independent of the frontend's cosmetic menu gating.
+// Writes are Manajer Distribusi-only server-side (AUTH-03) — the real
+// security boundary, independent of the frontend's cosmetic menu gating.
+// Admin is intentionally excluded: Admin manages accounts/app, not the
+// palm-fruit (sawit) domain data.
 
 router.post(
   "/",
   requireAuth,
-  requireRole("Admin"),
+  requireRole("Manajer Distribusi"),
   validate(permintaanCreateSchema),
   async (req, res, next) => {
     try {
@@ -63,7 +65,7 @@ router.post(
 router.put(
   "/:id",
   requireAuth,
-  requireRole("Admin"),
+  requireRole("Manajer Distribusi"),
   validate(permintaanUpdateSchema),
   async (req, res, next) => {
     try {
@@ -75,7 +77,7 @@ router.put(
   }
 );
 
-router.delete("/:id", requireAuth, requireRole("Admin"), async (req, res, next) => {
+router.delete("/:id", requireAuth, requireRole("Manajer Distribusi"), async (req, res, next) => {
   try {
     const result = await removePermintaan(req.params.id, req.user.username, req.user.role);
     return res.status(200).json(result);

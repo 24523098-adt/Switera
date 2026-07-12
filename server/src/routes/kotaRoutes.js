@@ -34,11 +34,12 @@ router.get("/:nama/references", requireAuth, async (req, res, next) => {
   }
 });
 
-// Writes are Admin-only server-side (AUTH-03) — "Manajemen Kota" is in the
-// Admin menu only per src/utils/navigation.js, but that's frontend-cosmetic
-// gating; requireRole("Admin") here is the real security boundary.
+// Writes are Manajer Distribusi-only server-side (AUTH-03) — "Manajemen Kota"
+// is in the Manajer Distribusi menu per src/utils/navigation.js, but that's
+// frontend-cosmetic gating; requireRole("Manajer Distribusi") here is the real
+// security boundary. Admin no longer manages sawit-domain data (kota/stok).
 
-router.post("/", requireAuth, requireRole("Admin"), validate(kotaCreateSchema), async (req, res, next) => {
+router.post("/", requireAuth, requireRole("Manajer Distribusi"), validate(kotaCreateSchema), async (req, res, next) => {
   try {
     const daftarKota = await tambahKota(req.body, req.user.username, req.user.role);
     return res.status(201).json(daftarKota);
@@ -47,7 +48,7 @@ router.post("/", requireAuth, requireRole("Admin"), validate(kotaCreateSchema), 
   }
 });
 
-router.put("/:nama", requireAuth, requireRole("Admin"), validate(kotaUpdateSchema), async (req, res, next) => {
+router.put("/:nama", requireAuth, requireRole("Manajer Distribusi"), validate(kotaUpdateSchema), async (req, res, next) => {
   try {
     const daftarKota = await updateKota(req.params.nama, req.body, req.user.username, req.user.role);
     return res.status(200).json(daftarKota);
@@ -56,7 +57,7 @@ router.put("/:nama", requireAuth, requireRole("Admin"), validate(kotaUpdateSchem
   }
 });
 
-router.delete("/:nama", requireAuth, requireRole("Admin"), async (req, res, next) => {
+router.delete("/:nama", requireAuth, requireRole("Manajer Distribusi"), async (req, res, next) => {
   try {
     const daftarKota = await hapusKota(req.params.nama, req.user.username, req.user.role);
     return res.status(200).json(daftarKota);

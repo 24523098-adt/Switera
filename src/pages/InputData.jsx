@@ -133,7 +133,7 @@ function InputData({ onNavigate }) {
     if (step === 1 && daftarKota.length === 0) {
       showToast({
         type: "error",
-        message: "Belum ada kota yang dikonfigurasi. Hubungi Admin untuk menambahkan kota terlebih dahulu.",
+        message: "Belum ada kota yang dikonfigurasi. Tambahkan kota terlebih dahulu di menu Manajemen Kota.",
       });
       return;
     }
@@ -159,7 +159,7 @@ function InputData({ onNavigate }) {
     if (daftarKota.length === 0) {
       showToast({
         type: "error",
-        message: "Belum ada kota yang dikonfigurasi. Hubungi Admin untuk menambahkan kota terlebih dahulu.",
+        message: "Belum ada kota yang dikonfigurasi. Tambahkan kota terlebih dahulu di menu Manajemen Kota.",
       });
       return;
     }
@@ -466,7 +466,7 @@ function InputData({ onNavigate }) {
                     <label htmlFor="input-kota" style={labelStyle}>Nama Kota</label>
                     {daftarKota.length === 0 ? (
                       <p style={{ margin: 0, color: "var(--color-on-surface-variant)", fontSize: "var(--text-sm)" }}>
-                        Belum ada kota yang dikonfigurasi. Hubungi Admin untuk menambahkan kota terlebih dahulu.
+                        Belum ada kota yang dikonfigurasi. Tambahkan kota terlebih dahulu di menu Manajemen Kota.
                       </p>
                     ) : (
                       <select id="input-kota"
