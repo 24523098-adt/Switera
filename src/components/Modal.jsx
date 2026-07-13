@@ -88,6 +88,8 @@ function Modal({ judul, konten, onTutup }) {
           style={{
             width: "90vw",
             maxWidth: "480px",
+            maxHeight: "calc(100vh - 3rem)",
+            overflowY: "auto",
             position: "relative",
             outline: "none",
             backgroundColor: "var(--color-surface)",

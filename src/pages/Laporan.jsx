@@ -930,6 +930,7 @@ function Laporan({ onNavigate }) {
               {perbandinganPeriode.map((baris) => (
                 <div
                   key={baris.label}
+                  className="app-grid-4"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "minmax(140px, 1.4fr) 1fr 1fr minmax(110px, 1fr)",

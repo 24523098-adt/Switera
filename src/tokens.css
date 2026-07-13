@@ -356,6 +356,7 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
     display: flex !important;
   }
   .app-sidebar {
+    max-width: 85vw;
     transform: translateX(-105%);
     transition: transform var(--transition-base);
   }
@@ -373,6 +374,38 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
   }
   .app-header-search {
     display: none !important;
+  }
+}
+
+/* ===== Touch target sizing (mobile/tablet, min ~40-44px) ===== */
+@media (max-width: 900px) {
+  .app-header-icon-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .modal-close-btn,
+  .auth-close-btn {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .aksi-btn {
+    padding: 10px 14px !important;
+    min-height: 40px;
+  }
+  .app-table-density-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .app-table-page-btn {
+    padding: 10px 14px !important;
+    min-height: 40px;
+  }
+}
+
+/* ===== Content padding: lebih hemat ruang di layar HP ===== */
+@media (max-width: 600px) {
+  .app-main {
+    padding: var(--space-4) !important;
   }
 }
 
@@ -575,6 +608,8 @@ input[type="number"].field-no-spinner::-webkit-outer-spin-button {
 
 /* ===== Table scroll container ===== */
 .app-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 }
 

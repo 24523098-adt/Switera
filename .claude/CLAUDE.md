@@ -254,7 +254,7 @@ No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skill
 
 ## Workflow
 
-GSD is used again on this project (explicit standing instruction from the user, 2026-07-02 — reversing the earlier "stop using GSD" directive). Route work through `/gsd-*` skills and GSD subagents as designed. The user still prefers efficient execution, so favor lighter GSD entry points (`/gsd-quick`, `/gsd-fast`, `--interactive` execution) over heavy multi-agent pipelines unless a task genuinely warrants full discuss→plan→execute. `.planning/` is the maintained workflow directory again.
+GSD is OFF on this project (explicit standing instruction from the user, 2026-07-14 — reversing the 2026-07-02 "use GSD again" directive). Do NOT route work through `/gsd-*` skills or GSD subagents. Work directly/inline (Read/Grep/Edit/Bash, plan mode for nontrivial work) — no `.planning/quick/` task dirs, no PLAN.md/SUMMARY.md artifacts. `.planning/` still exists as historical record but is not actively maintained per-task. If the user asks to use GSD again, flip this note back.
 <!-- GSD:workflow-end -->
 
 <!-- GSD:profile-start -->

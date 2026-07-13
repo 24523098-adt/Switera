@@ -206,6 +206,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
       <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", padding: "8px 10px", borderBottom: "2px solid #000000", backgroundColor: "var(--color-surface)" }}>
         <button
           type="button"
+          className="app-table-density-btn"
           aria-label="Tampilan nyaman"
           aria-pressed={!isCompact}
           onClick={() => setDensity("comfortable")}
@@ -215,6 +216,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
         </button>
         <button
           type="button"
+          className="app-table-density-btn"
           aria-label="Tampilan ringkas"
           aria-pressed={isCompact}
           onClick={() => setDensity("compact")}
@@ -351,6 +353,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
           <div style={{ display: "flex", gap: "6px" }}>
             <button
               type="button"
+              className="app-table-page-btn"
               disabled={clampedPage === 0}
               onClick={() => setPage((current) => Math.max(0, current - 1))}
               style={paginationButtonStyle(clampedPage === 0)}
@@ -359,6 +362,7 @@ function Tabel({ kolom = [], data = [], aksi, getRowStyle }) {
             </button>
             <button
               type="button"
+              className="app-table-page-btn"
               disabled={clampedPage >= totalPages - 1}
               onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
               style={paginationButtonStyle(clampedPage >= totalPages - 1)}
