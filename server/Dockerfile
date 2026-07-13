@@ -10,10 +10,12 @@ RUN apt-get update -y \
 
 WORKDIR /app
 
-# Install dependency dulu (layer cache) — termasuk devDependency `prisma`
-# karena CLI-nya dipakai untuk `migrate deploy` + `generate` di dalam container.
+# Install dependency dulu (layer cache) — termasuk `prisma` (CLI-nya dipakai
+# untuk `migrate deploy` + `generate` di dalam container). --ignore-scripts
+# supaya postinstall (prisma generate) tidak terpicu di sini — prisma/
+# belum di-COPY, generate eksplisit dijalankan di bawah setelah itu.
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --ignore-scripts
 
 # Generate Prisma Client memakai engine Linux (Debian) — schema tidak
 # mengunci binaryTargets, jadi ini otomatis menghasilkan biner yang benar

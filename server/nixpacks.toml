@@ -1,8 +1,0 @@
-[phases.install]
-cmds = ["npm install --ignore-scripts"]
-
-[phases.build]
-cmds = ["npx prisma generate"]
-
-[start]
-cmd = "npm start"
